@@ -1,6 +1,10 @@
 # ---- Build çıktıları ----
 build/
 code/build/
+code/build-gl3/
+code/build_win32_x86/
+code/build_win32_d3d9/
+code/build_win32_v180/
 **/CMakeCache.txt
 **/CMakeFiles/
 **/cmake_install.cmake
@@ -13,6 +17,22 @@ code/build/
 *.d
 *.dylib
 *.so
+
+# ---- Visual Studio / MSBuild intermediates ----
+*.tlog
+*.lastbuildstate
+*.recipe
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.slnx
+*.suo
+*.user
+*.ipch
+*.opendb
+*.opendb.cache
+*.VC.db
+*.VC.opendb
 
 # ---- Derleyici / IDE ----
 *.gcda
