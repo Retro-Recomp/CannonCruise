@@ -11,8 +11,7 @@
 #include <cstring>
 
 #if defined(RW_GL3) || defined(RW_D3D9)
-// librw retain-mode API (Clump/Geometry/Atomic) — since the Im3D path returned empty
-// in D3D9, the boat is now drawn via the RpWorld pipeline.
+// librw im3d immediate-mode API (same path as the ocean tiles)
 #include <rw.h>
 #endif
 
@@ -31,11 +30,15 @@ const RwReal kTurnRate = 0.55f;    ///< rad/s (full rudder + full speed)
 const RwReal kWaterY = 0.0f;       ///< water level
 
 #if defined(RW_GL3) || defined(RW_D3D9)
-// Single-use boat clump (lazy create, added to the world once).
-rw::Clump *s_pShipClump = nullptr;
-rw::Frame *s_pShipFrame = nullptr;
-RwBool s_shipClumpAdded = FALSE;
+#if defined(RW_GL3)
+using ShipIm3DVertex = rw::gl3::Im3DVertex;
+#else
+using ShipIm3DVertex = rw::d3d::Im3DVertex;
+#endif
 
+// Placeholder boat hull + mast, drawn immediate-mode (same path as the
+// ocean tiles â€” known-good in D3D9). The RpWorld clump path renders
+// nothing here, so we draw the 13-vertex low-poly boat each frame.
 const RwV3d kShipLocal[13] = {
     {0.0f, 1.1f, 5.2f},   // 0  bow
     {-1.35f, 1.0f, 2.1f}, // 1
@@ -52,120 +55,119 @@ const RwV3d kShipLocal[13] = {
     {0.16f, 4.8f, 0.5f},    // 12 mast upper-right
 };
 const RwUInt32 kShipHullTris[][3] = {
-    {0, 1, 2},             // bow deck
+    {0, 2, 1},             // bow deck
     {0, 3, 1}, {0, 2, 4},  // mid deck (filler)
     {0, 5, 3}, {0, 4, 5},  // stern deck
-    {0, 6, 1}, {1, 6, 7},  // port hull
-    {1, 7, 3},
-    {0, 2, 6}, {2, 8, 6},  // starboard hull
-    {2, 4, 8},
-    {3, 7, 8}, {3, 8, 4},  // under the stern transom
+    {0, 1, 6}, {1, 7, 6},  // port hull
+    {1, 3, 7},
+    {0, 6, 2}, {2, 6, 8},  // starboard hull
+    {2, 8, 4},
+    {3, 8, 7}, {3, 4, 8},  // under the stern transom
 };
 const RwUInt32 kShipMastTris[][3] = {
-    {9, 11, 12}, {9, 12, 10},
+    {9, 12, 11}, {9, 10, 12},
 };
 
-void ShipFrame_SetPose(rw::Frame *pFrame, const PlayerShipState &s) {
-    rw::Matrix *pMat = &pFrame->matrix;
-    const RwReal cy = std::cos(s.yaw), sy = std::sin(s.yaw);
-    pMat->right = rw::makeV3d(cy, 0.0f, -sy);
-    pMat->up = rw::makeV3d(0.0f, 1.0f, 0.0f);
-    pMat->at = rw::makeV3d(sy, 0.0f, cy);
-    pMat->pos = rw::makeV3d(s.pos.x, s.pos.y, s.pos.z);
-    pFrame->updateObjects();
-}
-
-RwBool ShipClump_Create(void) {
-    const RwUInt32 hullCount = sizeof(kShipHullTris) / sizeof(kShipHullTris[0]);
-    const RwUInt32 mastCount = sizeof(kShipMastTris) / sizeof(kShipMastTris[0]);
-    const RwUInt32 numTris = hullCount + mastCount;
-    rw::Geometry *pGeo = rw::Geometry::create(13, numTris,
-                                              rw::Geometry::POSITIONS |
-                                                  rw::Geometry::NORMALS |
-                                                  rw::Geometry::LIGHT |
-                                                  rw::Geometry::PRELIT |
-                                                  rw::Geometry::TEXTURED);
-    if (pGeo == nullptr) {
-        return FALSE;
+void PlayerShip_RenderHull() {
+    if (std::getenv("CANNONCRUISE_QUAD_TEST") != nullptr) {
+        // ocean-like 2x2 subdivided quad at the ship position
+        const RwReal cx = s_ship.pos.x, cz = s_ship.pos.z;
+        ShipIm3DVertex im[9];
+        const RwReal uvs[9][2] = {{0,0},{0.5f,0},{1,0},{0,0.5f},{0.5f,0.5f},{1,0.5f},{0,1},{0.5f,1},{1,1}};
+        for (int i = 0; i < 9; ++i) {
+            im[i].setX(cx - 15.0f + uvs[i][0] * 30.0f);
+            im[i].setY(0.5f);
+            im[i].setZ(cz - 15.0f + uvs[i][1] * 30.0f);
+            im[i].setNormalX(0.0f);
+            im[i].setNormalY(1.0f);
+            im[i].setNormalZ(0.0f);
+            im[i].setColor(255, 0, 255, 255);
+            im[i].setU(uvs[i][0]);
+            im[i].setV(uvs[i][1]);
+        }
+        RwUInt16 qIdx[24] = {0,1,3, 1,4,3, 1,2,4, 2,5,4,
+                             3,4,6, 4,7,6, 4,5,7, 5,8,7};
+        rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+        rw::im3d::Transform(im, 9, nullptr, rw::im3d::EVERYTHING);
+        rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, (void *)qIdx, 24);
+        rw::im3d::End();
+        return;
     }
-    rw::MorphTarget *mt = &pGeo->morphTargets[0];
-    rw::V3d *verts = mt->vertices;
-    rw::V3d *norms = mt->normals;
-    // Placeholder proportions ~4x (game scale; original frigate ~40 units).
-    const RwReal kShipScale = 4.0f;
+    if (s_active != TRUE) {
+        return;
+    }
+    if (std::getenv("CANNONCRUISE_HULL_TRI") != nullptr) {
+        ShipIm3DVertex im[3];
+        const RwReal tx[3] = {25.0f, 44.0f, 34.4f};
+        const RwReal ty[3] = {2.0f, 2.0f, 14.0f};
+        const RwReal tz[3] = {390.0f, 390.0f, 390.0f};
+        for (int i = 0; i < 3; ++i) {
+            im[i].setX(tx[i]);
+            im[i].setY(ty[i]);
+            im[i].setZ(tz[i]);
+            im[i].setNormalX(0.0f);
+            im[i].setNormalY(1.0f);
+            im[i].setNormalZ(0.0f);
+            im[i].setColor(255, 0, 255, 255);
+            im[i].setU(0.0f);
+            im[i].setV(0.0f);
+        }
+        const char *mode = std::getenv("CANNONCRUISE_TRI_MODE");
+        RwUInt32 flags =
+            (mode != nullptr && mode[0] == '2')
+                ? (rw::im3d::VERTEXXYZ | rw::im3d::VERTEXRGBA | rw::im3d::ALLOPAQUE)
+                : rw::im3d::EVERYTHING;
+        rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+        rw::im3d::Transform(im, 3, nullptr, flags);
+        rw::im3d::RenderPrimitive(rw::PRIMTYPETRILIST);
+        rw::im3d::End();
+        return;
+    }
+    // world = pos + right*lx + at*lz + up*ly  (same basis as the former
+    // clump path: right=(cy,0,-sy), at=(sy,0,cy), up=(0,1,0))
+    const RwReal cy = std::cos(s_ship.yaw);
+    const RwReal sy = std::sin(s_ship.yaw);
+    ShipIm3DVertex im[13];
     for (RwUInt32 i = 0; i < 13; ++i) {
-        verts[i].set(kShipLocal[i].x * kShipScale, kShipLocal[i].y * kShipScale,
-                     kShipLocal[i].z * kShipScale);
-        if (norms) {
-            norms[i].set(0.0f, 1.0f, 0.0f);
-        }
+        const RwReal lx = kShipLocal[i].x * kShipScale;
+        const RwReal ly = kShipLocal[i].y * kShipScale;
+        const RwReal lz = kShipLocal[i].z * kShipScale;
+        im[i].setX(s_ship.pos.x + cy * lx + sy * lz);
+        im[i].setY(s_ship.pos.y + ly);
+        im[i].setZ(s_ship.pos.z - sy * lx + cy * lz);
+        im[i].setNormalX(0.0f);
+        im[i].setNormalY(1.0f);
+        im[i].setNormalZ(0.0f);
+        // wood for the hull, sail for the mast
+        const rw::RGBA col = (i >= 9) ? rw::RGBA{245, 240, 225, 255}
+                                      : rw::RGBA{150, 105, 60, 255};
+        im[i].setColor(col.red, col.green, col.blue, col.alpha);
+        im[i].setU(0.0f);
+        im[i].setV(0.0f);
     }
-    for (RwUInt32 i = 0; i < numTris; ++i) {
-        rw::Triangle &tri = pGeo->triangles[i];
-        if (i < hullCount) {
-            tri.v[0] = kShipHullTris[i][0];
-            tri.v[1] = kShipHullTris[i][1];
-            tri.v[2] = kShipHullTris[i][2];
-        } else {
-            tri.v[0] = kShipMastTris[i - hullCount][0];
-            tri.v[1] = kShipMastTris[i - hullCount][1];
-            tri.v[2] = kShipMastTris[i - hullCount][2];
-        }
-        tri.matId = 0;
+    // indices: hull then mast (one indexed primitive)
+    constexpr RwUInt32 kHullTri =
+        (RwUInt32)(sizeof(kShipHullTris) / sizeof(kShipHullTris[0]));
+    constexpr RwUInt32 kMastTri =
+        (RwUInt32)(sizeof(kShipMastTris) / sizeof(kShipMastTris[0]));
+    RwUInt16 indices[(kHullTri + kMastTri) * 3];
+    RwUInt32 k = 0;
+    for (RwUInt32 i = 0; i < sizeof(kShipHullTris) / sizeof(kShipHullTris[0]);
+         ++i) {
+        indices[k++] = (RwUInt16)kShipHullTris[i][0];
+        indices[k++] = (RwUInt16)kShipHullTris[i][1];
+        indices[k++] = (RwUInt16)kShipHullTris[i][2];
     }
-    // UV — pinned to the center of the Hugo boat texture (all corners the same → flat color).
-    if (pGeo->texCoords[0] != nullptr) {
-        for (RwUInt32 i = 0; i < 13; ++i) {
-            pGeo->texCoords[0][i].u = 0.5f;
-            pGeo->texCoords[0][i].v = 0.5f;
-        }
+    for (RwUInt32 i = 0; i < kMastTri; ++i) {
+        indices[k++] = (RwUInt16)kShipMastTris[i][0];
+        indices[k++] = (RwUInt16)kShipMastTris[i][1];
+        indices[k++] = (RwUInt16)kShipMastTris[i][2];
     }
-    // Hull: dark wood; masts/sails: broken white
-    // Hull: light wood; masts/sails: broken white (contrast on the blue ocean)
-    rw::RGBA wood = {150, 105, 60, 255};
-    rw::RGBA sail = {245, 240, 225, 255};
-    for (RwUInt32 i = 0; i < 13; ++i) {
-        pGeo->colors[i] = (i >= 9) ? sail : wood;
-    }
-    rw::Material *pMat = rw::Material::create();
-    if (pMat == nullptr) {
-        pGeo->destroy();
-        return FALSE;
-    }
-    pMat->color.red = 255;
-    pMat->color.green = 255;
-    pMat->color.blue = 255;
-    pMat->color.alpha = 255;
-    // Hugo kayak texture (GLOBAL.RWS -> s_menuTextures; loaded after boot).
-    void *tex = RenderPlatform_GetTexture("Load_NT_003");
-    if (tex != nullptr) {
-        pMat->setTexture(static_cast<rw::Texture *>(tex));
-    }
-    pGeo->matList.appendMaterial(pMat);
-    pMat->destroy();
-    pGeo->calculateBoundingSphere();
-    pGeo->unlock();
-
-    rw::Atomic *pAtomic = rw::Atomic::create();
-    rw::Frame *pFrame = rw::Frame::create();
-    if (pAtomic == nullptr || pFrame == nullptr) {
-        if (pAtomic) pAtomic->destroy();
-        pGeo->destroy();
-        return FALSE;
-    }
-    pAtomic->setGeometry(pGeo, 0);
-    pGeo->destroy();
-    s_pShipClump = rw::Clump::create();
-    if (s_pShipClump == nullptr) {
-        pAtomic->destroy();
-        if (pFrame) pFrame->destroy();
-        return FALSE;
-    }
-    pAtomic->setFrame(pFrame);
-    s_pShipFrame = pFrame;
-    ShipFrame_SetPose(s_pShipFrame, s_ship);
-    s_pShipClump->addAtomic(pAtomic);
-    return TRUE;
+    // no texture (sampler off); same verified pattern as the ocean tiles
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+    rw::im3d::Transform(im, 13, nullptr, rw::im3d::EVERYTHING);
+    rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, indices, (int)k);
+    rw::im3d::End();
 }
 #endif // RW_GL3 || RW_D3D9
 
@@ -182,7 +184,7 @@ void PlayerShip_Spawn(const RwV3d *pPos, RwReal yaw) {
     s_ship.throttle = 0.0f;
     s_ship.rudder = 0.0f;
     s_active = TRUE;
-    // Build the hull as a convex hull shape — mass=0 kinematic body,
+    // Build the hull as a convex hull shape ÔÇö mass=0 kinematic body,
     // collisions trigger (required for Cannonball & EnemyShips).
     if (s_pShipShape == nullptr) {
         const RwReal hull[9][3] = {
@@ -277,18 +279,6 @@ void PlayerShip_Render() {
         return;
     }
 #if defined(RW_GL3) || defined(RW_D3D9)
-    // RpWorld pipeline (default MATFx) -- Im3D is not drawn in D3D9.
-    if (s_pShipClump == nullptr) {
-        if (ShipClump_Create() != TRUE) {
-            return;
-        }
-    }
-    if (s_shipClumpAdded == FALSE) {
-        if (RenderPlatform_AddClump(s_pShipClump) == TRUE) {
-            s_shipClumpAdded = TRUE;
-        }
-    }
-    // Update the pose every frame (frame matrix; RpWorld LTM uses this)
-    ShipFrame_SetPose(s_pShipFrame, s_ship);
+    PlayerShip_RenderHull();
 #endif
 }

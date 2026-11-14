@@ -56,7 +56,7 @@ Goal: island, ship, ocean, 2 towers/fortresses and the enemy real chain; ESC →
 1. **Make ship movement work in Bullet** (play the `CPhysicsEntity::SetPosition` / `CShip::Update` flow); throttle/rudder → speed/angle. ✅ 2026-11-14: at spawn, `PlayerShip` creates `PhysicsShape_CreateConvexHull` + a kinematic `btRigidBody`, registered via `CPhysicsWorld::AddRigidBody`; the frame loop calls `CPhysicsWorld::Update(1/60)`; cleaned up by `PlayerShip_Shutdown`; `ctest` 34/34.
 2. **Cannon fire → Cannonball → collision → tower destruction** (at least `TowerCatapult` → `HealthBar` → 0 HP → destruction + sound); via `CollisionTrigger`. ✅ 2026-11-14: each frame `physics->Update(1/60)` runs; `SPACE` player output creates a cannonball Bullet sphere rigid body, `Cannonball` Bullet body + 5 s lifetime; two towers registered as live static `btRigidBody`s in the world; top-vs-tower AABB test each frame → `TakeDamage(100)`; `playground_test` ran 120 frames headless and confirmed `HIT frame=72` and `pTower->IsDestroyed() == TRUE` → ctest 34/34.
 3. **HUD**: score countdown + HP bar + compass (`CGUIHealthBar` + `CGUIMap` + `MissionIndicator`; HUD at SCR.mov frame 9; the im2d overlay already exists). ✔︎ 2026-11-15: redrawn against the original reference image — bottom-left ammo dial (GUI_022+GUI_012), bottom wooden-tipped red HP bar (GUI_026/024/028), fish counter (GUI_031), bottom-right compass (GUI_020 + white needle + red tower blips; north-up). GUI textures are loaded from the nested d3d8-IMAGE records at the tail of VIKING01.RWS chunk0 via `RwTxdDecodeGuiPack` (LevelPack cannot see these). `KULEN n/2` under the compass; ESC→PAUSE is a separate item.
-4. **PAUSE menu**: also open the menu in paused state (`CMenuBehaviour` + `InputManager` with Esc).
+4. **PAUSE menu**: also open the menu in paused state (`CMenuBehavior` + `InputManager` with Esc). ✔ 2026-11-15: in-game ESC toggles PAUSE (edge-triggered) — world frozen (physics/ship input/ocean update/camera), dim overlay drawn over the frozen frame with parchment panel: `RESUME` (ESC) and `QUIT TO DESKTOP` (Enter). W/S or Up/Down navigate, Enter confirms, ESC resumes. `CANNONCRUISE_PAUSE_AT` / `CANNONCRUISE_SHOT_FRAME` env vars force the state for headless screenshot verification.
 5. **Camera mode**: `CANNONCRUISE_CAM=FREE|FOLLOW` behavior; the player follows the ship
    (current FOLLOW + WASD partially done).
 
@@ -118,7 +118,7 @@ Goal: BOOT → LOADING → MAINMENU → NEWGAME → MAPMENU (VIKING 1) → VIKIN
 |---|---|---|
 | 1a–1b | ~~D3D9 world static~~ (misdiagnosis) + Bullet step + ship control (throttle/rudder → speed/angle) ✅ | `playground_test` green |
 | 1c | Cannon fire → cannonball → tower destruction ✅ | `playground_test` top-vs-tower HIT frame=72 |
-| 2 | HUD ✔ (dial+HP bar+compass, original art) + ESC→PAUSE | `playground_test` ammo assert; SS image |
+| 2 | HUD ✔ (dial+HP bar+compass, original art) + ESC→PAUSE ✔ | `playground_test` ammo assert; SS image |
 | 3 | Save/Load + LEVELCOMPLETE screen | `gamestate_test` full BOOT→COMPLETE |
 | 4 | GLOBAL factories + VIKING02 + D3D9 package | 2 levels green; setup.exe works |
 

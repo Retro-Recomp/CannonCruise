@@ -280,6 +280,50 @@ int FmvSpinIdle(void) {
 
 } // namespace
 
+// Pause overlay: dims the frozen world and offers RESUME / QUIT TO DESKTOP.
+// selection: 0 = RESUME, 1 = QUIT TO DESKTOP.
+static void RenderPauseOverlay(RwInt32 selection) {
+    const RwReal kScreenW = 1280.0f, kScreenH = 720.0f;
+    RenderPlatform_BeginOverlay2D();
+    // dim backdrop
+    RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, kScreenH,
+                                   0x90000000u);
+    // parchment panel with dark border
+    const RwReal pw = 400.0f, ph = 230.0f;
+    const RwReal px = (kScreenW - pw) * 0.5f;
+    const RwReal py = (kScreenH - ph) * 0.5f - 20.0f;
+    RenderPlatform_DrawOverlayQuad(px - 5, py - 5, pw + 10, ph + 10,
+                                   0xFF1A0F08u);
+    RenderPlatform_DrawOverlayQuad(px, py, pw, ph, 0xFFC7A05Eu);
+    // heading
+    const RwReal titleW = 6 * 6 * 3; // "PAUSED" at scale 3
+    ShowText_DrawBitmapText("PAUSED", px + (pw - titleW) * 0.5f, py + 22.0f,
+                            3, 0x4A, 0x28, 0x10, 0xFF);
+    // options
+    const char *options[2] = {"RESUME", "QUIT TO DESKTOP"};
+    for (int i = 0; i < 2; ++i) {
+        const RwReal oy = py + 95.0f + (RwReal)i * 44.0f;
+        const RwBool sel = (selection == i) ? TRUE : FALSE;
+        if (sel == TRUE) {
+            RenderPlatform_DrawOverlayQuad(px + 24, oy - 6, pw - 48, 30,
+                                           0xFFD88A18u);
+        }
+        ShowText_DrawBitmapText(options[i], px + 60.0f, oy, 2,
+                                sel ? 0x20u : 0x4Au,
+                                sel ? 0x14u : 0x28u,
+                                sel ? 0x08u : 0x10u,
+                                0xFF);
+        if (sel == TRUE) {
+            ShowText_DrawBitmapText(">", px + 36.0f, oy, 2,
+                                    0x4A, 0x28, 0x10, 0xFF);
+        }
+    }
+    // hint line
+    ShowText_DrawBitmapText("ESC - RESUME    ENTER - SELECT", px + 52.0f,
+                            py + ph - 28.0f, 1, 0x6A, 0x4A, 0x28, 0xFF);
+    RenderPlatform_EndOverlay2D();
+}
+
 int main(int argc, char **argv) {
     // Diagnostics: stdout UNBUFFERED -- stdio buffer flushed only on exit;
     // otherwise last output was lost on crash (e.g. 0xC0000005); needed to
@@ -1288,6 +1332,7 @@ int main(int argc, char **argv) {
 
     // Frame loop -- if world loaded, run until window close (unlimited;
     // CANNONCRUISE_FRAMES env for test cap, e.g. 300), else 3 frames
+
     // platform smoke.
     int frameCap = -1; // -1 = unlimited
     const char *capEnv = std::getenv("CANNONCRUISE_FRAMES");
@@ -1298,6 +1343,10 @@ int main(int argc, char **argv) {
     int framesRendered = 0;
     s_gameState = GAMESTATE_GAMEPLAY; // video cutscene: NORMAL camera mode
     for (int frame = 0; kFrames < 0 || frame < kFrames; ++frame) {
+        if (bQuitApp == TRUE) {
+            std::printf("Pause: quit requested; leaving game loop\n");
+            break;
+        }
         RwPlatformPollEvents(); // GLFW event pump (keys + mouse delta)
         if (RwPlatformShouldClose() == TRUE) {
             break;
@@ -1308,18 +1357,76 @@ int main(int argc, char **argv) {
             break;
         }
         if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
+            // ESC toggles PAUSE (edge-triggered). Paused = world frozen,
+            // overlay menu on screen; ESC/Enter-on-RESUME resumes.
+            static RwBool s_escPrev = FALSE;
+            static RwInt32 s_pauseSelection = 0; // 0=RESUME, 1=QUIT TO DESKTOP
+            const RwBool escDown =
+                RwPlatformKeyDown(RW_KEY_ESCAPE) ? TRUE : FALSE;
+            const char *pauseAtEnv = std::getenv("CANNONCRUISE_PAUSE_AT");
+            if (pauseAtEnv != nullptr && frame == std::atoi(pauseAtEnv) &&
+                s_gameState == GAMESTATE_GAMEPLAY) {
+                s_gameState = GAMESTATE_PAUSE;
+                s_pauseSelection = 0;
+                std::printf("Pause: entered (CANNONCRUISE_PAUSE_AT=%d)\n",
+                            frame);
+            }
+            if (escDown == TRUE && s_escPrev == FALSE) {
+                if (s_gameState == GAMESTATE_GAMEPLAY) {
+                    s_gameState = GAMESTATE_PAUSE;
+                    s_pauseSelection = 0;
+                    std::printf("Pause: entered\n");
+                } else if (s_gameState == GAMESTATE_PAUSE) {
+                    s_gameState = GAMESTATE_GAMEPLAY;
+                    std::printf("Pause: resumed (ESC)\n");
+                }
+            }
+            s_escPrev = escDown;
+            if (s_gameState == GAMESTATE_PAUSE) {
+                // W/S or Up/Down to navigate, Enter to confirm.
+                static RwBool s_upPrev = FALSE, s_downPrev = FALSE,
+                              s_enterPrev = FALSE;
+                const RwBool up = RwPlatformKeyDown('W') ||
+                                  RwPlatformKeyDown(RW_KEY_UP);
+                const RwBool down = RwPlatformKeyDown('S') ||
+                                    RwPlatformKeyDown(RW_KEY_DOWN);
+                const RwBool enter = RwPlatformKeyDown(RW_KEY_ENTER) ||
+                                     RwPlatformKeyDown(' ');
+                if (down == TRUE && s_downPrev == FALSE) {
+                    s_pauseSelection = (s_pauseSelection + 1) % 2;
+                }
+                if (up == TRUE && s_upPrev == FALSE) {
+                    s_pauseSelection = (s_pauseSelection + 1) % 2;
+                }
+                if (enter == TRUE && s_enterPrev == FALSE) {
+                    if (s_pauseSelection == 0) {
+                        s_gameState = GAMESTATE_GAMEPLAY;
+                        std::printf("Pause: resumed (RESUME)\n");
+                    } else {
+                        std::printf("Pause: QUIT TO DESKTOP selected\n");
+                        bQuitApp = TRUE;
+                    }
+                }
+                s_upPrev = up;
+                s_downPrev = down;
+                s_enterPrev = enter;
+            }
+            const RwBool bSimActive =
+                (s_gameState == GAMESTATE_PAUSE) ? FALSE : TRUE;
             // Physics step: real dynamics (buoyancy/cannonball + ship)
             // run in Bullet. 1/60 s per frame (running frame rate 60Hz).
             {
                 CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
-                if (pWorld != nullptr) {
+                if (pWorld != nullptr && bSimActive == TRUE) {
                     pWorld->Update(1.0f / 60.0f);
                 }
             }
-            RenderPlatform_RenderScene();
+            if (std::getenv("CANNONCRUISE_NO_WORLD") == nullptr) {
+                RenderPlatform_RenderScene();
+            }
             // Sprint 1 -- player fires cannon with ' '; ship sails with arrows;
             // cannonball is simulated with Bullet. A tower hit takes damage.
-            if (RwPlatformKeyDown(' ')) {
+            if (bSimActive == TRUE && RwPlatformKeyDown(' ')) {
                 if (RWS::HUD_GetAmmo() <= 0) {
                     RWS::HUD_FlashNoAmmo();
                 } else {
@@ -1357,7 +1464,7 @@ int main(int argc, char **argv) {
             }
             // Sprint 1 -- cannon vs tower collision: using the projectile position and
             // the tower center, sphere-vs-AABB separation (broadphase).
-            {
+            if (bSimActive == TRUE) {
                 const RwReal ballRadius = 0.8f;
                 const RwReal towerHalf = 18.0f;
                 const RwReal towerHalfSpace = 8.0f;
@@ -1395,7 +1502,7 @@ int main(int argc, char **argv) {
                 }
             }
             // Sprint 1 -- remove dead cannonballs from the list
-            {
+            if (bSimActive == TRUE) {
                 for (auto it = s_cannonballs.begin();
                      it != s_cannonballs.end();) {
                     if (!(*it)->IsAlive()) {
@@ -1406,7 +1513,7 @@ int main(int argc, char **argv) {
                     }
                 }
             }
-            if (RwPlatformKeyDown('T')) {
+            if (bSimActive == TRUE && RwPlatformKeyDown('T')) {
                 speakMgr.PlaySpeak(2, 0);
             } // world->render() -- between Begin/End
             // Phase 4.6s -- chase cam is the default when a world loads
@@ -1423,7 +1530,9 @@ int main(int argc, char **argv) {
             // Phase 4.6q -- freecam: mouse look + WASD (in view plane) +
             // Q/E (vertical) + arrow keys (yaw/pitch). Null platform no key/
             // mouse -> no-op. View derived from yaw/pitch.
-            if (bFollowCam == TRUE) {
+            if (bSimActive != TRUE) {
+                // paused: camera frozen in place
+            } else if (bFollowCam == TRUE) {
                 // Ship: W/S throttle, A/D rudder; mouse X camera orbit (clamped).
                 const RwReal kDt = 1.0f / 60.0f;
                 RwReal throttle = 0.0f;
@@ -1451,13 +1560,16 @@ int main(int argc, char **argv) {
                 if (PlayerShip_GetState(&shipState) == TRUE) {
                     const RwReal ang =
                         shipState.yaw + 3.14159265f + followOrbit;
-                    camPos[0] = shipState.pos.x + std::sin(ang) * 13.0f;
-                    camPos[1] = shipState.pos.y + 3.8f;
-                    camPos[2] = shipState.pos.z + std::cos(ang) * 13.0f;
+                    // Camera above-behind, tied rigidly to the ship: looking
+                    // down over the stern at the deck and bow (reference view).
+                    camPos[0] = shipState.pos.x + std::sin(ang) * 20.0f;
+                    camPos[1] = shipState.pos.y + 12.0f;
+                    camPos[2] = shipState.pos.z + std::cos(ang) * 20.0f;
                     ClampCameraToMap(camPos);
-                    camLook[0] = shipState.pos.x;
-                    camLook[1] = shipState.pos.y + 1.0f;
-                    camLook[2] = shipState.pos.z;
+                    // aim at the deck, slightly ahead (over the bow)
+                    camLook[0] = shipState.pos.x + std::sin(shipState.yaw) * 6.0f;
+                    camLook[1] = shipState.pos.y + 1.5f;
+                    camLook[2] = shipState.pos.z + std::cos(shipState.yaw) * 6.0f;
                     if (frame <= 3 && std::getenv("CANNONCRUISE_CAM_DEBUG") != nullptr) {
                         std::fprintf(stderr, "FOLLOWDBG frame=%d ship=(%.1f,%.1f,%.1f) cam=(%.1f,%.1f,%.1f)\n",
                                     frame, shipState.pos.x, shipState.pos.y, shipState.pos.z,
@@ -1550,11 +1662,13 @@ int main(int argc, char **argv) {
                     RenderPlatform_SetCameraPose(camPos, camLook);
                 }
             }
+            PlayerShip_Render(); // placeholder hull (GL3: im3d; NULL: no-op)
             if (pOcean != nullptr) {
-                pOcean->Update((RwReal)frame * (1.0f / 60.0f));
+                if (bSimActive == TRUE) {
+                    pOcean->Update((RwReal)frame * (1.0f / 60.0f));
+                }
                 pOcean->Render(); // between Begin/End
             }
-            PlayerShip_Render(); // placeholder hull (GL3: im3d; NULL: no-op)
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;
@@ -1572,6 +1686,10 @@ int main(int argc, char **argv) {
                 }
                 RWS::HUD_Render();
             }
+            // Pause overlay (frozen world, dim, two options)
+            if (s_gameState == GAMESTATE_PAUSE) {
+                RenderPauseOverlay(s_pauseSelection);
+            }
         }
         if (RenderPlatform_RenderTestQuad(0.0f, 0.0f, 0.25f, 0.25f,
                                           0xFF40A0FF) != TRUE) {
@@ -1580,7 +1698,10 @@ int main(int argc, char **argv) {
             break;
         }
         // World frame capture (if phase pulls didn't consume; one-time only).
-        if (pShotPath != nullptr && frame == 2) {
+        const char *shotFrameEnv = std::getenv("CANNONCRUISE_SHOT_FRAME");
+        const int shotFrame =
+            (shotFrameEnv != nullptr) ? std::atoi(shotFrameEnv) : 2;
+        if (pShotPath != nullptr && frame == shotFrame) {
             RenderPlatform_RequestScreenshot(pShotPath);
         }
         RenderPlatform_EndFrame();
