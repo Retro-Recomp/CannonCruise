@@ -1199,7 +1199,7 @@ int main(int argc, char **argv) {
                 const RwReal dx = bb.max[0] - bb.min[0];
                 const RwReal dz = bb.max[2] - bb.min[2];
                 const RwReal span = (dx > dz) ? dx : dz;
-                RwV3d shipPos = {cx + span * 0.60f, 0.0f, cz + span * 0.20f};
+                RwV3d shipPos = {cx + span * 0.04f, 0.0f, cz + span * 0.42f};
                 RwReal shipYaw = std::atan2(cx - shipPos.x, cz - shipPos.z);
                 const char *shipEnv = std::getenv("CANNONCRUISE_SHIP");
                 if (shipEnv != nullptr) {
@@ -1296,12 +1296,17 @@ int main(int argc, char **argv) {
                 if (PlayerShip_GetState(&shipState) == TRUE) {
                     const RwReal ang =
                         shipState.yaw + 3.14159265f + followOrbit;
-                    camPos[0] = shipState.pos.x + std::sin(ang) * 24.0f;
-                    camPos[1] = shipState.pos.y + 8.5f;
-                    camPos[2] = shipState.pos.z + std::cos(ang) * 24.0f;
+                    camPos[0] = shipState.pos.x + std::sin(ang) * 13.0f;
+                    camPos[1] = shipState.pos.y + 3.8f;
+                    camPos[2] = shipState.pos.z + std::cos(ang) * 13.0f;
                     camLook[0] = shipState.pos.x;
-                    camLook[1] = shipState.pos.y + 1.5f;
+                    camLook[1] = shipState.pos.y + 1.0f;
                     camLook[2] = shipState.pos.z;
+                    if (frame <= 3 && std::getenv("CANNONCRUISE_CAM_DEBUG") != nullptr) {
+                        std::fprintf(stderr, "FOLLOWDBG frame=%d ship=(%.1f,%.1f,%.1f) cam=(%.1f,%.1f,%.1f)\n",
+                                    frame, shipState.pos.x, shipState.pos.y, shipState.pos.z,
+                                    camPos[0], camPos[1], camPos[2]);
+                    }
                     RenderPlatform_SetCameraPose(camPos, camLook);
                 }
             } else {

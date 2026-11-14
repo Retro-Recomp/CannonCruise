@@ -288,6 +288,40 @@ add_test(NAME globaldump_test COMMAND globaldump_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Scratchpad/globaldump)
 
+# rwID_CLUMP (gemi .dff) format sondajı — librw clump reader ile çözülür
+# mü test eder (keşif aracı; ctest'e kayıtlı değil — dışarıdan çağır).
+add_executable(shipprobe_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/shipprobe_test.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(shipprobe_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(shipprobe_test PRIVATE librw::librw)
+
+# .RWS asset payload dökücü — rwID_CLUMP / wbID_WORLDGEOMETRY vb. ikili
+# payload'larını <out>.bin olarak döker (heksa/çıktı kontrolü için;
+# keşif aracı — ctest'e kayıtlı değil).
+add_executable(assetdump_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/assetdump_test.cpp
+    ${CODE_DIR}/RwStudioStream.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(assetdump_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(assetdump_test PRIVATE librw::librw)
+
+# .RWS objectRecord/manifest tarayıcı — sınıf adları (örn. CShipPlayer,
+# CShipEnemy) ve asset kaynak yollarını (sourcePath .dff referansları)
+# listeler; gemilerin dff'lerini ve spawn davranışlarını bulmak için.
+add_executable(shipscan_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/shipscan_test.cpp
+    ${CODE_DIR}/RwStudioStream.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(shipscan_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(shipscan_test PRIVATE librw::librw)
+add_test(NAME shipscan_test COMMAND shipscan_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/VIKING01.RWS)
+
 # Faz 4.6s — entegrasyon stres: dünya load → clump → unload zinciri
 # (A→B→C→A→B→C turları; seviye geçişi + unload yolunun çökmemesi).
 add_executable(worldcycle_test

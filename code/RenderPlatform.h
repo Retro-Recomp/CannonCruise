@@ -149,6 +149,14 @@ RwBool RenderPlatform_UploadTexture(const char *name, RwInt32 width,
 RwBool RenderPlatform_HasTexture(const char *name);
 
 /**
+ * @brief Yüklü dokuyu opak işaretçi olarak döndürür (librw rw::Texture*).
+ *        3D malzemeler için (örn. placeholder tekne). Doku yoksa nullptr.
+ *        NULL'da nullptr. Dönen işaretçi RenderPlatform_ClearTextures
+ *        çağrılana kadar geçerlidir.
+ */
+void *RenderPlatform_GetTexture(const char *name);
+
+/**
  * @brief Dokulu Im2D quad (UV 0..1; beyaz tint). BeginOverlay2D sonrası
  *        çağrılır; TEXTURERASTER'ı kurup sonra sıfırlar. Doku yoksa çizmez.
  */

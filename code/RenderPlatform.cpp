@@ -626,6 +626,11 @@ RwBool RenderPlatform_HasTexture(const char *name)
     return (FindMenuTexture(name) != nullptr) ? TRUE : FALSE;
 }
 
+void *RenderPlatform_GetTexture(const char *name)
+{
+    return (void *)FindMenuTexture(name);
+}
+
 void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
                                      const char *texName)
 {

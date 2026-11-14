@@ -76,13 +76,24 @@ RwBool ShipClump_Create(void) {
     const RwUInt32 numTris = hullCount + mastCount;
     rw::Geometry *pGeo = rw::Geometry::create(13, numTris,
                                               rw::Geometry::POSITIONS |
-                                                  rw::Geometry::PRELIT);
+                                                  rw::Geometry::NORMALS |
+                                                  rw::Geometry::LIGHT |
+                                                  rw::Geometry::PRELIT |
+                                                  rw::Geometry::TEXTURED);
     if (pGeo == nullptr) {
         return FALSE;
     }
     rw::MorphTarget *mt = &pGeo->morphTargets[0];
+    rw::V3d *verts = mt->vertices;
+    rw::V3d *norms = mt->normals;
+    // Placeholder oranları ~4x (oyun ölçeği; orijinal frigate ~40 birim).
+    const RwReal kShipScale = 4.0f;
     for (RwUInt32 i = 0; i < 13; ++i) {
-        mt->vertices[i].set(kShipLocal[i].x, kShipLocal[i].y, kShipLocal[i].z);
+        verts[i].set(kShipLocal[i].x * kShipScale, kShipLocal[i].y * kShipScale,
+                     kShipLocal[i].z * kShipScale);
+        if (norms) {
+            norms[i].set(0.0f, 1.0f, 0.0f);
+        }
     }
     for (RwUInt32 i = 0; i < numTris; ++i) {
         rw::Triangle &tri = pGeo->triangles[i];
@@ -97,9 +108,17 @@ RwBool ShipClump_Create(void) {
         }
         tri.matId = 0;
     }
+    // UV — Hugo bot dokusunun ortasına sabit (tüm köşe aynı → düz renk).
+    if (pGeo->texCoords[0] != nullptr) {
+        for (RwUInt32 i = 0; i < 13; ++i) {
+            pGeo->texCoords[0][i].u = 0.5f;
+            pGeo->texCoords[0][i].v = 0.5f;
+        }
+    }
     // Gövde: koyu ahşap; direk/yelken: kırık beyaz
-    rw::RGBA wood = {96, 64, 32, 255};
-    rw::RGBA sail = {233, 228, 214, 255};
+    // Gövde: açık ahşap; direk/yelken: kırık beyaz (mavi okyanusta kontrast)
+    rw::RGBA wood = {150, 105, 60, 255};
+    rw::RGBA sail = {245, 240, 225, 255};
     for (RwUInt32 i = 0; i < 13; ++i) {
         pGeo->colors[i] = (i >= 9) ? sail : wood;
     }
@@ -107,6 +126,15 @@ RwBool ShipClump_Create(void) {
     if (pMat == nullptr) {
         pGeo->destroy();
         return FALSE;
+    }
+    pMat->color.red = 255;
+    pMat->color.green = 255;
+    pMat->color.blue = 255;
+    pMat->color.alpha = 255;
+    // Hugo kayak dokusu (GLOBAL.RWS → s_menuTextures; boot sonrası yüklü).
+    void *tex = RenderPlatform_GetTexture("Load_NT_003");
+    if (tex != nullptr) {
+        pMat->setTexture(static_cast<rw::Texture *>(tex));
     }
     pGeo->matList.appendMaterial(pMat);
     pMat->destroy();

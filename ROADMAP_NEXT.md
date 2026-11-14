@@ -15,6 +15,7 @@ sürük, çarpışma) → özet ekranı → haritaya dön.
 | Derleme (NULL + D3D9, Win32, VS 2026) | ✅ | `build_cannoncruise.cmd`; 0 hata |
 | ctest | ✅ 32/32 | NULL + D3D9 konfigürasyonları |
 | D3D9 penceresi | ✅ görünüyor | ada + okyanus + gökyüzü; `PrintWindow` capture |
+| Dünyayı render ediyor | ✅ | world/clump çağrısı gerçek; tekne im3d değil RpWorld pipeline'ında |
 | GLOBAL.RWS envanteri | ✅ çözüldü | `globalassets_test`: 56 chunk, 1 txd = 4 doku, 46 objectRecord, `Loading.anm` |
 | LOADING ekranı | ✅ gerçek art + 30 fps | `LoadingScreen.{h,cpp}` |
 | MAINMENU / MAPMENU akışı | ✅ çalışıyor | 32 düğüm `Menu.anm`, 44 düğüm `CAG_Menu.anm`; kayarlar |
@@ -22,12 +23,27 @@ sürük, çarpışma) → özet ekranı → haritaya dön.
 | Dünya yükleme (VIKING01) | ✅ 130 atomic, 78146 verts | `WorldGeometry` |
 | Ocean grid + dalgalar | ✅ | `COceanTile` |
 | Spawn zinciri (97 nesne) | ✅ | `WorldSpawn_FromFile` |
-| Tekne (placeholder) | ⚠️ küçük/görünüyor | clump → `RenderPlatform_AddClump` |
+| Tekne (placeholder) | ⚠️ 4x ölçekte render | clump → `RenderPlatform_AddClump` (sprite-uzakta görünür; oyun kamera DÜŞÜŞÜ büyük) |
 | `CPhysicsWorld::Update` | ✅ gerçek Bullet adım | `btDiscreteDynamicsWorld` |
 | Menü → Dünya → Esc menü | 🟡 Kısmen | Menü gezilebilir, PAUSE menüsü menü mimarisinden tam bağlanmadı |
 | Tek sahne tam oynanabilir | ❌ | TOP atan gemi + çarpışma + HUD (skor/can) |
 | Global objectRecord sınıfları | ❌ | `CAudioManager`, `CDifficultyLevels`, `CEventProxy`, `CSystemCommands` fabrikasız |
 | Save/Load (Slot0) | ❌ | `{GUID}.dff/txd/col` dışvarlıkları depoda var |
+
+### Bilinen açık: D3D9 penceresinde dünya sabit/resize yok
+
+D3D9 `CAMERATEXTURE` RT → backbuffer `StretchRect` yolu çalışıyor ve pencerede
+ada/okyanus/gökyüzü görünüyor; ancak **görüntü Kare-1'den itibaren aynıdır**
+(kamera hareketi pencereye yansımaz; tekne tek piksel zıplamasıyla ilerler).
+Sebep: `cameraPath`/`ShowRaster`/swap dizisi içinde her karede backbuffer
+re-bind edilmiyor ya da RT her karede aynı lazerle present ediliyor. Okyanus
+bildirimleri çerçeve öncesi `RwPlatformPollEvents` her karede çağrılıyor
+ancak `world->render()` sonrası pencere kaplaması yeni kareyi göstermiyor
+(muhtemelen `SWAPEFFECT_DISCARD` + `Present` sırasındaki backbuffer
+tex-uyumsuzluğu). **Not 2026-11-14**: `RenderPlatform_SetCameraPose`
+çağrıları her karede yapılıyor, `Camera::beginUpdate` da `devView`'i
+taze `getLTM()`'den güncellerdiği doğrulandı; sorun PİKÜL doğrulaması
+derinine bırakıldı (muhteme parser: RT değil backbuffer stale present).
 
 ## Milestone 1 — Oynanabilir tek sahne (VIKING01) 🎯
 
