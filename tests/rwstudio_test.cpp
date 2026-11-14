@@ -1,13 +1,13 @@
 // ============================================================================
-// CannonCruise - rwstudio Konteyner Test (rwstudio_test.cpp)
-// Kapı 4: gerçek Streams/*.RWS dosyalarından rwstudio konteyneri parse
-// edilir (Faz 4.6e). Beklenenler hexdump forensics ile sabitlendi:
-//   - 0x0716 asset kayıtları: meta + gömülü RW chunk (txd: type 0x23)
-//   - 0x071C manifest: sınıf adları (CWb* behaviours)
-//   - 0x0704 nesne kayıtları
-//   - wbID_STATICWORLDCOLLISION: CPhysicsResource::Load hedefi
+// CannonCruise - rwstudio Container Test (rwstudio_test.cpp)
+// Gate 4: the rwstudio container is parsed from real Streams/*.RWS files
+// (Phase 4.6e). Expectations were fixed with hexdump forensics:
+//   - 0x0716 asset records: meta + embedded RW chunk (txd: type 0x23)
+//   - 0x071C manifest: class names (CWb* behaviours)
+//   - 0x0704 object records
+//   - wbID_STATICWORLDCOLLISION: CPhysicsResource::Load target
 //
-// Kullanım: rwstudio_test <mainmenu.rws> <global.rws> <viking01.rws>
+// Usage: rwstudio_test <mainmenu.rws> <global.rws> <viking01.rws>
 // ============================================================================
 
 #include "RwStudioStream.h"
@@ -70,7 +70,7 @@ static Counts Scan(const char *pPath, bool verboseTxd) {
                     std::printf("txd: %s | %s | embLen=%u libid=0x%08X\n",
                                 asset.typeName, asset.rwIdName,
                                 asset.embeddedLength, asset.embeddedLibId);
-                    // gömülü payload: i16 dokuSayısı + i16 device (d3d8=1)
+                    // embedded payload: i16 textureCount + i16 device (d3d8=1)
                     RwUInt8 buf[8];
                     RwUInt32 got = RwStudioAssetReadEmbedded(
                         pFile, &asset, buf, sizeof(buf));
@@ -108,12 +108,12 @@ int main(int argc, char **argv) {
         std::printf("usage: rwstudio_test <mainmenu> <global> <viking01>\n");
         return 2;
     }
-    // librw motoru — RwStream dosya açılışı için şart (NULL platform)
+    // librw engine — required for RwStream file open (NULL platform)
     CHECK(RwEngineInit(0, 0, 0) == TRUE);
     CHECK(RwEngineOpen() == TRUE);
     CHECK(RwEngineStart() == TRUE);
 
-    // ---- MAINMENU: detay ----
+    // ---- MAINMENU: detailed ----
     {
         RwStudioFile *pFile = RwStudioFileOpen(argv[1]);
         CHECK(pFile != 0);
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
             CHECK(asset.embeddedLibId == 0x1803FFFF); // RW 3.6.0.3
             CHECK(asset.embeddedLength > 100000);
             CHECK(std::strstr(asset.sourcePath, ".txd") != 0);
-            // gömülü payload okuması (akış hizası korunur)
+            // embedded payload read (stream alignment preserved)
             RwUInt8 buf[8];
             RwUInt32 got =
                 RwStudioAssetReadEmbedded(pFile, &asset, buf, sizeof(buf));
@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
             CHECK(numTex >= 1 && numTex <= 64);
             CHECK(device == 1);
 
-            // manifest bul ve sınıf listesini doğrula
+            // find manifest and verify the class list
             bool foundManifest = false;
             while (RwStudioFileNextAsset(pFile, &asset)) {
                 if (asset.chunkType == rwstudioID_MANIFEST) {
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    // ---- nesne şeması (0x0704 — Faz 4.6f): MAINMENU obj0/1/2 ----
+    // ---- object schema (0x0704 — Phase 4.6f): MAINMENU obj0/1/2 ----
     {
         RwStudioFile *pFile = RwStudioFileOpen(argv[1]);
         CHECK(pFile != 0);
@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
                                       "CAttributeHandler") == 0);
                     CHECK(pObj->behaviours[1].propCount == 1);
                 } else if (objSeen == 1) {
-                    // CWbCameraBehavior: vektör property (size 20) + 60.0
+                    // CWbCameraBehavior: vector property (size 20) + 60.0
                     CHECK(pObj->behaviourCount >= 1);
                     CHECK(std::strcmp(pObj->behaviours[0].className,
                                       "CWbCameraBehavior") == 0);
@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
                     }
                     CHECK(foundFov);
                 } else if (objSeen == 2) {
-                    // CAudioStreamEntity: string segment + 5 property
+                    // CAudioStreamEntity: string segment + 5 properties
                     CHECK(pObj->behaviourCount >= 1);
                     CHECK(std::strcmp(pObj->behaviours[0].className,
                                       "CAudioStreamEntity") == 0);
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    // ---- envanterler ----
+    // ---- inventories ----
     Counts mainC = Scan(argv[1], false);
     std::printf("MAINMENU: asset=%d object=%d manifest=%d txd=%d col=%d dff=%d\n",
                 mainC.asset, mainC.object, mainC.manifest, mainC.txdEmbed,
@@ -241,8 +241,8 @@ int main(int argc, char **argv) {
     std::printf("GLOBAL: asset=%d object=%d manifest=%d txd=%d\n",
                 globalC.asset, globalC.object, globalC.manifest,
                 globalC.txdEmbed);
-    // GLOBAL: 1 gömülü txd (525KB menü/font sözlüğü) + .dff/.col/.path/
-    // .texref/PPB — 7 asset toplam (chunkinv envanteriyle doğrulandı)
+    // GLOBAL: 1 embedded txd (525KB menu/font dictionary) + .dff/.col/.path/
+    // .texref/PPB — 7 assets total (verified with chunkinv inventory)
     CHECK(globalC.asset == 7);
     CHECK(globalC.txdEmbed == 1);
     CHECK(globalC.manifest == 1);
@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
     CHECK(vikingC.object == 497);
     CHECK(vikingC.manifest == 1);
 
-    // VIKING01 ilk nesne sağlamlığı: behavior sınıf adları parse edilebiliyor
+    // VIKING01 first object soundness: behaviour class names can be parsed
     {
         RwStudioFile *pFile = RwStudioFileOpen(argv[3]);
         CHECK(pFile != 0);
@@ -281,9 +281,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Faz 4.6p — VIKING01 obj[264] dünya kamerası: çok davranışlı kayıt
+    // Phase 4.6p — VIKING01 obj[264] world camera: multi-behaviour record
     // (CWbCameraBehavior + CSystemCommands + CWbCameraBehavior) + flags=0
-    // 16B blob segmentleri (GUID) sonrası 32 property; id0 pos, id4 FOV.
+    // 32 properties after 16B blob segments (GUID); id0 pos, id4 FOV.
     {
         RwStudioFile *pFile = RwStudioFileOpen(argv[3]);
         CHECK(pFile != 0);
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
                             0 &&
                         pBeh->propCount == 32) {
                         hasCamProps = true;
-                        // id0 VEC3 pos = (0.35, 7.0, 0.0) — dünya kamerası
+                        // id0 VEC3 pos = (0.35, 7.0, 0.0) — world camera
                         const RwStudioProperty *pProp0 = 0;
                         const RwStudioProperty *pProp4 = 0;
                         for (RwUInt32 j = 0; j < pBeh->propCount; ++j) {
@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
                 }
                 if (hasCamProps) {
                     sawCam = true;
-                    // çok davranışlı: ortada CSystemCommands kaydı
+                    // multi-behaviour: CSystemCommands record in the middle
                     CHECK(pObj->behaviourCount >= 3);
                     break;
                 }

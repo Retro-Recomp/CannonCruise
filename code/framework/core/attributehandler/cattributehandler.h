@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cattributehandler.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\cattributehandler.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00402000 - FUN_00402400 (RWS::CAttributeHandler)
 // ============================================================================
 
@@ -14,7 +14,7 @@
 #include <cassert>
 
 #ifndef RWS_ASSERT
-/// @brief RWS framework için assert makrosu
+/// @brief Assert macro for the RWS framework
 #define RWS_ASSERT(cond, msg) assert((cond) && (msg))
 #endif
 
@@ -22,59 +22,59 @@ namespace RWS
 {
     /**
      * @class CAttributePacket
-     * @brief Bir nesnenin yapılandırma verilerini taşıyan ham bayt paketi.
+     * @brief Raw byte packet carrying an object's configuration data.
      *
-     * RenderWare Studio'nun binary varlık sisteminde nesnelerin başlatılması
-     * bu paket yapısı aracılığıyla gerçekleşir. `CAttributeHandler::HandleAttributes()`
-     * tarafından alınır ve `CAttributeCommandIterator` yardımıyla ayrıştırılır.
+     * In RenderWare Studio's binary entity system, objects are initialized
+     * through this packet structure. `CAttributeHandler::HandleAttributes()`
+     * consumes them and parses them with the help of `CAttributeCommandIterator`.
      */
     class CAttributePacket
     {
     public:
-        /// @brief Boş paket yapıcısı
+        /// @brief Empty packet constructor
         CAttributePacket() : m_pData(0), m_DataSize(0) {}
 
         /**
-         * @brief Ham veri ile paket oluşturur.
-         * @param pData Ham paket verisi.
-         * @param size  Veri boyutu (bayt).
+         * @brief Creates a packet from raw data.
+         * @param pData Raw packet data.
+         * @param size  Data size (bytes).
          */
         CAttributePacket(const void* pData, RwUInt32 size) : m_pData(pData), m_DataSize(size) {}
 
-        /// @return Ham paket verisine işaretçi
+        /// @return Pointer to the raw packet data
         const void* GetData() const { return m_pData; }
-        /// @return Paket boyutu (bayt)
+        /// @return Packet size (bytes)
         RwUInt32    GetSize() const { return m_DataSize; }
 
     private:
-        const void* m_pData;    ///< Ham veri işaretçisi
-        RwUInt32    m_DataSize; ///< Veri boyutu
+        const void* m_pData;    ///< Pointer to the raw data
+        RwUInt32    m_DataSize; ///< Data size
     };
 
     /**
      * @struct CAttributeCommandEntry
-     * @brief Bir özellik komutunu ve verilerini tutan yapı.
+     * @brief Structure holding an attribute command and its data.
      *
-     * `CAttributeCommandIterator` tarafından üretilir; her komut
-     * bir kimlik (`m_CommandId`) ve o komuta ait veri işaretçisi içerir.
+     * Produced by `CAttributeCommandIterator`; each command
+     * carries a command id (m_CommandId) and a pointer to that command's data.
      */
     struct CAttributeCommandEntry
     {
-        RwUInt32    m_CommandId;     ///< Komut kimliği
-        const void* m_pCommandData;  ///< Komut verisi işaretçisi
+        RwUInt32    m_CommandId;     ///< Command id
+        const void* m_pCommandData;  ///< Command data pointer
 
-        /// @return Komut kimliği
+        /// @return Command id
         RwUInt32    GetCommandId()   const { return m_CommandId; }
-        /// @return Komut verisi işaretçisi
+        /// @return Command data pointer
         const void* GetCommandData() const { return m_pCommandData; }
     };
 
     /**
      * @class CAttributeCommandIterator
-     * @brief `CAttributePacket` içindeki komutlar üzerinde yineleyici.
+     * @brief Iterator over the commands inside a `CAttributePacket`.
      *
-     * `CAttributeHandler::HandleAttributes()` içinde paket komutlarını
-     * ayrıştırmak için kullanılır:
+     * Used inside `CAttributeHandler::HandleAttributes()` to walk the packet commands
+     * for parsing:
      * ```cpp
      * for (CAttributeCommandIterator it(packet); !it.IsFinished(); ++it)
      * {
@@ -87,9 +87,9 @@ namespace RWS
     {
     public:
         /**
-         * @brief Yineleyiciyi başlatır.
-         * @param packet     Ayrıştırılacak paket.
-         * @param classIndex Hedef sınıfın paket içindeki indeksi.
+         * @brief Initializes the iterator.
+         * @param packet     Packet to parse.
+         * @param classIndex Index of the target class within the packet.
          */
         CAttributeCommandIterator(const CAttributePacket& packet, RwUInt32 classIndex = 0)
             : m_bFinished(true)
@@ -98,33 +98,33 @@ namespace RWS
             m_Current.m_pCommandData = 0;
         }
 
-        /// @return TRUE ise tüm komutlar işlendi
+        /// @return TRUE if all commands have been processed
         RwBool IsFinished() const { return m_bFinished; }
-        /// @brief Bir sonraki komuta geçer
+        /// @brief Advances to the next command
         void operator++() { m_bFinished = true; }
-        /// @return Mevcut komut girişine işaretçi
+        /// @return Pointer to the current command entry
         const CAttributeCommandEntry* operator->() const { return &m_Current; }
 
     private:
-        RwBool               m_bFinished; ///< Yineleyici bitişi
-        CAttributeCommandEntry m_Current; ///< Mevcut komut girişi
+        RwBool               m_bFinished; ///< Iterator finished flag
+        CAttributeCommandEntry m_Current; ///< Current command entry
     };
 
     /**
      * @class CAttributeHandler
-     * @brief Nesne yapılandırma özelliklerini işleyen temel sınıf.
+     * @brief Base class that processes object configuration attributes.
      *
-     * CannonCruise'daki tüm yapılandırılabilir oyun nesneleri (CShip, CCannon,
-     * CSpeakManager vb.) bu sınıftan türeyerek RenderWare Studio'nun
-     * binary varlık sistemiyle uyumlu hale gelir.
+     * All configurable game objects in CannonCruise (CShip, CCannon,
+     * CSpeakManager etc.) derive from this class to become compatible with RenderWare Studio's
+     * binary entity system.
      *
-     * **Kullanım akışı:**
-     * 1. `CAttributeHandler::Initialize()` uygulama başında çağrılır.
-     * 2. Varlık paketleri `ProcessPacket()` ile işlenir; yeni nesne örnekleri
-     *    `CClassFactory` aracılığıyla oluşturulur ve `RegisterInstance()` ile kaydedilir.
-     * 3. Her nesne `HandleAttributes()` override ederek kendi özelliklerini alır.
+     * **Usage flow:**
+     * 1. `CAttributeHandler::Initialize()` is called at application startup.
+     * 2. Entity packets are processed via `ProcessPacket()`; new object instances
+     *    are created through `CClassFactory` and registered via `RegisterInstance()`.
+     * 3. Each object receives its own attributes by overriding `HandleAttributes()`.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Instance: `FUN_00402000`
      * - ProcessPacket: `FUN_00402100`
      * - FindInstance: `FUN_004021c0`
@@ -135,91 +135,91 @@ namespace RWS
     public:
         /**
          * @struct EntityInstance
-         * @brief Kayıtlı bir nesne örneğini tanımlayan yapı.
+         * @brief Structure describing a registered object instance.
          */
         struct EntityInstance
         {
-            RwUInt32 m_InstanceId; ///< Benzersiz örnek kimliği
-            void*    m_pObject;    ///< Nesne işaretçisi
-            RwUInt32 m_Flags;      ///< Örnek bayrakları
+            RwUInt32 m_InstanceId; ///< Unique instance id
+            void*    m_pObject;    ///< Object pointer
+            RwUInt32 m_Flags;      ///< Instance flags
         };
 
-        /// @brief Varsayılan yapıcı
+        /// @brief Default constructor
         CAttributeHandler();
         /**
-         * @brief Özellik paketi ile yapıcı (CClassFactory tarafından çağrılır).
-         * @param packet Başlangıç özellik paketi.
+         * @brief Constructor taking an attribute packet (called by CClassFactory).
+         * @param packet Initial attribute packet.
          */
         CAttributeHandler(const CAttributePacket& packet);
-        /// @brief Sanal yıkıcı
+        /// @brief Virtual destructor
         virtual ~CAttributeHandler();
 
         /**
-         * @brief Özellik paketini işleyen sanal fonksiyon.
-         * @param packet İşlenecek özellik paketi.
+         * @brief Virtual function that processes the attribute packet.
+         * @param packet Attribute packet to process.
          *
-         * Türetilmiş sınıflar bu fonksiyonu override ederek
-         * `CAttributeCommandIterator` ile paket komutlarını ayrıştırır.
+         * Derived classes override this function and
+         * `CAttributeCommandIterator` to parse the packet commands.
          */
         virtual void HandleAttributes(const CAttributePacket& packet) {}
 
-        /// @return Tekil CAttributeHandler örneğine işaretçi
+        /// @return Pointer to the singleton CAttributeHandler instance
         static CAttributeHandler* Instance();
-        /// @brief Özellik sistemini başlatır
+        /// @brief Starts the attribute system
         static void Initialize();
-        /// @brief Özellik sistemini kapatır
+        /// @brief Shuts down the attribute system
         static void Shutdown();
 
         /**
-         * @brief Ham paket verisini işler ve nesneleri oluşturur/yapılandırır.
-         * @param pPacketData Ham paket verisi.
-         * @param dataSize    Veri boyutu (bayt).
+         * @brief Processes raw packet data and creates/configures objects.
+         * @param pPacketData Raw packet data.
+         * @param dataSize    Data size (bytes).
          */
         static void ProcessPacket(const RwUInt8* pPacketData, RwUInt32 dataSize);
 
         /**
-         * @brief Kayıtlı bir nesne örneğini kimliğiyle arar.
-         * @param instanceId Aranan örnek kimliği.
-         * @return void* — Nesne işaretçisi veya nullptr.
+         * @brief Looks up a registered object instance by id.
+         * @param instanceId Instance id to look up.
+         * @return void* — Object pointer or nullptr.
          */
         static void* FindInstance(RwUInt32 instanceId);
 
         /**
-         * @brief Bir nesne örneğini sisteme kaydeder.
-         * @param instanceId Örnek kimliği.
-         * @param pObject    Nesne işaretçisi.
+         * @brief Registers an object instance with the system.
+         * @param instanceId Instance id.
+         * @param pObject    Object pointer.
          */
         static void RegisterInstance(RwUInt32 instanceId, void* pObject);
 
         /**
-         * @brief Bir nesne örneğini sistemden kaldırır.
-         * @param instanceId Kaldırılacak örnek kimliği.
+         * @brief Removes an object instance from the system.
+         * @param instanceId Instance id to remove.
          */
         static void UnregisterInstance(RwUInt32 instanceId);
 
         /**
-         * @brief Paketin bir nesne oluşturma paketi olup olmadığını kontrol eder.
-         * @param pPacket Ham paket verisi.
-         * @return TRUE ise paket yeni bir nesne oluşturur.
+         * @brief Checks whether the packet is an object creation packet.
+         * @param pPacket Raw packet data.
+         * @return TRUE if the packet creates a new object.
          */
         static RwBool IsInstanceCreationPacket(const RwUInt8* pPacket);
         /**
-         * @brief Paketin bir bitiş yığını olup olmadığını kontrol eder.
-         * @param pPacket Ham paket verisi.
-         * @return TRUE ise bu paketin ardından yeni bir yığın başlamaz.
+         * @brief Checks whether the packet is an end chunk.
+         * @param pPacket Raw packet data.
+         * @return TRUE if no new chunk can start after this packet.
          */
         static RwBool IsEndChunk(const RwUInt8* pPacket);
         /**
-         * @brief Tüm paketlerin işlenip işlenmediğini kontrol eder.
-         * @param pPacket Ham paket verisi.
-         * @return TRUE ise işlem tamamlandı.
+         * @brief Checks whether all packets have been processed.
+         * @param pPacket Raw packet data.
+         * @return TRUE if processing is complete.
          */
         static RwBool IsFinished(const RwUInt8* pPacket);
 
     private:
-        static CAttributeHandler* sm_pInstance; ///< Tekil örnek işaretçisi
+        static CAttributeHandler* sm_pInstance; ///< Singleton instance pointer
 
-        /// @brief Örnek kimliği → EntityInstance eşleştirme tablosu (g_ptheMap / DAT_00635650)
+        /// @brief Instance id → EntityInstance mapping table (g_ptheMap / DAT_00635650)
         std::map<RwUInt32, EntityInstance> m_InstanceMap;
     };
 }

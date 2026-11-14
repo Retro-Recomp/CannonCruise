@@ -8,62 +8,62 @@
 
 /**
  * @file win.h
- * @brief Windows platformu için ana giriş noktası ve pencere yönetim işlevleri.
+ * @brief Main entry point and window management functions for the Windows platform.
  *
- * CannonCruise'un PC sürümü için Win32 pencere oluşturma, mesaj döngüsü
- * ve genel uygulama yaşam döngüsü işlevlerini barındırır.
+ * For the PC version of CannonCruise it hosts the Win32 window creation, message loop
+ * and general application lifecycle functions.
  */
 
-/// Ana pencere handle'ı (Binary DAT_00635acc)
+/// Main window handle (Binary DAT_00635acc)
 extern HWND theMainWindow;
 
 /**
- * @brief Ana pencere handle'ını döndürür.
- * @return HWND — Uygulamanın ana penceresi.
+ * @brief Returns the main window handle.
+ * @return HWND — The application's main window.
  */
 HWND GetMainWindow();
 
 /**
- * @brief Uygulamadan çıkış yapılmasını (WM_QUIT gönderilmesini) sağlar.
+ * @brief Requests that the application quit (sends WM_QUIT).
  */
 void QuitApp();
 
 /**
- * @brief Windows uygulamasını başlatır (pencere sınıfı kaydı vb.)
- * @param hInstance Mevcut uygulama örneğinin handle'ı.
- * @return BOOL — Başarılıysa TRUE.
+ * @brief Starts the Windows application (window class registration etc.)
+ * @param hInstance Handle of the current application instance.
+ * @return BOOL — TRUE on success.
  */
 BOOL InitApp(HINSTANCE hInstance);
 
 /**
- * @brief Oyun için ana render penceresini oluşturur.
- * @param hInstance    Mevcut uygulama örneğinin handle'ı.
- * @param x            Pencerenin X koordinatı.
- * @param y            Pencerenin Y koordinatı.
- * @param width        Pencerenin genişliği.
- * @param height       Pencerenin yüksekliği.
- * @param bFullscreen  Tam ekran modunda mı açılacak?
- * @return HWND — Oluşturulan pencerenin handle'ı.
+ * @brief Creates the main render window for the game.
+ * @param hInstance    Handle of the current application instance.
+ * @param x            Window's X coordinate.
+ * @param y            Window's Y coordinate.
+ * @param width        Window's width.
+ * @param height       Window's height.
+ * @param bFullscreen  Will it open in fullscreen mode?
+ * @return HWND — Handle of the created window.
  */
 HWND CreateMainWindow(HINSTANCE hInstance, int x, int y, int width, int height,
                       BOOL bFullscreen);
 
 /**
- * @brief Ana Windows mesaj döngüsünü (Message Loop) işletir.
- * @return int — Çıkış kodu (WM_QUIT mesajındaki wParam).
+ * @brief Runs the main Windows message loop (Message Loop).
+ * @return int — Exit code (wParam from the WM_QUIT message).
  */
 int MainLoop();
 
 /**
- * @brief Ana pencere prosedürü (Window Procedure).
+ * @brief Main window procedure (Window Procedure).
  *
- * Windows olaylarını (WM_PAINT, WM_DESTROY vb.) yakalayıp işler.
+ * Captures and handles Windows events (WM_PAINT, WM_DESTROY etc.).
  */
 LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam,
                              LPARAM lParam);
 
 /**
- * @brief Uygulamanın asıl giriş noktası mantığını yürütür (WinMain tarafından çağrılır).
+ * @brief Runs the application's main entry point logic (called by WinMain).
  */
 int AppMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
             int nCmdShow);

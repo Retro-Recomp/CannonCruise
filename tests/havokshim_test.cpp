@@ -1,17 +1,17 @@
 // ============================================================================
 // CannonCruise - Havok 2.2.1 Shim Test (havokshim_test.cpp)
 //
-// Bu test, code/havok/*.h içindeki Havok 2.2.1 API yüzeyinin GERÇEK
-// implementasyonunu (havokimpl.cpp — Bullet motoru üzerine kurulu) doğrular.
+// This test verifies the REAL implementation (havokimpl.cpp — built on the
+// Bullet engine) of the Havok 2.2.1 API surface in code/havok/*.h.
 //
-// Doğrulanan iki boyut:
-//   1) BINARY BİRBİRLİĞİ — sınıf adları Havok 2.2.1'e sadık ("hkWorld",
-//      "hkRigidBody"); "hkp" öneki YOK (o önek Havok 4+). Tersine
-//      mühendislikle elde edilen oyun kodu orijinal binary'nin çağırdığı
-//      isimlerle konuşur.
-//   2) FİZİK DAVRANIŞI — sub_55E6D0 varsayılanları (gravity -9.8,
+// Two dimensions verified:
+//   1) BINARY FIDELITY — class names faithful to Havok 2.2.1 ("hkWorld",
+//      "hkRigidBody"); NO "hkp" prefix (that prefix is Havok 4+). The
+//      reverse-engineered game code speaks the names the original
+//      binary calls.
+//   2) PHYSICS BEHAVIOR — sub_55E6D0 defaults (gravity -9.8,
 //      friction 0.6, restitution 0.3) + stepDeltaTime (FUN_0043a040)
-//      serbest düşüş/temas/phantom overlap yolları.
+//      free-fall/contact/phantom overlap paths.
 // ============================================================================
 
 #include "havok.h"
@@ -38,7 +38,7 @@ static bool Near(float a, float b, float eps) {
 }
 
 // ---------------------------------------------------------------------------
-// 1) Binary birebirliği — 2.2.1 adlandırması (hkp öneki YOK)
+// 1) Binary fidelity — 2.2.1 naming (NO hkp prefix)
 // ---------------------------------------------------------------------------
 static void TestNamingFidelity() {
     hkWorld world;
@@ -49,14 +49,14 @@ static void TestNamingFidelity() {
     CHECK(world.getClass() != 0);
     CHECK(body.getClass() != 0);
 
-    // Havok 2.x adlandırması — "hkp" öneki kesinlikle olmamalı
+    // Havok 2.x naming — the "hkp" prefix must definitely be absent
     CHECK(world.getClass()->getName() != 0);
     CHECK(std::string(world.getClass()->getName()) == "hkWorld");
     CHECK(std::string(body.getClass()->getName()) == "hkRigidBody");
 }
 
 // ---------------------------------------------------------------------------
-// 2) Şekil tipleri + AABB (enum 2.2.1 sırası)
+// 2) Shape types + AABB (2.2.1 enum order)
 // ---------------------------------------------------------------------------
 static void TestShapes() {
     // TYPE_SPHERE=0, TYPE_CAPSULE=1, TYPE_TRIANGLE=2, TYPE_BOX=3,
@@ -77,16 +77,16 @@ static void TestShapes() {
     CHECK(Near(aabb.m_max.y, 2.0f, 1e-5f));
     CHECK(Near(aabb.m_max.z, 3.0f, 1e-5f));
 
-    // konveks köşe listesi — indices yok sayılır (hull noktalardan)
+    // convex vertex list — indices ignored (hull from points)
     const hkVector3 verts[4] = {
         hkVector3(-1, -1, -1), hkVector3(1, -1, -1),
         hkVector3(1, 1, -1), hkVector3(-1, 1, 1)};
     hkConvexVerticesShape hull(verts, 4, 0, 0);
     CHECK(hull.getType() == hkShape::TYPE_CONVEX_VERTICES);
     hull.getAabb(aabb);
-    CHECK(aabb.m_max.x >= 1.0f - 1e-4f); // en az nokta kadar geniş
+    CHECK(aabb.m_max.x >= 1.0f - 1e-4f); // at least as wide as the points
 
-    // üçgen mesh — 1 üçgen
+    // triangle mesh — 1 triangle
     const hkVector3 mverts[3] = {
         hkVector3(0, 0, 0), hkVector3(4, 0, 0), hkVector3(0, 4, 0)};
     const hkUint32 mindices[3] = {0, 1, 2};
@@ -95,14 +95,14 @@ static void TestShapes() {
     mesh.getAabb(aabb);
     CHECK(Near(aabb.m_max.x, 4.0f, 1e-4f));
 
-    // kapsül — segment-tabanlı ctor (yaklaşık yükseklik)
+    // capsule — segment-based ctor (approximate height)
     hkCapsuleShape capsule(hkVector3(0, 0, 0), hkVector3(0, 2, 0), 0.5f);
     CHECK(capsule.getType() == hkShape::TYPE_CAPSULE);
     CHECK(capsule.getBulletShape() != 0);
 }
 
 // ---------------------------------------------------------------------------
-// 3) Serbest düşüş — gravity -9.8 (sub_55E6D0[+0x04]) + stepDeltaTime
+// 3) Free fall — gravity -9.8 (sub_55E6D0[+0x04]) + stepDeltaTime
 // ---------------------------------------------------------------------------
 static void TestFreeFall() {
     hkWorld world;
@@ -112,7 +112,7 @@ static void TestFreeFall() {
     body.setPosition(hkVector3(0.0f, 10.0f, 0.0f));
     CHECK(world.addEntity(&body).isSuccess());
 
-    // 60 adım × 1/60 = 1 saniye — v ≈ -9.8
+    // 60 steps × 1/60 = 1 second — v ≈ -9.8
     const hkReal dt = 1.0f / 60.0f;
     for (int i = 0; i < 60; ++i) {
         world.stepDeltaTime(dt);
@@ -121,20 +121,20 @@ static void TestFreeFall() {
     hkVector3 pos, vel;
     body.getPosition(pos);
     body.getLinearVelocity(vel);
-    // y azalmalı (düşüyor), hız aşağı yönlü
+    // y should decrease (falling), velocity downward
     CHECK(pos.y < 10.0f);
     CHECK(vel.y < 0.0f);
-    // serbest düşüş hızı ≈ g·t = -9.8 (hız sınırı yok, temas yok)
+    // free-fall speed ≈ g·t = -9.8 (no speed limit, no contact)
     CHECK(Near(vel.y, -9.8f, 0.35f));
 }
 
 // ---------------------------------------------------------------------------
-// 4) Statik gövde — kütle 0 → düşmez
+// 4) Static body — mass 0 → does not fall
 // ---------------------------------------------------------------------------
 static void TestStaticBody() {
     hkWorld world;
     hkBoxShape box(hkVector3(1.0f, 1.0f, 1.0f));
-    hkVector3 mass(0.0f, 0.0f, 0.0f); // statik
+    hkVector3 mass(0.0f, 0.0f, 0.0f); // static
     hkRigidBody body(mass, &box);
     body.setPosition(hkVector3(0.0f, 5.0f, 0.0f));
     CHECK(world.addEntity(&body).isSuccess());
@@ -145,23 +145,23 @@ static void TestStaticBody() {
     }
     hkVector3 pos;
     body.getPosition(pos);
-    CHECK(Near(pos.y, 5.0f, 1e-4f)); // hareket etmedi
+    CHECK(Near(pos.y, 5.0f, 1e-4f)); // did not move
 }
 
 // ---------------------------------------------------------------------------
-// 5) Temas — düşen gövde zeminde durur (restitution 0.6/0.3 varsayılanları)
+// 5) Contact — falling body rests on the ground (restitution 0.6/0.3 defaults)
 // ---------------------------------------------------------------------------
 static void TestGroundContact() {
     hkWorld world;
 
-    // zemin (statik)
+    // ground (static)
     hkBoxShape groundShape(hkVector3(50.0f, 1.0f, 50.0f));
     hkVector3 zeroMass(0.0f, 0.0f, 0.0f);
     hkRigidBody ground(zeroMass, &groundShape);
     ground.setPosition(hkVector3(0.0f, 0.0f, 0.0f));
     CHECK(world.addEntity(&ground).isSuccess());
 
-    // düşen gövde
+    // falling body
     hkBoxShape box(hkVector3(0.5f, 0.5f, 0.5f));
     hkVector3 mass(1.0f, 1.0f, 1.0f);
     hkRigidBody body(mass, &box);
@@ -169,18 +169,18 @@ static void TestGroundContact() {
     CHECK(world.addEntity(&body).isSuccess());
 
     const hkReal dt = 1.0f / 60.0f;
-    for (int i = 0; i < 180; ++i) { // 3 saniye
+    for (int i = 0; i < 180; ++i) { // 3 seconds
         world.stepDeltaTime(dt);
     }
     hkVector3 pos;
     body.getPosition(pos);
-    // zemin üstü + gövde yarı yüksekliği ≈ 1.5 üzerinde durmalı
+    // should rest on top of the ground + half body height ≈ 1.5
     CHECK(pos.y > 1.0f);
-    CHECK(pos.y < 2.5f); // zıplamadan oturdu (restitution 0.3 sönümlü)
+    CHECK(pos.y < 2.5f); // settled without bouncing (restitution 0.3 damped)
 }
 
 // ---------------------------------------------------------------------------
-// 6) Phantom overlap — tetikleyici hacme giren entity (hkpPhantom yolu)
+// 6) Phantom overlap — entity entering the trigger volume (hkpPhantom path)
 // ---------------------------------------------------------------------------
 static void TestPhantomOverlap() {
     hkWorld world;
@@ -190,14 +190,14 @@ static void TestPhantomOverlap() {
     phantom.setPosition(hkVector3(0.0f, 0.0f, 0.0f));
     CHECK(world.addPhantom(&phantom).isSuccess());
 
-    // phantom'ın içine konumlanan statik gövde
+    // static body positioned inside the phantom
     hkBoxShape box(hkVector3(0.5f, 0.5f, 0.5f));
     hkVector3 zeroMass(0.0f, 0.0f, 0.0f);
     hkRigidBody body(zeroMass, &box);
-    body.setPosition(hkVector3(0.5f, 0.5f, 0.5f)); // tetikleyici içinde
+    body.setPosition(hkVector3(0.5f, 0.5f, 0.5f)); // inside the trigger
     CHECK(world.addEntity(&body).isSuccess());
 
-    // ghost pair callback'inin doldurması için bir adım
+    // one step for the ghost pair callback to fill in
     world.stepDeltaTime(1.0f / 60.0f);
 
     hkEntity *pHits[8];
@@ -208,14 +208,14 @@ static void TestPhantomOverlap() {
     for (int i = 0; i < numHits; ++i) {
         if (pHits[i] == &body) found = true;
     }
-    CHECK(found); // kayıt tablosu btCollisionObject → hkEntity eşlemesi
+    CHECK(found); // registration table btCollisionObject → hkEntity mapping
 
-    // phantom'dan çıkar → temiz
+    // leave the phantom → clean
     CHECK(world.removePhantom(&phantom).isSuccess());
 }
 
 // ---------------------------------------------------------------------------
-// 7) impulse — applyImpulse hızlandırır (Cannonball/Cannon yolu)
+// 7) impulse — applyImpulse accelerates (Cannonball/Cannon path)
 // ---------------------------------------------------------------------------
 static void TestImpulse() {
     hkWorld world;
@@ -227,9 +227,9 @@ static void TestImpulse() {
     body.applyImpulse(hkVector3(0.0f, 10.0f, 0.0f));
     hkVector3 vel;
     body.getLinearVelocity(vel);
-    CHECK(vel.y > 0.0f); // yukarı doğru hız kazandı
+    CHECK(vel.y > 0.0f); // gained upward velocity
 
-    // kütle erişimi
+    // mass access
     CHECK(Near(body.getMass(), 1.0f, 1e-6f));
 }
 

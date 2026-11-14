@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cattributehandler.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\cattributehandler.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0040fd60 — CAttributeHandler::Shutdown()
 //   FUN_00410540 — CAttributeHandler::ProcessPacket(...)
 //   FUN_00410860 — CAttributeHandler::FindInstance(instanceId)
@@ -28,16 +28,16 @@ namespace RWS
 
     // ========================================================================
     // CAttributeHandler Constructor (attribute packet)
-    // Binary: sub_411DA0 — "CAttributeHandler" sınıfı için paket komutlarını
-    // iterer ve FindInstance ile varlık çözümlemesi yapar.
-    // Yineleyici şu an stub olduğundan döngü boş kalır; tam ayrıştırma
-    // CAttributeCommandIterator restorasyonuyla (Faz 5) tamamlanacak.
+    // Binary: sub_411DA0 — iterates packet commands for the "CAttributeHandler" class
+    // and performs entity resolution via FindInstance.
+    // Since the iterator is currently a stub, the loop stays empty; full parsing
+    // will be completed with the CAttributeCommandIterator restoration (Phase 5).
     // ========================================================================
     CAttributeHandler::CAttributeHandler(const CAttributePacket& packet)
     {
         for (CAttributeCommandIterator it(packet); !it.IsFinished(); ++it)
         {
-            // Varlık çözümleme — yineleyici stub olduğu için şimdilik boş
+            // Entity resolution — empty for now because the iterator is a stub
         }
     }
 
@@ -71,7 +71,7 @@ namespace RWS
 
     // ========================================================================
     // CAttributeHandler::Shutdown (FUN_0040fd60)
-    // ASM: 0040fd60 — Tüm nesne eşlemelerini temizle ve kapat
+    // ASM: 0040fd60 — Clear and close all object mappings
     // ========================================================================
     void CAttributeHandler::Shutdown()
     {
@@ -85,7 +85,7 @@ namespace RWS
 
     // ========================================================================
     // CAttributeHandler::FindInstance (FUN_00410860)
-    // ASM: 00410860 — ID'ye karşılık gelen nesneyi bul
+    // ASM: 00410860 — Find the object corresponding to the ID
     // ========================================================================
     void* CAttributeHandler::FindInstance(RwUInt32 instanceId)
     {
@@ -100,7 +100,7 @@ namespace RWS
 
     // ========================================================================
     // CAttributeHandler::RegisterInstance (FUN_004118b0)
-    // ASM: 004118b0 — Yeni nesneyi haritaya kaydet
+    // ASM: 004118b0 — Register the new object in the map
     // ========================================================================
     void CAttributeHandler::RegisterInstance(RwUInt32 instanceId, void* pObject)
     {
@@ -143,7 +143,7 @@ namespace RWS
 
     // ========================================================================
     // CAttributeHandler::ProcessPacket (FUN_00410540)
-    // ASM: 00410540 — RWS nitelik paketini işle
+    // ASM: 00410540 — Process the RWS attribute packet
     // ========================================================================
     void CAttributeHandler::ProcessPacket(const RwUInt8* pPacketData, RwUInt32 dataSize)
     {
@@ -157,7 +157,7 @@ namespace RWS
 
         if (IsInstanceCreationPacket(pPacketData))
         {
-            // Paket yapısı: [PaketTipi:4][InstanceId:4][ClassName:str]
+            // Packet layout: [PacketType:4][InstanceId:4][ClassName:str]
             RwUInt32 instanceId = *(const RwUInt32*)(pPacketData + 4);
             const char* pClassName = (const char*)(pPacketData + 8);
 

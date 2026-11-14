@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (ceventhandler.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\eventhandler\ceventhandler.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00401000 - FUN_004013e0 (RWS::CEventHandler)
 // ============================================================================
 
@@ -14,43 +14,43 @@
 
 /**
  * @namespace RWS
- * @brief RenderWare Studio framework'ünün tüm çekirdek sınıflarını barındıran ad alanı.
+ * @brief Namespace hosting all core classes of the RenderWare Studio framework.
  *
- * CannonCruise'un tüm oyun nesneleri bu ad alanındaki `CEventHandler` ve
- * `CAttributeHandler` gibi temel sınıflardan türer. Olay tabanlı mesajlaşma
- * (`SendMsg` / `HandleEvents`) oyun mantığının ana iletişim mekanizmasıdır.
+ * All game objects of CannonCruise derive from core classes in this namespace such as
+ * `CEventHandler` and `CAttributeHandler`. Event-based messaging
+ * (`SendMsg` / `HandleEvents`) is the main communication mechanism of the game logic.
  */
 namespace RWS
 {
-    /// Kayıtlı olay bağlantıları için varsayılan blok boyutu
+    /// Default block size for registered event links
     #define CEVENT_HANDLER_REGISTERED_MSG_DEFAULT_BLOCK_SIZE 128
-    /// Kayıtlı mesajlar için varsayılan blok boyutu
+    /// Default block size for registered messages
     #define CREGISTERED_MSGS_DEFAULT_BLOCK_SIZE 128
 
     /**
      * @typedef CEventId
-     * @brief Olay kimliği türü — 32-bit işaretsiz tam sayı.
+     * @brief Event id type — 32-bit unsigned integer.
      *
-     * `RegisterMsg()` tarafından döndürülen benzersiz olay kimliği.
-     * Sabit sistem olayları (iMsgRunningTick vb.) doğrudan tanımlanır;
-     * oyun özgü olaylar çalışma zamanında `RegisterMsg()` ile alınır.
+     * Unique event id returned by `RegisterMsg()`.
+     * Fixed system events (iMsgRunningTick etc.) are defined directly;
+     * game-specific events are obtained at runtime via `RegisterMsg()`.
      */
     typedef RwUInt32 CEventId;
 
-    /// Oyun döngüsünün her karesinde yayımlanan tick olayı
+    /// Tick event published every frame of the game loop
     const CEventId iMsgRunningTick    = 0x0001;
-    /// Havok fizik adımı için yayımlanan güncelleme olayı
+    /// Update event published for the Havok physics step
     const CEventId iMsgPhysicsUpdate  = 0x0002;
 
     /**
      * @struct CMsg
-     * @brief Olay tabanlı mesajlaşma sisteminde iletilen mesaj yapısı.
+     * @brief Message structure passed through the event-based messaging system.
      *
-     * `SendMsg()` tarafından tüm kayıtlı `CEventHandler` örneklerine iletilir.
-     * `m_pData` / `pData` alanı, gönderilen olaya özel veriye işaret eden
-     * genel (void*) bir göstericidir; alıcı uygun türe dönüştürür.
+     * Delivered to all registered `CEventHandler` instances by `SendMsg()`.
+     * The `m_pData` / `pData` field is a generic (void*) pointer to the data
+     * specific to the sent event; the receiver casts it to the appropriate type.
      *
-     * **Kullanım örneği:**
+     * **Usage example:**
      * ```cpp
      * CMsg msg(iMsgRunningTick, nullptr, 0);
      * CEventHandler::SendMsg(msg);
@@ -60,21 +60,21 @@ namespace RWS
     {
         union
         {
-            CEventId m_Id;  ///< Olay kimliği (C++ stili erişim)
-            CEventId Id;    ///< Olay kimliği (eski stil erişim — geriye uyumluluk)
+            CEventId m_Id;  ///< Event id (C++ style access)
+            CEventId Id;    ///< Event id (old style access — backward compatibility)
         };
         union
         {
-            const void* m_pData; ///< Olaya özgü veri işaretçisi (C++ stili)
-            const void* pData;   ///< Olaya özgü veri işaretçisi (eski stil)
+            const void* m_pData; ///< Pointer to event-specific data (C++ style)
+            const void* pData;   ///< Pointer to event-specific data (old style)
         };
-        RwUInt32 m_Priority; ///< Mesaj önceliği (yüksek öncelik önce işlenir)
+        RwUInt32 m_Priority; ///< Message priority (higher priority is processed first)
 
         /**
-         * @brief CMsg yapıcısı.
-         * @param id       Olay kimliği.
-         * @param pData    Olaya özgü veri (nullptr olabilir).
-         * @param priority Mesaj önceliği (varsayılan: 0).
+         * @brief CMsg constructor.
+         * @param id       Event id.
+         * @param pData    Event-specific data (may be nullptr).
+         * @param priority Message priority (default: 0).
          */
         CMsg(CEventId id = 0, const void* pData = 0, RwUInt32 priority = 0)
             : m_Id(id), m_pData(pData), m_Priority(priority)
@@ -84,22 +84,22 @@ namespace RWS
 
     /**
      * @class CEventHandler
-     * @brief RenderWare Studio olay sistemi için temel sınıf.
+     * @brief Base class for the RenderWare Studio event system.
      *
-     * CannonCruise'daki tüm oyun davranış sınıfları (CSpeakManager, CAudioManager,
-     * CScene, vb.) doğrudan veya dolaylı olarak `CEventHandler`'dan türer.
-     * Bu sınıf, olaylara abone olmayı (`LinkMsg`), abonelikten çıkmayı (`UnLinkMsg`)
-     * ve olayları işlemeyi (`HandleEvents`) sağlar.
+     * All game behavior classes in CannonCruise (CSpeakManager, CAudioManager,
+     * CScene, etc.) derive directly or indirectly from `CEventHandler`.
+     * This class provides subscribing to events (`LinkMsg`), unsubscribing (`UnLinkMsg`)
+     * and handling events (`HandleEvents`).
      *
-     * **Yaşam döngüsü:**
-     * 1. Yapıcı çağrılır.
-     * 2. `LinkMsg()` ile ilgilenilen olaylara abone olunur.
-     * 3. `HandleEvents()` override edilerek gelen olaylar işlenir.
-     * 4. Yıkıcı çağrıldığında `UnLinkAllProcess()` otomatik tetiklenir.
+     * **Lifecycle:**
+     * 1. The constructor is called.
+     * 2. Subscriptions to the events of interest are made with `LinkMsg()`.
+     * 3. Incoming events are handled by overriding `HandleEvents()`.
+     * 4. When the destructor is called, `UnLinkAllProcess()` is triggered automatically.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Dtor: `FUN_00401000`
-     * - HandleEvents: `FUN_00401060` (sanal, varsayılan boş)
+     * - HandleEvents: `FUN_00401060` (virtual, empty by default)
      * - LinkMsg: `FUN_004010c0`
      * - UnLinkMsg: `FUN_00401180`
      * - SendMsg: `FUN_004012a0` (statik)
@@ -109,117 +109,117 @@ namespace RWS
     {
     public:
         /**
-         * @brief Varsayılan yapıcı.
+         * @brief Default constructor.
          */
         CEventHandler();
 
         /**
-         * @brief Öncelik parametreli yapıcı (geriye uyumluluk).
-         * @param priority Başlangıç önceliği (kullanılmayabilir).
+         * @brief Priority-parametric constructor (backward compatibility).
+         * @param priority Initial priority (may be unused).
          */
         CEventHandler(RwUInt32);
 
         /**
-         * @brief Yıkıcı — `UnLinkAllProcess()` çağrılarak tüm abonelikler iptal edilir.
+         * @brief Destructor — cancels all subscriptions by calling `UnLinkAllProcess()`.
          */
         virtual ~CEventHandler();
 
         /**
-         * @brief Gelen olayı işleyen sanal fonksiyon.
-         * @param msg İşlenecek mesaj.
+         * @brief Virtual function handling the incoming event.
+         * @param msg Message to process.
          *
-         * Türetilmiş sınıflar bu fonksiyonu override ederek kendi olay mantığını uygular.
-         * Bilinmeyen olaylar için temel sınıf uygulaması hiçbir şey yapmaz.
+         * Derived classes override this function and implement their own event logic.
+         * The base class implementation does nothing for unknown events.
          */
         virtual void HandleEvents(const CMsg& msg);
 
         /**
-         * @brief Değiştirilebilir mesaj referansı alan HandleEvents aşırı yüklemesi.
-         * @param msg İşlenecek mesaj.
+         * @brief HandleEvents overload taking a mutable message reference.
+         * @param msg Message to process.
          */
         virtual void HandleEvents(CMsg& msg) { HandleEvents((const CMsg&)msg); }
 
         /**
-         * @brief Belirtilen olaya abone olur.
-         * @param eventId  Abone olunacak olay kimliği.
-         * @param pFormat  Verinin formatını tanımlayan isteğe bağlı format dizesi.
-         * @param priority Olay önceliği (yüksek değer = önce işlenir).
+         * @brief Subscribes to the given event.
+         * @param eventId  Event id to subscribe to.
+         * @param pFormat  Optional format string describing the data format.
+         * @param priority Event priority (higher value = processed first).
          */
         void LinkMsg(CEventId eventId, const char* pFormat = 0, RwUInt32 priority = 0);
 
         /**
-         * @brief Belirtilen olaydan aboneliği kaldırır.
-         * @param eventId Aboneliği kaldırılacak olay kimliği.
+         * @brief Unsubscribes from the given event.
+         * @param eventId Event id to unsubscribe from.
          */
         void UnLinkMsg(CEventId eventId);
 
         /**
-         * @brief Tüm olay aboneliklerini iptal eder.
+         * @brief Cancels all event subscriptions.
          *
-         * Yıkıcı tarafından otomatik çağrılır; ayrıca elle de çağrılabilir.
+         * Called automatically by the destructor; may also be called manually.
          */
         void UnLinkAllProcess();
 
         /**
-         * @brief `LinkMsg()` için uyumluluk sarmalayıcısı.
-         * @param eventId Abone olunacak olay kimliği.
+         * @brief Compatibility wrapper for `LinkMsg()`.
+         * @param eventId Event id to subscribe to.
          */
         void RegisterForMessage(CEventId eventId) { LinkMsg(eventId); }
 
         /**
-         * @brief `UnLinkMsg()` için uyumluluk sarmalayıcısı.
-         * @param eventId Aboneliği kaldırılacak olay kimliği.
+         * @brief Compatibility wrapper for `UnLinkMsg()`.
+         * @param eventId Event id to unsubscribe from.
          */
         void UnregisterForMessage(CEventId eventId) { UnLinkMsg(eventId); }
 
         /**
-         * @brief Bir mesajı tüm abone `CEventHandler` örneklerine iletir.
-         * @param msg Gönderilecek mesaj.
+         * @brief Sends a message to all subscribed `CEventHandler` instances.
+         * @param msg Message to send.
          *
-         * Mesaj, `m_Priority` değerine göre sıralanmış abonelere iletilir.
+         * The message is delivered to subscribers sorted by their `m_Priority` value.
          */
         static void SendMsg(const CMsg& msg);
 
         /**
-         * @brief Yeni bir olay adı kaydeder ve benzersiz kimlik döndürür.
-         * @param pEventName Kaydedilecek olay adı (örn. "iMsgHit").
-         * @param pFormat    İsteğe bağlı veri format dizesi.
-         * @return CEventId — Yeni olayın benzersiz kimliği.
+         * @brief Registers a new event name and returns a unique id.
+         * @param pEventName Event name to register (e.g. "iMsgHit").
+         * @param pFormat    Optional data format string.
+         * @return CEventId — Unique id of the new event.
          */
         static CEventId RegisterMsg(const char* pEventName, const char* pFormat = 0);
 
         /**
-         * @brief Daha önce kaydedilmiş bir olayı sistemden kaldırır.
-         * @param eventId Kaldırılacak olay kimliği.
+         * @brief Removes a previously registered event from the system.
+         * @param eventId Event id to remove.
          *
-         * Binary referansı: `loc_40CC60` — kayıtlı olay kaydını ve abonelik
-         * bağlantılarını siler (RenderPipelineShutdown bunu çağırır).
+         * Binary reference: `loc_40CC60` — deletes the registered event record and its
+         * subscription links (called by RenderPipelineShutdown).
          */
         static void UnRegisterMsg(CEventId eventId);
 
         /**
-         * @brief Olay sistemini başlatır (uygulama başlangıcında bir kez çağrılır).
+         * @brief Initializes the event system (called once at application startup).
          */
         static void Initialize();
 
         /**
-         * @brief Olay sistemini kapatır ve tüm kayıtlı olayları temizler.
+         * @brief Shuts down the event system and clears all registered events.
          */
         static void Shutdown();
 
     protected:
         /**
          * @struct EventLink
-         * @brief Bu nesnenin abone olduğu bir olayı tanımlayan iç yapı.
+         * @brief Internal structure describing an event this object subscribes to.
          */
         struct EventLink
         {
-            CEventId   m_EventId;  ///< Abone olunan olay kimliği
-            RwUInt32   m_Priority; ///< İşlem önceliği
-            std::string m_Format;  ///< Veri format dizesi
+            CEventId   m_EventId;  ///< Subscribed event id
+            RwUInt32   m_Priority; ///< Processing priority
+            std::string m_Format;  ///< Data format string
         };
 
-        std::vector<EventLink> m_LinkedEvents; ///< Bu nesnenin tüm olay abonelikleri
+        std::vector<EventLink> m_LinkedEvents; ///< All event subscriptions of this object
     };
 }
 

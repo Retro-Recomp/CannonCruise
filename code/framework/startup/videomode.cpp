@@ -1,15 +1,15 @@
 // ============================================================================
 // CannonCruise - Video Mode & Camera Setup (videomode.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\startup\videomode.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with CC_ida.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0041af10 — CameraInit  (assert "No best sub-system", videomode.cpp:228)
-//   FUN_0041ac00 — CameraShutdown (startup shutdown zincirinin ilk adımı)
+//   FUN_0041ac00 — CameraShutdown (first step of the startup shutdown chain)
 //
-// Not: FUN_0041ac00'nin dosya bağlamı yalnızca startup.cpp'deki çağrıdan
-//      biliniyor; asıl "videomode.cpp" assert'i (satır 0xE4 = 228)
-//      FUN_0041af10 içindedir ve bu dosyanın CameraInit'i içerdiğini kanıtlar.
+// Note: The file context of FUN_0041ac00 is only known from the call in startup.cpp;
+//      the actual "videomode.cpp" assert (line 0xE4 = 228)
+//      is inside FUN_0041af10 and proves this file contains CameraInit.
 // ============================================================================
 
 #include "rwcore.h"
@@ -17,15 +17,15 @@
 #include <cassert>
 
 // ---------------------------------------------------------------------------
-// Puanlama yardımcıları (FUN_0041af10 skor karşılaştırması — binary ağırlıkları)
+// Scoring helpers (FUN_0041af10 score comparison — binary weights)
 // ---------------------------------------------------------------------------
 namespace
 {
-    // Aday video modunu istenen width/height/depth değerlerine göre puanlar.
-    // Ağırlıklar binary'deki gibi: derinlik eşleşmesi 16, boyut eşleşmesi 4,
-    // istenen değeri aşan boyut 2 (büyük olasılıkla eşleşme bonusu).
-    // Not: ASM'de düşük ağırlıklı (+1) ek bir eşleşme adımı daha vardır;
-    // stack offset okuması belirsiz olduğundan genişlik eşleşmesine dahil edilmiştir.
+    // Scores a candidate video mode against the requested width/height/depth values.
+    // Weights as in the binary: depth match 16, size match 4,
+    // dimension exceeding the requested value 2 (possibly a match bonus).
+    // Note: In the ASM there is an extra low-weight (+1) match step as well;
+    // it is folded into the width match because the stack offset read is ambiguous.
     int ScoreVideoMode(const RwVideoMode& vm, int width, int height, int depth)
     {
         int score = 0;
@@ -46,8 +46,8 @@ namespace
         return score;
     }
 
-    // İki aday eşit puanda: binary'de alan (genişlik*yükseklik) karşılaştırması
-    // yapılır, daha küçük alan tercih edilir.
+    // For two tied candidates: in the binary an area (width*height) comparison
+    // is done, and the smaller area is preferred.
     RwBool IsBetterVideoMode(const RwVideoMode& candidate, int candidateScore,
                              const RwVideoMode& currentBest, int currentScore)
     {
@@ -65,15 +65,15 @@ namespace
 // ============================================================================
 // CameraInit (FUN_0041af10)
 // Binary Adresi: 0x0041af10
-// XREF: sub_41A680 (startup init): 0041aae5 — startup.cpp "Adım 10"
+// XREF: sub_41A680 (startup init): 0041aae5 — startup.cpp "Step 10"
 //
-// Tüm alt sistemleri ve video modlarını tarar; verilen width/height/depth
-// değerlerine en iyi uyan modu puanlayarak seçer. Seçilen mod
-// *videoMode üzerinden yazılır ve TRUE dönülür.
+// Scans all subsystems and video modes; picks the mode that best matches
+// the given width/height/depth values by scoring. The chosen mode
+// is written through *videoMode and TRUE is returned.
 //
-// En iyi mod hiç bulunamazsa binary'de:
-//   "No best sub-system" assert'i (videomode.cpp, satır 0xE4 = 228)
-//   → INT3 → (assert bayrağı yoksa) exit(0)
+// If no best mode is ever found, in the binary:
+//   the "No best sub-system" assert (videomode.cpp, line 0xE4 = 228)
+//   → INT3 → (if no assert flag) exit(0)
 // ============================================================================
 RwBool CameraInit(RwVideoMode* videoMode, int width, int height, int depth)
 {
@@ -104,8 +104,8 @@ RwBool CameraInit(RwVideoMode* videoMode, int width, int height, int depth)
 
             if (bestVideoMode < 0)
             {
-                // İlk aday doğrudan en iyi mod olarak alınır (binary:
-                // henüz en iyi mod yokken kopyalama yolu, loc_41B05F).
+                // The first candidate is taken directly as the best mode (binary:
+                // the copy path while there is no best mode yet, loc_41B05F).
                 bestSubsystem = subsystem;
                 bestVideoMode = modeIndex;
                 bestModeInfo = candidate;
@@ -128,7 +128,7 @@ RwBool CameraInit(RwVideoMode* videoMode, int width, int height, int depth)
     }
 
     // -----------------------------------------------------------------
-    // En iyi mod bulunamadı mı?
+    // No best mode found?
     // ASM: "No best sub-system" → In file videomode.cpp, line 0E4h (228)
     //      → "Assert failed:" → INT3 → exit(0)
     // -----------------------------------------------------------------
@@ -138,15 +138,15 @@ RwBool CameraInit(RwVideoMode* videoMode, int width, int height, int depth)
         return FALSE;
     }
 
-    // Seçilen alt sistem ve video modunu uygula
+    // Apply the chosen subsystem and video mode
     if (!RwEngineSetSubSystem(bestSubsystem))
         return FALSE;
 
     if (!RwEngineSetVideoMode(bestVideoMode))
         return FALSE;
 
-    // Seçilen mod bilgisini çağıran tarafın videoMode yapısına yaz
-    // (ASM: aday struct'ın 6 dwords'ü kopyalanır — rep movsd, 24 byte).
+    // Write the chosen mode info into the caller's videoMode structure
+    // (ASM: the candidate struct's 6 dwords are copied — rep movsd, 24 bytes).
     if (videoMode)
         *videoMode = bestModeInfo;
 
@@ -155,21 +155,21 @@ RwBool CameraInit(RwVideoMode* videoMode, int width, int height, int depth)
 
 // ============================================================================
 // CameraShutdown (FUN_0041ac00)
-// Binary Adresi: 0x0041ac00
-// XREF: sub_41AB90 (startup shutdown): 0041ab91 — startup.cpp "Adım 1"
+// Binary Address: 0x0041ac00
+// XREF: sub_41AB90 (startup shutdown): 0041ab91 — startup.cpp "Step 1"
 //
-// Binary davranışı:
-//   1. DAT_00635af4 (ana oyun bağlamı singleton'ı — startup'ta "Havok
-//      singleton" olarak adlandırılır) okunur.
-//   2. NULL ise: "ms_pSingleton != NULL Failed" assert'i (Singleton.h:58)
-//      tetiklenir; assert bayrağı yoksa exit(0).
-//   3. Değilse: singleton'ın ilk sanal metodu 1 argümanla çağrılır
-//      (vtable slot 0 — shutdown benzeri bağlam kapanışı).
-//   4. DAT_00635af4 = NULL yazılır (obje bellekte serbest edilmez).
+// Binary behavior:
+//   1. DAT_00635af4 (the main game context singleton — called "Havok
+//      singleton" by the startup code) is read.
+//   2. If NULL: the "ms_pSingleton != NULL Failed" assert (Singleton.h:58)
+//      is triggered; if no assert flag, exit(0).
+//   3. Otherwise: the singleton's first virtual method is called with 1 argument
+//      (vtable slot 0 — a shutdown-like context teardown).
+//   4. DAT_00635af4 = NULL is written (the object is not freed from memory).
 //
-// Kod tabanı notu: singleton'ın somut türü (FUN_0049c870 ctor'ı) henüz
-// eşlenmedi; Havok/fizik entegrasyonu (Faz 4.4b) tamamlandığında çağrısı
-// bağlanacaktır. Şu an yalnızca assert sözleşmesi uygulanır.
+// Codebase note: the concrete type of the singleton (FUN_0049c870 ctor) has not
+// been matched yet; once the Havok/physics integration (Phase 4.4b) is complete,
+// the call will be hooked up. Only the assert contract is implemented for now.
 // ============================================================================
 void CameraShutdown(void)
 {
@@ -179,11 +179,11 @@ void CameraShutdown(void)
 
     if (pContext)
     {
-        // TODO(Faz 4.4b): binary'deki virtual slot0(pContext, 1) çağrısı —
-        // FUN_0049c870 ctor'ının ilk sanal metodu (shutdown benzeri).
-        // CPhysicsWorld'de karşılığı modellenene kadar çağrılmaz.
+        // TODO(Phase 4.4b): the virtual slot0(pContext, 1) call in the binary —
+        // the first virtual method of the FUN_0049c870 ctor (shutdown-like).
+        // Not called until the counterpart is modeled in CPhysicsWorld.
     }
 
-    // Binary: DAT_00635af4 = NULL — singleton işaretçisi sıfırlanır,
-    // obje belleği serbest edilmez (Singleton.h dtor'u bunu yapar).
+    // Binary: DAT_00635af4 = NULL — the singleton pointer is zeroed,
+    // the object memory is not freed (the Singleton.h dtor does that).
 }

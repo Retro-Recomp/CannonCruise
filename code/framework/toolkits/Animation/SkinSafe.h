@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (SkinSafe.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Animation\SkinSafe.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00409200 - FUN_004092f0 (RWS::SkinSafe)
 // ============================================================================
 
@@ -17,12 +17,12 @@ namespace RWS
 {
     /**
      * @class SkinSafe
-     * @brief İskelet animasyonlarında güvenli matris işlemleri sağlayan sınıf.
+     * @brief Class providing safe matrix operations for skeletal animations.
      *
-     * Animasyon verisinin geçerli olmadığı veya varsayılan T-poza
-     * dönülmesi gerektiği durumlarda (hata toleransı) kullanılır.
+     * Used when the animation data is invalid or it is necessary to return
+     * to the default T-pose (error tolerance).
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - CopyBoneMatrices: `FUN_00409200`
      * - SetDefaultPose: `FUN_00409260`
      * - HierarchyCanAcceptDefaultPose: `FUN_004092b0`
@@ -31,23 +31,23 @@ namespace RWS
     {
     public:
         /**
-         * @brief Kemik matrislerini güvenli bir şekilde kopyalar.
-         * @param pDstMatrices Hedef matris dizisi.
-         * @param pSrcMatrices Kaynak matris dizisi.
-         * @param numBones     Kopyalanacak kemik (matris) sayısı.
+         * @brief Safely copies the bone matrices.
+         * @param pDstMatrices Destination matrix array.
+         * @param pSrcMatrices Source matrix array.
+         * @param numBones     Number of bones (matrices) to copy.
          */
         static void CopyBoneMatrices(RwMatrix* pDstMatrices, const RwMatrix* pSrcMatrices, RwUInt32 numBones);
 
         /**
-         * @brief Hiyerarşiyi varsayılan başlangıç pozuna (genellikle T-poz) getirir.
-         * @param pHierarchy Hedef HAnim hiyerarşisi.
+         * @brief Brings the hierarchy to the default initial pose (usually the T-pose).
+         * @param pHierarchy Target HAnim hierarchy.
          */
         static void SetDefaultPose(RpHAnimHierarchy* pHierarchy);
 
         /**
-         * @brief Hiyerarşinin varsayılan pozu kabul edip edemeyeceğini kontrol eder.
-         * @param pHierarchy Kontrol edilecek HAnim hiyerarşisi.
-         * @return TRUE ise varsayılan poz uygulanabilir.
+         * @brief Checks whether the hierarchy can accept the default pose.
+         * @param pHierarchy HAnim hierarchy to check.
+         * @return TRUE if the default pose can be applied.
          */
         static RwBool HierarchyCanAcceptDefaultPose(const RpHAnimHierarchy* pHierarchy);
     };

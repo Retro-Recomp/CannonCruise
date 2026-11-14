@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - CCameraState property apply testi
-// Gerçek MAINMENU.RWS obj#1 (CWbCameraBehavior) verisiyle sub_4C3450
-// switch'inin id→offset/doğrudan haritası doğrulanır.
-// Çalıştırma: camerastate_test <MAINMENU.RWS>
+// CannonCruise - CCameraState property apply test
+// Real MAINMENU.RWS obj#1 (CWbCameraBehavior) data verifies the sub_4C3450
+// switch's id→offset/direct map.
+// Usage: camerastate_test <MAINMENU.RWS>
 // ============================================================================
 
 #include "CameraState.h"
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    // rw_librw shim — StreamFile::open engine init ister (vtable)
+    // rw_librw shim — StreamFile::open requires engine init (vtable)
     if (RwEngineInit(0, 0, 0) != TRUE || RwEngineOpen() != TRUE ||
         RwEngineStart() != TRUE) {
         std::fprintf(stderr, "engine init failed\n");
@@ -90,8 +90,8 @@ int main(int argc, char **argv) {
                     }
                 }
 
-                // ---- dosya değerleriyle doğrulama ----
-                // bilinen dump: prop4 = 60.0f (FOV)
+                // ---- file-value verification ----
+                // known dump: prop4 = 60.0f (FOV)
                 CHECK(Near(AsFloat(pBeh->props[4].value), 60.0f, 0.001f));
 
                 // id0 VEC3 → +0x04
@@ -130,10 +130,10 @@ int main(int argc, char **argv) {
         }
     }
 
-    // ---- id42/id48 guard davranışları ----
+    // ---- id42/id48 guard behavior ----
     cam.m_counter = 5.0f;
     cam.m_guard = 1;
-    CHECK(cam.ApplyAttribute(0x2A, 0) == TRUE); // guard=1 → değişmez
+    CHECK(cam.ApplyAttribute(0x2A, 0) == TRUE); // guard=1 → unchanged
     CHECK(cam.m_counter == 5.0f);
     CHECK(cam.ApplyAttribute(0x30, 0) == TRUE);
     CHECK(cam.m_one == 0.0f);
@@ -143,10 +143,10 @@ int main(int argc, char **argv) {
     CHECK(cam.ApplyAttribute(0x30, 0) == TRUE);
     CHECK(cam.m_one == 1.0f);
 
-    // ---- bilinmeyen id → FALSE (binary default sessiz) ----
+    // ---- unknown id → FALSE (binary default silent) ----
     CHECK(cam.ApplyAttribute(0x33, 0) == FALSE);
     CHECK(cam.ApplyAttribute(0xFF, 0) == FALSE);
-    // VEC3 yanlış id → FALSE
+    // VEC3 wrong id → FALSE
     RwUInt8 tmp[12] = {0};
     CHECK(CCameraStateApplyVec3(&cam, 0x33, tmp) == FALSE);
 

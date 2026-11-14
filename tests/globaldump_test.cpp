@@ -1,9 +1,9 @@
 // ============================================================================
-// CannonCruise - GLOBAL.RWS gömülü txd → PNG dökümü (globaldump_test.cpp)
+// CannonCruise - GLOBAL.RWS embedded txd → PNG dump (globaldump_test.cpp)
 //
-// Keşif amaçlı: GLOBAL'daki gömülü TexDictionary (yükleme ekranı art'ı)
-// çözülür ve her doku <outdir>/tex_<i>.png olarak yazılır. Görsel doğrulama
-// için kullanılır; ctest sadece çıktıyı listeler.
+// Discovery: the embedded TexDictionary in GLOBAL (loading screen art)
+// is decoded and each texture written as <outdir>/tex_<i>.png. Used for visual
+// verification; ctest only lists the output.
 //
 //   usage: globaldump_test <GLOBAL.RWS> <outdir>
 // ============================================================================

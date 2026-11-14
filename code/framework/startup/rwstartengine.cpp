@@ -1,13 +1,13 @@
 // ============================================================================
 // CannonCruise - RwStartEngine (rwstartengine.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\startup\rwstartengine.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with CC_ida.asm.
 //
-// Binary Fonksiyonu:
-//   FUN_00418ac0 — RwStartEngine (startup init zinciri, "Adım 7")
+// Binary Function:
+//   FUN_00418ac0 — RwStartEngine (startup init chain, "Step 7")
 //
-// Not: Dosya bağlamı yalnızca startup.cpp'deki çağrı XREF'inden biliniyor;
-//      fonksiyon içi assert path string'i yok.
+// Note: The file's context is only known from the call XREF in startup.cpp;
+//      there is no assert path string inside the function.
 // ============================================================================
 
 #include "rwcore.h"
@@ -20,17 +20,17 @@
 #include <direct.h>         // _getdrive / _getcwd / _chdir
 #else
 #include <unistd.h>         // getcwd / chdir
-#include <sys/stat.h>       // stat — arama yolu doğrulama
+#include <sys/stat.h>       // stat — search path validation
 #endif
 
 namespace
 {
-    // sub_4CB8D0 — arama yolu girişi (binary: arg_0 = 0x14 = 20 bayt yapı;
-    // arg_1 = kök dizin ("X:" ya da cwd), arg_2 = ad tek harf/"."/
-    // off_612FE0 varsayılanı). Yapı binary'de FS sistemi tarafından
-    // sahiplenilir; Faz 4.4b'de RtFS/CustomFS restorasyonuna bağlanır.
-    // NOT: "SearchPath" adı Windows API (processenv.h) ile çakışıyor —
-    // "RwSearchPath" olarak yeniden adlandırıldı.
+    // sub_4CB8D0 — search path entry (binary: arg_0 = 0x14 = 20 byte structure;
+    // arg_1 = root directory ("X:" or cwd), arg_2 = name, single letter/"."/
+    // off_612FE0 default). The structure is owned by the FS system in the binary;
+    // it will be connected to the RtFS/CustomFS restoration in Phase 4.4b.
+    // NOTE: the name "SearchPath" clashes with the Windows API (processenv.h) —
+    // renamed to "RwSearchPath".
     struct RwSearchPath
     {
         char        path[0x104];
@@ -39,10 +39,10 @@ namespace
         RwSearchPath* pNext;
     };
 
-    RwSearchPath* s_pSearchPaths = 0;    // kayıtlı arama yolları (bağlı liste)
-    RwSearchPath* s_pActivePath = 0;     // sub_4CAFC0 ile aktifleşen son giriş
+    RwSearchPath* s_pSearchPaths = 0;    // registered search paths (linked list)
+    RwSearchPath* s_pActivePath = 0;     // last entry activated with sub_4CAFC0
 
-    // sub_4CB8D0(0x14, path, name) — yeni arama yolu girişi oluştur
+    // sub_4CB8D0(0x14, path, name) — create a new search path entry
     RwSearchPath* CreateSearchPath(const char* pPath, const char* pName)
     {
         RwSearchPath* p = static_cast<RwSearchPath*>(calloc(1, sizeof(RwSearchPath)));
@@ -55,7 +55,7 @@ namespace
         return p;
     }
 
-    // sub_4CAD20(pPath) — girişin geçerli (mevcut dizin) olduğunu doğrula
+    // sub_4CAD20(pPath) — validate that the entry exists (current directory)
     RwBool ValidateSearchPath(const RwSearchPath* pPath)
     {
         if (!pPath || pPath->path[0] == 0)
@@ -70,7 +70,7 @@ namespace
 #endif
     }
 
-    // sub_4CAFC0(pPath) — girişi aktif arama yolu yap
+    // sub_4CAFC0(pPath) — make the entry the active search path
     void ActivateSearchPath(RwSearchPath* pPath)
     {
         if (pPath)
@@ -83,30 +83,30 @@ namespace
 
 // ============================================================================
 // RwStartEngine (FUN_00418AC0)
-// Binary Adresi: 0x00418ac0
-// XREF: sub_41A680 (startup init): 0041aa66 — startup.cpp "Adım 7"
-// Dönüş: TRUE = arama yolu hazır / FALSE = arama yolu kurulamadı
+// Binary Address: 0x00418ac0
+// XREF: sub_41A680 (startup init): 0041aa66 — startup.cpp "Step 7"
+// Return: TRUE = search path ready / FALSE = search path could not be set up
 //
-// Binary gövdesi (MSVC CRT + KERNEL32):
+// Binary body (MSVC CRT + KERNEL32):
 //   1. drive = __getdrive(); cwd = __getcwd(Path, 0x104)
-//   2. drive < 1 (geçerli sürücü yok):
+//   2. drive < 1 (no valid drive):
 //        n = GetCurrentDirectoryA(Buffer, 0x100)
-//        n == 0 veya n > 0x100 → FALSE
+//        n == 0 or n > 0x100 → FALSE
 //        engine dword_65D7A4 vtable[+0x100h](Buffer, unk_612E84)
-//          — çalışma dizinini motora bildir
-//        esi = sub_4CB8D0(0x14, Buffer, off_612FE0) — arama yolu oluştur
-//        esi null veya sub_4CAD20(esi) başarısız → FALSE
-//        sub_4CAFC0(esi) — aktif arama yolu yap → TRUE
-//   3. drive >= 1: B: .. Z: tara (ebx = 2 .. 0x1A)
-//        GetDriveTypeA("X:\"); X: yap; tip 0/1 (UNKNOWN/NO_ROOT_DIR) → atla
-//        sub_4CB8D0(0x14, "X:", "X") — ad = sürücü harfi
-//        oluşturma/doğrulama başarısız → FALSE (döngü kırılır)
-//        sürücü == geçerli sürücü ise sub_4CAFC0 ile aktifleştir
-//        (döngü aktifleştirmeden sonra da devam eder)
-//   4. __chdir(Path) — eski çalışma dizinine dön → TRUE
+//          — report the working directory to the engine
+//        esi = sub_4CB8D0(0x14, Buffer, off_612FE0) — create search path
+//        esi null or sub_4CAD20(esi) fails → FALSE
+//        sub_4CAFC0(esi) — make it the active search path → TRUE
+//   3. drive >= 1: scan B: .. Z: (ebx = 2 .. 0x1A)
+//        GetDriveTypeA("X:\"); set X:; type 0/1 (UNKNOWN/NO_ROOT_DIR) → skip
+//        sub_4CB8D0(0x14, "X:", "X") — name = drive letter
+//        creation/validation fails → FALSE (loop breaks)
+//        if drive == current drive, activate it with sub_4CAFC0
+//        (the loop continues even after activation)
+//   4. __chdir(Path) — return to the old working directory → TRUE
 //
-// Faz 4.4b TODO: engine vtable[+0x100h] çağrısı (dword_65D7A4 motor nesnesi
-// RwEngineOpen sonrası mevcut olacak).
+// Phase 4.4b TODO: engine vtable[+0x100h] call (dword_65D7A4 engine object
+// will exist after RwEngineOpen).
 // ============================================================================
 RwBool RwStartEngine(void)
 {
@@ -116,7 +116,7 @@ RwBool RwStartEngine(void)
     savedCwd[0] = 0;
     _getcwd(savedCwd, 0x104);
 
-    // --- Şube 2: geçerli sürücü yok ---
+    // --- Branch 2: no valid drive ---
     if (drive < 1)
     {
         char cwd[0x100];
@@ -124,8 +124,8 @@ RwBool RwStartEngine(void)
         if (n == 0 || n > sizeof(cwd))
             return FALSE;
 
-        // TODO(Faz 4.4b): engine dword_65D7A4 vtable[+0x100h](cwd, unk_612E84)
-        RwSearchPath* pPath = CreateSearchPath(cwd, ".");   // off_612FE0 (varsayılan ad)
+        // TODO(Phase 4.4b): engine dword_65D7A4 vtable[+0x100h](cwd, unk_612E84)
+        RwSearchPath* pPath = CreateSearchPath(cwd, ".");   // off_612FE0 (default name)
         if (!pPath)
             return FALSE;
         if (!ValidateSearchPath(pPath))
@@ -134,7 +134,7 @@ RwBool RwStartEngine(void)
         return TRUE;
     }
 
-    // --- Şube 3: B: .. Z: sürücü taraması ---
+    // --- Branch 3: B: .. Z: drive scan ---
     for (int d = 2; d <= 26; ++d)
     {
         char root[4];
@@ -149,7 +149,7 @@ RwBool RwStartEngine(void)
             continue;
 
         char name[2];
-        name[0] = root[0];                          // ad = sürücü harfi
+        name[0] = root[0];                          // name = drive letter
         name[1] = 0;
 
         RwSearchPath* pPath = CreateSearchPath(root, name);
@@ -159,7 +159,7 @@ RwBool RwStartEngine(void)
             return FALSE;
 
         if (d == drive)                             // binary: cmp ebp, ebx
-            ActivateSearchPath(pPath);              // yalnızca geçerli sürücüde aktifleştir
+            ActivateSearchPath(pPath);              // activate only on the current drive
     }
 
     if (savedCwd[0])
@@ -167,7 +167,7 @@ RwBool RwStartEngine(void)
     return TRUE;
 
 #else
-    // POSIX karşılığı: tek arama yolu = çalışma dizini (şube 2 mantığı)
+    // POSIX equivalent: single search path = working directory (branch 2 logic)
     char cwd[0x104];
     if (!getcwd(cwd, sizeof(cwd)))
         return FALSE;

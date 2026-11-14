@@ -1,20 +1,20 @@
 // ============================================================================
-// CannonCruise - Havok sistem bootstrap (havokstart.cpp)
+// CannonCruise - Havok system bootstrap (havokstart.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\startup\havokstart.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with CC_ida.asm.
 //
-// Binary Fonksiyonları:
-//   FUN_00434fb0 — HavokInit        (startup init zinciri, "Adım 1")
-//   FUN_004356f0 — TextureCacheShutdown (startup shutdown zinciri, +1F)
+// Binary Functions:
+//   FUN_00434fb0 — HavokInit        (startup init chain, "Step 1")
+//   FUN_004356f0 — TextureCacheShutdown (startup shutdown chain, +1F)
 //
-// Not: TextureCacheShutdown bu dosyadadır çünkü binary'de HavokInit ile
-//      AYNI global yaşam döngüsünü paylaşırlar:
-//        byte_660934  — sistem bayrağı (HavokInit kurar, shutdown temizler)
-//        dword_660920 — aktif hafıza context'i (Havok singleton'ı)
-//        dword_660938 / dword_66093c / dword_660940 — HavokInit'in yarattığı
-//                          3 refcounted alt sistem nesnesi (shutdown bırakır)
-//      Dosya bağlamı: fonksiyon içi assert path string'i yok (yalnızca
-//      startup.cpp çağrı XREF'i var).
+// Note: TextureCacheShutdown lives in this file because in the binary it shares the same
+//      global lifecycle with HavokInit:
+//        byte_660934  — system flag (set by HavokInit, cleared by shutdown)
+//        dword_660920 — active memory context (the Havok singleton)
+//        dword_660938 / dword_66093c / dword_660940 — created by HavokInit
+//                          3 refcounted sub-system objects (released by shutdown)
+//      File context: there is no assert path string inside the function (only
+//      a call XREF from startup.cpp).
 // ============================================================================
 
 #include "rwcore.h"
@@ -24,20 +24,20 @@
 namespace
 {
     // -------------------------------------------------------------------------
-    // byte_660934 — sistem yaşam döngüsü bayrağı
+    // byte_660934 — system lifecycle flag
     // -------------------------------------------------------------------------
     bool s_havokInited = false;
 
     // -------------------------------------------------------------------------
-    // dword_660920 — aktif hafıza context'i (sub_52DCA0 ile takas edilir)
-    // sub_435810 ctor sözleşmesi:
-    //   [+0x00] vtable (off_5EF898) — sınıf metotları Faz 4.4b
+    // dword_660920 — active memory context (swapped via sub_52DCA0)
+    // sub_435810 ctor contract:
+    //   [+0x00] vtable (off_5EF898) — class methods, Phase 4.4b
     //   [+0x04] refcount = 1
     //   [+0x08, +0x0C, +0x10] = 0
     //   [+0x14] = -1
-    //   [+0x20 .. +0x4028) = 0 (0x1002 dword arena tablosu, binary: rep stosd)
-    //   sub_52DC80(this, align16(+0x2F), 0x4000) — arena kurulumu (TODO)
-    //   Toplam tahsis: 0x4030 bayt (sub_4053F0(4030h, 2))
+    //   [+0x20 .. +0x4028) = 0 (0x1002 dword arena table, binary: rep stosd)
+    //   sub_52DC80(this, align16(+0x2F), 0x4000) — arena setup (TODO)
+    //   Total allocation: 0x4030 bytes (sub_4053F0(4030h, 2))
     // -------------------------------------------------------------------------
     struct HavokContext
     {
@@ -50,20 +50,20 @@ namespace
         RwUInt32 pad_18;          // +0x18
         RwUInt32 pad_1C;          // +0x1C
         RwUInt32 arena[0x1002];   // +0x20 .. +0x4028
-        RwUInt32 padTail[2];      // +0x4028 .. +0x4030 (tahsis tam boyu)
+        RwUInt32 padTail[2];      // +0x4028 .. +0x4030 (full allocation size)
     };
 
     HavokContext* s_pMemoryContext = 0;   // dword_660920
 
     // -------------------------------------------------------------------------
-    // Refcounted alt sistem nesneleri (binary: vtable+0x10h tahsisi, 0x12 + type)
+    // Refcounted sub-system objects (binary: vtable+0x10h allocation, 0x12 + type)
     //   dword_660940 — type = 0x08, vtable off_5EF848
-    //   dword_66093C — type = 0x20, vtable off_5EF83C (ctor sub_4357A0 sonrası
-    //                  off_5EF830'a takas edilir; +0x08/+0x14 zincirleri
-    //                  sub_52DCE0 ile kurulur — TODO Faz 4.4b)
+    //   dword_66093C — type = 0x20, vtable off_5EF83C (after ctor sub_4357A0
+    //                  it is swapped to off_5EF830; the +0x08/+0x14 chains
+    //                  are built via sub_52DCE0 — TODO Phase 4.4b)
     //   dword_660938 — type = 0x08, vtable off_5EF808
-    // Binary'de refcount +0x06'da (word), sıfıra inince vtable[0](1) çağrısı
-    // ile yok edilir.
+    // In the binary the refcount lives at +0x06 (word); when it reaches zero, vtable[0](1) is called
+    // to destroy the object.
     // -------------------------------------------------------------------------
     struct HavokRefObject
     {
@@ -77,13 +77,13 @@ namespace
     HavokRefObject* s_pSystem3C = 0;   // dword_66093C
     HavokRefObject* s_pSystem40 = 0;   // dword_660940
 
-    // sub_4053F0(size, flags) — MSVC operator new karşılığı (binary yorumu)
+    // sub_4053F0(size, flags) — MSVC operator new equivalent (binary comment)
     void* SysAlloc(size_t size)
     {
         return calloc(1, size);
     }
 
-    // Alt sistem nesnesi oluştur (binary: context vtable[+0x10h](0x12, type))
+    // Create sub-system object (binary: context vtable[+0x10h](0x12, type))
     HavokRefObject* CreateRefObject(RwUInt16 type, void* vtable)
     {
         HavokRefObject* p = static_cast<HavokRefObject*>(SysAlloc(sizeof(HavokRefObject)));
@@ -95,7 +95,7 @@ namespace
         return p;
     }
 
-    // Binary refcount deseni: dec word [+0x06]; sıfır → vtable[0](1) / free
+    // Binary refcount pattern: dec word [+0x06]; zero → vtable[0](1) / free
     void ReleaseRefObject(HavokRefObject*& pObject)
     {
         if (!pObject)
@@ -105,16 +105,16 @@ namespace
             --pObject->refCount;
             if (pObject->refCount == 0)
             {
-                // vtable[0](1) — yok edici (TODO(Faz 4.4b): sınıf dtor'ları)
+                // vtable[0](1) — destroyer (TODO(Phase 4.4b): class dtors)
                 free(pObject);
             }
         }
         pObject = 0;
     }
 
-    // sub_52DCA0(pNew) — aktif hafıza context'ini takas eder:
-    //   var olan varsa refcount-1 yap; 0'a indiyse vtable[+0x20h](1) ile yok et;
-    //   sonra dword_660920 = pNew.
+    // sub_52DCA0(pNew) — swaps the active memory context:
+    //   if one exists, decrement its refcount; if it reaches 0, destroy it via vtable[+0x20h](1);
+    //   then dword_660920 = pNew.
     void SetActiveMemoryContext(HavokContext* pNew)
     {
         if (s_pMemoryContext)
@@ -124,7 +124,7 @@ namespace
                 --s_pMemoryContext->refCount;
                 if (s_pMemoryContext->refCount == 0)
                 {
-                    // vtable[+0x20h](1) — context yok edici (model: serbest bırak)
+                    // vtable[+0x20h](1) — context destroyer (model: release)
                     free(s_pMemoryContext);
                 }
             }
@@ -132,115 +132,115 @@ namespace
         s_pMemoryContext = pNew;
     }
 
-    // sub_435810 — HavokContext ctor (binary contract, bkz. struct yorumu)
+    // sub_435810 — HavokContext ctor (binary contract, see struct comment)
     HavokContext* CreateHavokContext()
     {
         HavokContext* p = static_cast<HavokContext*>(SysAlloc(0x4030));
         if (!p)
             return 0;
-        p->vtable = 0;                       // off_5EF898 (TODO Faz 4.4b)
+        p->vtable = 0;                       // off_5EF898 (TODO Phase 4.4b)
         p->refCount = 1;                     // [esi+4] = 1
         p->field_08 = 0;
         p->field_0C = 0;
         p->field_10 = 0;
         p->field_14 = -1;                    // [esi+14h] = -1
         memset(p->arena, 0, sizeof(p->arena));   // rep stosd (0x1002 dword)
-        // TODO(Faz 4.4b): sub_52DC80(this, align16(+0x2F), 0x4000)
+        // TODO(Phase 4.4b): sub_52DC80(this, align16(+0x2F), 0x4000)
         return p;
     }
 }
 
 // ============================================================================
 // HavokInit (FUN_00434FB0)
-// Binary Adresi: 0x00434fb0
-// XREF: sub_41A680 (startup init): 0041a6a5 — startup.cpp "Adım 1"
+// Binary Address: 0x00434fb0
+// XREF: sub_41A680 (startup init): 0041a6a5 — startup.cpp "Step 1"
 //
-// Binary gövdesi (SEH sarmalayıcı atlandı):
-//   1. byte_660934 != 0 → zaten kuruldu, doğrudan çıkış
+// Binary body (SEH wrapper skipped):
+//   1. byte_660934 != 0 → already initialized, direct exit
 //   2. singleton = sub_4053F0(4030h, 2) + sub_435810 ctor
-//   3. sub_52DCA0(singleton) — aktif hafıza context'ine takas
-//   4. dword_660940: type 8, vtable off_5EF848 (eski ref serbest bırakılır)
+//   3. sub_52DCA0(singleton) — swap into the active memory context
+//   4. dword_660940: type 8, vtable off_5EF848 (old ref is released)
 //   5. dword_66093C: type 0x20, vtable off_5EF83C → ctor sub_4357A0,
 //      sub_52DCE0 zincirleri (+0x08, +0x14), vtable → off_5EF830
 //   6. dword_660938: type 8, vtable off_5EF808
-//   7. sub_52E600() — sonraki kurulum aşaması (inverse: sub_52E700)
-//   8. byte_660934 = 1; çıkışta off_6229C4 çağrısı (atexit zinciri)
+//   7. sub_52E600() — next setup stage (inverse: sub_52E700)
+//   8. byte_660934 = 1; call off_6229C4 at exit (atexit chain)
 //
-// Not: DAT_00635af4 (ms_pSingleton) bu fonksiyonda YAZILMAZ — startup
-//      doğrulasın diye null kalır (startup assert: "ms_pSingleton == NULL
-//      Failed", .\Singleton.h satır 0x33).
+// Note: DAT_00635af4 (ms_pSingleton) is NOT written in this function — the startup
+//      assert stays null on purpose (startup assert: "ms_pSingleton == NULL
+//      Failed", .\Singleton.h line 0x33).
 // ============================================================================
 void HavokInit(void)
 {
     if (s_havokInited)
         return;
 
-    // Adım 2-3 — singleton + aktif context takası
+    // Step 2-3 — singleton + active context swap
     HavokContext* pContext = CreateHavokContext();
     if (!pContext)
         return;
     SetActiveMemoryContext(pContext);
 
-    // Adım 4 — type 8 nesne (dword_660940)
+    // Step 4 — type 8 object (dword_660940)
     {
         HavokRefObject* pOld = s_pSystem40;
         s_pSystem40 = CreateRefObject(8, 0);          // vtable: off_5EF848
         ReleaseRefObject(pOld);
     }
 
-    // Adım 5 — type 0x20 nesne (dword_66093C)
-    // TODO(Faz 4.4b): ctor sub_4357A0, sub_52DCE0 zincirleri (+0x08/+0x14),
-    // vtable takası off_5EF83C → off_5EF830, +0x10/+0x1C ref serbest bırakma
+    // Step 5 — type 0x20 object (dword_66093C)
+    // TODO(Phase 4.4b): ctor sub_4357A0, sub_52DCE0 chains (+0x08/+0x14),
+    // vtable swap off_5EF83C → off_5EF830, +0x10/+0x1C ref release
     {
         HavokRefObject* pOld = s_pSystem3C;
         s_pSystem3C = CreateRefObject(0x20, 0);       // vtable: off_5EF83C
         ReleaseRefObject(pOld);
     }
 
-    // Adım 6 — type 8 nesne (dword_660938)
+    // Step 6 — type 8 object (dword_660938)
     {
         HavokRefObject* pOld = s_pSystem38;
         s_pSystem38 = CreateRefObject(8, 0);          // vtable: off_5EF808
         ReleaseRefObject(pOld);
     }
 
-    // Adım 7 — TODO(Faz 4.4b): sub_52E600()
+    // Step 7 — TODO(Phase 4.4b): sub_52E600()
     s_havokInited = true;                             // byte_660934 = 1
 
-    // Adım 8 — TODO(Faz 4.4b): off_6229C4 (atexit/temizlik zinciri kaydı)
+    // Step 8 — TODO(Phase 4.4b): off_6229C4 (atexit/cleanup chain registration)
 }
 
 // ============================================================================
 // TextureCacheShutdown (FUN_004356F0)
-// Binary Adresi: 0x004356f0
-// XREF: sub_41AB90 (startup shutdown): 0041ab..+1F — startup.cpp shutdown zinciri
+// Binary Address: 0x004356f0
+// XREF: sub_41AB90 (startup shutdown): 0041ab..+1F — startup.cpp shutdown chain
 //
-// Binary gövdesi:
-//   1. byte_660934 == 0 → kurulum yok; doğrudan tail'e (off_6229C8)
+// Binary body:
+//   1. byte_660934 == 0 → not initialized; straight to the tail (off_6229C8)
 //   2. sub_52E700() — HavokInit sub_52E600'nin tersi (TODO)
 //   3. dword_660938 refcount-1; 0 → vtable[0](1); global = 0
-//   4. dword_66093C için aynı
-//   5. dword_660940 için aynı
-//   6. sub_52DCA0(0) — aktif context'i null'a takas (eski context refcount
-//      0'a inerse yok edilir → singleton burada yaşar/ölür)
-//   7. byte_660934 = 0; tail: jmp off_6229C8 (global temizlik zinciri, TODO)
+//   4. same for dword_66093C
+//   5. same for dword_660940
+//   6. sub_52DCA0(0) — swap the active context to null (old context refcount
+//      drops to 0 → gets destroyed → the singleton lives/dies here)
+//   7. byte_660934 = 0; tail: jmp off_6229C8 (global cleanup chain, TODO)
 // ============================================================================
 void TextureCacheShutdown(void)
 {
     if (!s_havokInited)
         return;
 
-    // Adım 2 — TODO(Faz 4.4b): sub_52E700()
+    // Step 2 — TODO(Phase 4.4b): sub_52E700()
 
-    // Adım 3-5 — üç alt sistem nesnesini bırak (binary sırası: 38, 3C, 40)
+    // Step 3-5 — release the three sub-system objects (binary order: 38, 3C, 40)
     ReleaseRefObject(s_pSystem38);
     ReleaseRefObject(s_pSystem3C);
     ReleaseRefObject(s_pSystem40);
 
-    // Adım 6 — aktif context'i null'a takas (binary: sub_52DCA0(0))
+    // Step 6 — swap the active context to null (binary: sub_52DCA0(0))
     SetActiveMemoryContext(0);
 
     s_havokInited = false;                            // byte_660934 = 0
 
-    // Adım 7 — TODO(Faz 4.4b): off_6229C8 (global temizlik zinciri)
+    // Step 7 — TODO(Phase 4.4b): off_6229C8 (global cleanup chain)
 }

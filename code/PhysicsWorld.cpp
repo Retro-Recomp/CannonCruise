@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Havok Physics World (PhysicsWorld.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PhysicsWorld.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0043b9a0 — CPhysicsWorldBehaviour constructor & registration
 //   FUN_0043a040 — CPhysicsWorld::Update
 //   FUN_0043aa20 — CPhysicsWorld::AddRigidBody
@@ -18,10 +18,10 @@
 RWS_REGISTER_CLASS(CPhysicsWorldBehaviour, []() -> void* { return new CPhysicsWorldBehaviour(); }, sizeof(CPhysicsWorldBehaviour));
 
 // ---------------------------------------------------------------------------
-// Create – startup zinciri oluşturucusu (binary: sub_41A680, HavokInit
-// sonrası alloc 0x440 + ctor sub_49C870 → dword_635AF4'ye singleton yazımı).
-// Singleton zaten varsa mevcut örnek döner (ikinci new CSingleton assert
-//'i tetiklemez).
+// Create – startup chain allocator (binary: sub_41A680, after HavokInit
+// alloc 0x440 + ctor sub_49C870 → singleton written into dword_635AF4).
+// If the singleton already exists, returns the existing instance (the second
+// new does not trigger the CSingleton assert).
 // ---------------------------------------------------------------------------
 CPhysicsWorld* CPhysicsWorld::Create()
 {
@@ -63,7 +63,7 @@ CPhysicsWorld::~CPhysicsWorld()
 // ---------------------------------------------------------------------------
 // Update – steps the physics simulation forward by deltaTime.
 // In the original binary (FUN_0043a040) this calls hkpWorld::stepDeltaTime;
-// backend: btDiscreteDynamicsWorld::stepSimulation(dt, 1, dt) — sabit adım.
+// backend: btDiscreteDynamicsWorld::stepSimulation(dt, 1, dt) — fixed step.
 // ---------------------------------------------------------------------------
 void CPhysicsWorld::Update(RwReal deltaTime)
 {
@@ -176,9 +176,9 @@ void CPhysicsWorld::RemovePhantom(void* pPhantom)
 
 // ---------------------------------------------------------------------------
 // Constructor – uses the startup-created singleton (binary sub_41A680);
-// if absent (seviye/test yolu), creates one and takes ownership.
-// Binary'de behaviour ctor'ı (sub_43B860) yalnız container tahsis eder —
-// dünya singleton'ı startup'tan gelir.
+// if absent (level/test path), creates one and takes ownership.
+// In the binary the behaviour ctor (sub_43B860) only allocates the container —
+// the world singleton comes from startup.
 // ---------------------------------------------------------------------------
 CPhysicsWorldBehaviour::CPhysicsWorldBehaviour()
     : m_pPhysicsWorld(0), m_bOwnsWorld(FALSE)
@@ -193,8 +193,8 @@ CPhysicsWorldBehaviour::CPhysicsWorldBehaviour()
 
 // ---------------------------------------------------------------------------
 // Destructor – tears down the physics world only if this behaviour created
-// it (startup-created singleton shutdown zincirinde lifespan sahibidir —
-// TextureCacheShutdown/binary sub_41AB90 dword_635AF4 temizliği).
+// it (the startup-created singleton has the lifetime in the shutdown chain —
+// TextureCacheShutdown/binary sub_41AB90 dword_635AF4 cleanup).
 // ---------------------------------------------------------------------------
 CPhysicsWorldBehaviour::~CPhysicsWorldBehaviour()
 {

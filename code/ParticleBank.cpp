@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Particle Bank Resource (ParticleBank.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ParticleBank.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0044d240 — CParticleBank::Load
 // ============================================================================
 
@@ -25,7 +25,7 @@ CParticleBank::~CParticleBank()
 
 // ============================================================================
 // CParticleBank::Load (FUN_0044d240)
-// ASM: 0044d240 — Parçacık bankası dosyasını oku ve başlığı doğrula
+// ASM: 0044d240 — Read the particle bank file and validate the header
 // ============================================================================
 RwBool CParticleBank::Load(const char* pFilename)
 {

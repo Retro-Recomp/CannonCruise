@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Performance Visualizer (PerformanceVisualizer.h)
 // Original path: D:\Projects\CannonCruisePC\code\PerformanceVisualizer.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // Binary ref: FUN_00498020 - FUN_004981e0 (CPerformanceVisualizer)
 // ============================================================================
 
@@ -13,61 +13,61 @@
 
 /**
  * @class CPerformanceVisualizer
- * @brief Ekran üzerinde gerçek zamanlı performans bilgisi görüntüleyen hata ayıklama aracı.
+ * @brief Debug tool that displays real-time performance info on screen.
  *
- * CRealtimeProfiler ve CProfilerBehaviour ile entegre çalışarak FPS,
- * kare süresi ve sistem yükü gibi metrikleri Im2D (RenderWare 2D primitif)
- * API'si aracılığıyla ekrana çizer. Yalnızca geliştirme/debug yapılarında etkindir.
+ * Integrated with CRealtimeProfiler and CProfilerBehaviour, it draws metrics such as
+ * FPS, frame time and system load to the screen through the Im2D (RenderWare 2D primitive)
+ * API. Active only in development/debug builds.
  *
- * **Render davranışı:**
- * - `m_bEnabled` FALSE ise `Render()` erken döner ve hiçbir şey çizmez.
- * - Metin çizimi için `m_pCharset` (RtCharset) kullanılır.
- * - Profil çubukları Im2D primitifleriyle çizilir.
+ * **Render behavior:**
+ * - If `m_bEnabled` is FALSE, `Render()` returns early and draws nothing.
+ * - `m_pCharset` (RtCharset) is used for text drawing.
+ * - Profile bars are drawn with Im2D primitives.
  *
- * **Binary referansları:**
+ * **Binary references:**
  * - Ctor: `FUN_00498020`
- * - Render: `FUN_004980a0` (stub — gövde henüz doldurulmamış)
+ * - Render: `FUN_004980a0` (stub -- body not yet filled in)
  * - HandleEvents: `FUN_00498180`
  */
 class CPerformanceVisualizer : public RWS::CEventHandler
 {
 public:
     /**
-     * @brief Varsayılan yapıcı — charset kaynağını başlatır, olaylara kaydolur.
+     * @brief Default constructor — initializes the charset resource, registers for events.
      */
     CPerformanceVisualizer();
 
     /**
-     * @brief Yıkıcı — charset kaynağını serbest bırakır, olay kayıtlarını iptal eder.
+     * @brief Destructor — releases the charset resource, unregisters event handling.
      */
     virtual ~CPerformanceVisualizer();
 
     /**
-     * @brief Gelen performans profil olaylarını işler.
-     * @param msg İşlenecek CMsg olayı.
+     * @brief Processes incoming performance profile events.
+     * @param msg The CMsg event to process.
      */
     virtual void HandleEvents(const RWS::CMsg& msg);
 
     /**
-     * @brief Performans metriklerini ekrana çizer.
+     * @brief Draws performance metrics to the screen.
      *
-     * `m_bEnabled` FALSE ise hiçbir şey çizmez.
-     * Im2D primitifleri ve RtCharset kullanılarak FPS ve profil çubukları
-     * ekranın üst bölümüne yerleştirilir.
+     * Draws nothing if `m_bEnabled` is FALSE.
+     * FPS and profile bars are placed at the top of the screen using
+     * Im2D primitives and RtCharset.
      *
-     * @note Binary adresi `FUN_004980a0` — gövde henüz tam doldurulmamış (stub).
+     * @note Binary address `FUN_004980a0` — body not yet fully filled in (stub).
      */
     void Render();
 
     /**
-     * @brief Görselleştiriciyi etkinleştirir veya devre dışı bırakır.
-     * @param bEnable TRUE ise sonraki Render() çağrıları aktif olur.
+     * @brief Enables or disables the visualizer.
+     * @param bEnable If TRUE, subsequent Render() calls are active.
      */
     void SetEnabled(RwBool bEnable) { m_bEnabled = bEnable; }
 
 private:
-    RwBool m_bEnabled;   ///< Görselleştirici etkin mi?
-    void* m_pCharset;    ///< Metin çizimi için RtCharset işaretçisi
+    RwBool m_bEnabled;   ///< Is the visualizer enabled?
+    void* m_pCharset;    ///< RtCharset pointer for text drawing
 };
 
 #endif // PERFORMANCEVISUALIZER_H

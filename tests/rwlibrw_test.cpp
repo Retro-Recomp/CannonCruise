@@ -1,14 +1,14 @@
 // ============================================================================
 // CannonCruise - librw Stream Validation Test (rwlibrw_test.cpp)
-// Kapı 4 doğrulaması: librw shim (rw_librw.cpp) üzerinden GERÇEK oyun
-// asset'i açılır ve chunk başlıkları taranır.
+// Gate 4 verification: the REAL game asset is opened through the librw
+// shim (rw_librw.cpp) and chunk headers are scanned.
 //
 //   RwEngineInit/Open/Start → librw rw::Engine (NULL platform, cihaz yok)
 //   RwStreamOpen(Streams/*.RWS) → rw::StreamFile
-//   RwStreamReadChunkHeaderInfo döngüsü → chunk envanteri
-//   RwStreamFindChunk(rwID_CLUMP / rwID_TEXDICTIONARY) → klasik ID kontrolü
+//   RwStreamReadChunkHeaderInfo loop → chunk inventory
+//   RwStreamFindChunk(rwID_CLUMP / rwID_TEXDICTIONARY) → classic ID check
 //
-// Kullanım: rwlibrw_test <path-to-rws>
+// Usage: rwlibrw_test <path-to-rws>
 // ============================================================================
 
 #include "rwcore.h"
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     }
     const char *pPath = argv[1];
 
-    // motor yaşam döngüsü — librw NULL platform
+    // engine lifecycle — librw NULL platform
     CHECK(RwEngineInit(0, 0, 0) == TRUE);
     CHECK(RwEngineOpen() == TRUE);
     CHECK(RwEngineStart() == TRUE);
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // chunk envanteri — classic RW3 12 bayt başlık döngüsü
+    // chunk inventory — classic RW3 12-byte header loop
     int chunkCount = 0;
     int clumpCount = 0;
     int txdCount = 0;
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
         RwChunkHeaderInfo header;
         std::memset(&header, 0, sizeof(header));
         if (!RwStreamReadChunkHeaderInfo(pStream, &header)) {
-            break; // EOF / bozuk başlık — döngü sonu
+            break; // EOF / corrupt header — end of loop
         }
         if (header.type == 0) {
             break; // rwID_NAOBJECT
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
         if (header.type == 0x01) {
             ++structCount;
         }
-        // ilk birkaç chunk'ı yazdır (gözlemsel)
+        // print first few chunks (observational)
         if (chunkCount <= 8) {
             std::printf("chunk[%d]: type=0x%04X len=%u ver=0x%08X\n",
                         chunkCount - 1, header.type, header.length,
@@ -91,13 +91,13 @@ int main(int argc, char **argv) {
                 "struct=%d)\n",
                 chunkCount, clumpCount, txdCount, worldCount, structCount);
 
-    // gerçek sahne stream'i chunk içermeli (kapı 4 sinyali)
+    // real scene stream must contain chunks (Gate 4 signal)
     CHECK(chunkCount > 0);
 
-    // FindChunk — atla + geri sarmalama yok; dosyanın BAŞINDAN tarama için
-    // yeni açılan akış kullanılır
+    // FindChunk — skip + no rewind; a newly opened stream is used to scan
+    // from the START of the file
     CHECK(RwStreamFindChunk(pStream, rwID_CLUMP, 0, 0) == TRUE ||
-          clumpCount == 0); // clump yoksa FindChunk da olumsuz kabul
+          clumpCount == 0); // if there is no clump, a negative FindChunk result is also accepted
 
     CHECK(RwStreamClose(pStream, 0) == TRUE);
 

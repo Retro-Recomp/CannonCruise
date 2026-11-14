@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Menu Get Time Delegate (MenuGetTimeDelegate.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\MenuGetTimeDelegate.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_004455e0 — CMenuGetTimeDelegate constructor
 //   FUN_00445750 — CMenuGetTimeDelegate::Execute
 // ============================================================================

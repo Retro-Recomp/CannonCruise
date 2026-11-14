@@ -49,7 +49,7 @@ CCannonball::~CCannonball()
         sm_nCannonBallsAddedToWorlds--;
     }
 
-    // Bullet dünyasından ve belleğinden çıkar
+    // Remove from the Bullet world and its memory
     RemoveFromWorld();
     if (m_pShape)
     {
@@ -74,8 +74,8 @@ void CCannonball::HandleEvents(const RWS::CMsg& msg)
 
 // ---------------------------------------------------------------------------
 // Spawn – mirrors FUN_0046d1e0.
-// Bullet küresel gövde (mass 10 kg) yaratıp dünyanın Bullet fazında
-// kaydedip; ilk velocity'yi verir, 5 sn lifetime yapar, ses çalar.
+// Create a spherical Bullet body (mass 10 kg) and, during the world's Bullet phase,
+// register it; set the initial velocity, give it a 5 s lifetime, play a sound.
 // ---------------------------------------------------------------------------
 void CCannonball::Spawn(const SCannonballSpawnData& spawnData)
 {
@@ -83,7 +83,7 @@ void CCannonball::Spawn(const SCannonballSpawnData& spawnData)
     m_uOwnerID = spawnData.m_uOwnerID;
     m_fLifeTimer = 5.0f; // Default 5.0 seconds maximum flight time
 
-    // Bullet küre şekli — top büyüklüğünde ~0.8 m yarıçap
+    // Bullet sphere shape — roughly cannonball-sized, ~0.8 m radius
     if (m_pShape == 0) {
         m_pShape = PhysicsShape_CreateSphere(0.8f);
     }

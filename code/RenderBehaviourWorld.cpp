@@ -1,6 +1,6 @@
 // ============================================================================
 // CannonCruise - RenderBehaviourWorld singleton (RenderBehaviourWorld.cpp)
-// Tersine mühendislik ile yeniden yazılmıştır.
+// Rewritten via reverse engineering.
 // Binary ref: FUN_004c4410 (ctor/default), FUN_004c3e40 (property apply).
 // ============================================================================
 
@@ -24,8 +24,8 @@ void CRenderBehaviourWorld::Destroy() {
 }
 
 void CRenderBehaviourWorld::Init() {
-    // FUN_004c4410 default'ları (çekirdek alan; pass/pool'lar port
-    // gerektiğinde eklenir):
+    // FUN_004c4410 defaults (core area; pass/pools are added to the port
+    // when needed):
     //   [5]=+0x14 → 0, [6]=+0x18 → 125.0f, [7]=+0x1c → 1.0f,
     //   [8]=+0x20 → 0, [9]=+0x24 → 1, [0x14]=+0x50 → 1000.0f,
     //   [0x15]=+0x54 → 300.0f, [0x16]=+0x58 → 0
@@ -60,7 +60,7 @@ RwBool CRenderBehaviourWorld::ApplyWbRenderAttribute(RwUInt32 id,
         std::memcpy(&m_param5, &value, 4);
         return TRUE;
     case 0x6:
-        // ARGB → R,G,B baytları float olarak (binary: >>16, >>8, &0xff)
+        // ARGB -> R,G,B bytes as float (binary: >>16, >>8, &0xff)
         m_color1R = (float)((value >> 16) & 0xFF);
         m_color1G = (float)((value >> 8) & 0xFF);
         m_color1B = (float)(value & 0xFF);
@@ -86,7 +86,7 @@ RwBool CRenderBehaviourWorld::ApplyWbRenderAttribute(RwUInt32 id,
         std::memcpy(&m_paramC, &value, 4);
         return TRUE;
     default:
-        // binary: assert "Unhandled attribute in WbRender..." (satır 0xC0)
+        // binary: assert "Unhandled attribute in WbRender..." (line 0xC0)
         return FALSE;
     }
 }

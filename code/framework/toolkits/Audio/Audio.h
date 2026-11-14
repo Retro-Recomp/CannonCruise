@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (Audio.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Audio\Audio.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00407000 - FUN_004072a0 (RWS::Audio)
 // ============================================================================
 
@@ -14,77 +14,77 @@ namespace RWS
 {
     /**
      * @namespace RWS::Audio
-     * @brief RenderWare Studio ses altyapısı yardımcı fonksiyonları.
+     * @brief Helper functions for the RenderWare Studio audio infrastructure.
      *
-     * CannonCruise'un ses sistemi `CAudioManager` aracılığıyla çalışır;
-     * bu namespace ise alttaki ses motorunun (DirectSound / Miles Sound System)
-     * başlatılması ve seviye kontrolü için düz fonksiyonlar sunar.
+     * CannonCruise's audio system runs through `CAudioManager`;
+     * it exposes the underlying sound engine (DirectSound / Miles Sound System)
+     * this namespace offers plain functions to start it and control levels.
      *
-     * **Ses hiyerarşisi:**
-     * - Master Volume → genel çıkış seviyesi
-     * - Effects Volume → SFX kanalları (top sesi, dalga vb.)
-     * - Music Volume → arka plan müziği
+     * **Sound hierarchy:**
+     * - Master Volume → global output level
+     * - Effects Volume → SFX channels (cannonball sound, waves etc.)
+     * - Music Volume → background music
      *
-     * **3D ses:** `SetListenerPosition()` her karede kameranın konumuyla çağrılmalıdır.
+     * **3D audio:** `SetListenerPosition()` must be called every frame with the camera's position.
      */
     namespace Audio
     {
         /**
-         * @brief Ses alt sistemini başlatır.
-         * @return TRUE ise başlatma başarılı.
+         * @brief Initializes the audio subsystem.
+         * @return TRUE if initialization succeeded.
          *
-         * `CAudioManager` oluşturulmadan önce çağrılmalıdır.
+         * Must be called before `CAudioManager` is created.
          */
         RwBool Initialize();
 
         /**
-         * @brief Ses alt sistemini kapatır, tüm kaynakları serbest bırakır.
+         * @brief Shuts down the audio subsystem, releasing all resources.
          */
         void Shutdown();
 
         /**
          * @brief Genel ses seviyesini ayarlar.
-         * @param volume [0.0, 1.0] aralığında ses seviyesi.
+         * @param volume Audio level in the [0.0, 1.0] range.
          */
         void SetMasterVolume(RwReal volume);
 
         /**
-         * @brief Genel ses seviyesini döndürür.
-         * @return RwReal — Geçerli master volume değeri.
+         * @brief Returns the master audio level.
+         * @return RwReal — Current master volume value.
          */
         RwReal GetMasterVolume();
 
         /**
          * @brief Efekt ses seviyesini ayarlar.
-         * @param volume [0.0, 1.0] aralığında ses efekti seviyesi.
+         * @param volume Sound effect level in the [0.0, 1.0] range.
          */
         void SetEffectsVolume(RwReal volume);
 
         /**
-         * @brief Efekt ses seviyesini döndürür.
-         * @return RwReal — Geçerli effects volume değeri.
+         * @brief Returns the effects audio level.
+         * @return RwReal — Current effects volume value.
          */
         RwReal GetEffectsVolume();
 
         /**
-         * @brief Müzik ses seviyesini ayarlar.
-         * @param volume [0.0, 1.0] aralığında müzik seviyesi.
+         * @brief Sets the music audio level.
+         * @param volume Music level in the [0.0, 1.0] range.
          */
         void SetMusicVolume(RwReal volume);
 
         /**
-         * @brief Müzik ses seviyesini döndürür.
-         * @return RwReal — Geçerli music volume değeri.
+         * @brief Returns the music audio level.
+         * @return RwReal — Current music volume value.
          */
         RwReal GetMusicVolume();
 
         /**
-         * @brief 3D ses dinleyicisinin konumunu günceller.
-         * @param pPos     Dinleyici (kamera) dünya konumu.
-         * @param pForward Dinleyicinin baktığı yön (normalize edilmiş).
-         * @param pUp      Dinleyicinin yukarı yönü (normalize edilmiş).
+         * @brief Updates the position of the 3D audio listener.
+         * @param pPos     Listener (camera) world position.
+         * @param pForward Direction the listener is facing (normalized).
+         * @param pUp      Listener's up direction (normalized).
          *
-         * Her karede kamera güncellemesinin hemen ardından çağrılmalıdır.
+         * Must be called every frame right after the camera update.
          */
         void SetListenerPosition(const RwV3d* pPos, const RwV3d* pForward, const RwV3d* pUp);
     }

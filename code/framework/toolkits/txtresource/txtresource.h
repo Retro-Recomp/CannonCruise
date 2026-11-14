@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (txtresource.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\txtresource\txtresource.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00409400 - FUN_004094a0 (RWS::TxtResource)
 // ============================================================================
 
@@ -14,12 +14,12 @@ namespace RWS
 {
     /**
      * @class TxtResource
-     * @brief Metin tabanlı kaynak dosyalarını (`.txt`, `.ini`, `.xml` vb.) yöneten sınıf.
+     * @brief Class managing text-based resource files (`.txt`, `.ini`, `.xml` etc.).
      *
-     * `CResourceManager` tarafından metin tabanlı oyun ayarlarını veya
-     * diyalogları yüklemek için çağrılır.
+     * Called by `CResourceManager` to load text-based game settings or
+     * dialogues.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Load: `FUN_00409400`
      * - Unload: `FUN_00409460`
      */
@@ -27,15 +27,15 @@ namespace RWS
     {
     public:
         /**
-         * @brief Dosya sisteminden metin kaynağını okur ve belleğe yükler.
-         * @param pFilename Yüklenecek metin dosyasının yolu.
-         * @return char* — Dosya içeriğini barındıran null ile sonlandırılmış dize (başarısızlıkta nullptr).
+         * @brief Reads a text resource from the file system and loads it into memory.
+         * @param pFilename Path of the text file to load.
+         * @return char* — Null-terminated string holding the file's content (nullptr on failure).
          */
         static char* Load(const char* pFilename);
 
         /**
-         * @brief Yüklenmiş metin kaynağının belleğini serbest bırakır.
-         * @param pTextData Serbest bırakılacak metin verisi.
+         * @brief Releases the memory of the loaded text resource.
+         * @param pTextData Text data to release.
          */
         static void Unload(char* pTextData);
     };

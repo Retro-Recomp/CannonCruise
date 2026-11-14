@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Soldier NPC & Soldier AI (Soldier.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\Soldier.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004b7e40 — CSoldier attribute handling & setup
 //   FUN_004b8160 — CSoldier destructor & cleanup ("ms_nSoldiersAddedToWorlds != 0 Failed")
 //   FUN_004b8710 — CSoldier::HandleEvents ("CSoldier HE iMsgRunningTick")

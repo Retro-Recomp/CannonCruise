@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (streamhandler.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\streamhandler\streamhandler.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00408ad0 — CStreamHandler::RegisterChunkHandler
 //   FUN_00408e00 — CStreamHandler::ProcessStream
 // ============================================================================
@@ -58,7 +58,7 @@ namespace RWS
 
     // ========================================================================
     // CStreamHandler::RegisterChunkHandler (FUN_00408ad0)
-    // ASM: 00408ad0 — Belirli bir chunk ID'si için işleyici kaydet
+    // ASM: 00408ad0 — Register a handler for a specific chunk ID
     // ========================================================================
     RwBool CStreamHandler::RegisterChunkHandler(RwUInt32 chunkId, ChunkHandlerFunc pHandler)
     {
@@ -82,7 +82,7 @@ namespace RWS
 
     // ========================================================================
     // CStreamHandler::ProcessStream (FUN_00408e00)
-    // ASM: 00408e00 — RenderWare Studio veri akışını ayrıştır
+    // ASM: 00408e00 — Parse the RenderWare Studio data stream
     // ========================================================================
     RwBool CStreamHandler::ProcessStream(RwStream* pStream)
     {
@@ -103,7 +103,7 @@ namespace RWS
             }
             else
             {
-                // Bilinmeyen veya işleyicisi olmayan chunk'ı atla
+                // Skip unknown chunks or chunks without a handler
                 RwStreamSkip(pStream, chunkHeader.length);
             }
         }

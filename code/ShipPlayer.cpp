@@ -1,9 +1,9 @@
 ﻿// ============================================================================
 // CannonCruise - Player Ship Entity (ShipPlayer.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ShipPlayer.cpp
-// Tersine muhendislik ile Ghidra ve CC_ida.asm analiz edilerek yeniden yazilmistir.
+// Reverse-engineered via Ghidra and CC_ida.asm analysis.
 //
-// Binary Fonksiyonlari:
+// Binary Functions:
 //   sub_4AE6C0 - CClassFactory::Register("CShipPlayer", 0x488)
 //   sub_4AE700 - CShipPlayer constructor & event registration
 //   sub_4AF3C0 - CShipPlayer per-frame update & physics
@@ -49,13 +49,13 @@ CShipPlayer::~CShipPlayer()
  */
 void CShipPlayer::HandleEvents(const RWS::CMsg &msg)
 {
-    // Once taban CShip olaylarini islet (physics tick vb.)
+    // First run the base CShip events (physics tick etc.)
     CShip::HandleEvents(msg);
 
     if (msg.m_Id == 0) return;
 
-    // Skor ve hava durumu olaylari
-    // Gercek entegrasyonda RegisterMsg id'leri ile karsilastirilir
+    // Score and weather events
+    // In real integration this is compared against RegisterMsg ids
     if (msg.m_pData != nullptr)
     {
         const char *pStr = static_cast<const char *>(msg.m_pData);
@@ -98,7 +98,7 @@ void CShipPlayer::UpdatePlayer(RwReal deltaTime)
         return;
     }
 
-    // Gemi fizigini ve hareketini guncelle
+    // Update ship physics and movement
     CShip::Update(deltaTime);
 }
 

@@ -1,5 +1,5 @@
-﻿# SDK-independent unit tests (Faz 6 / roadmap "test kapsamÄ±").
-# Each test compiles only the framework sources under test â€” no RenderWare,
+﻿# SDK-independent unit tests (Phase 6 / roadmap "test coverage").
+# Each test compiles only the framework sources under test - no RenderWare,
 # Havok or platform SDK is required.
 #
 # Run from the code/ build tree:
@@ -55,19 +55,19 @@ add_sdk_test(renderpipeline_test
     ${CODE_DIR}/RenderPipeline.cpp
 )
 
-# Faz 4.6 â€” Bullet physics backend (Havok yerine); binary parametreleri
-# gravity -9.8 / friction 0.6 / restitution 0.3 / adÄ±m 1/60 doÄŸrulanÄ±r.
+# Phase 4.6 - Bullet physics backend (instead of Havok); binary parameters
+# gravity -9.8 / friction 0.6 / restitution 0.3 / step 1/60 verified.
 add_sdk_test(physics_test
     ${CMAKE_CURRENT_SOURCE_DIR}/physics_test.cpp
     ${CODE_DIR}/PhysicsBackend.cpp
 )
-# Bullet include'larÄ± hedeflere yayÄ±lmaz â†’ elle
+# Bullet includes are not propagated to targets - manual
 target_include_directories(physics_test PRIVATE ${bullet3_SOURCE_DIR}/src)
 target_link_libraries(physics_test PRIVATE
     BulletDynamics BulletCollision LinearMath)
 
-# Faz 4.6h â€” Havok 2.2.1 shim: binary adlandÄ±rmasÄ± (hkp Ã¶neki YOK) +
-# Bullet motoru Ã¼zerine gerÃ§ek implementasyon (hkWorld/hkRigidBody/hkPhantom).
+# Phase 4.6h - Havok 2.2.1 shim: binary naming (NO hkp prefix) +
+# real implementation on the Bullet engine (hkWorld/hkRigidBody/hkPhantom).
 # gravity -9.8 / friction 0.6 / restitution 0.3 (sub_55E6D0) + stepDeltaTime.
 add_executable(havokshim_test
     ${CMAKE_CURRENT_SOURCE_DIR}/havokshim_test.cpp
@@ -84,8 +84,8 @@ target_link_libraries(havokshim_test PRIVATE
 )
 add_test(NAME havokshim_test COMMAND havokshim_test)
 
-# Faz 4.6 â€” entity/trigger akÄ±ÅŸÄ±: CPhysicsEntity eriÅŸimcileri + AddToWorld
-# singleton kaydÄ±; CCollisionTrigger phantom + PollOverlaps enter/leave.
+# Phase 4.6 - entity/trigger flow: CPhysicsEntity accessors + AddToWorld
+# singleton registration; CCollisionTrigger phantom + PollOverlaps enter/leave.
 add_sdk_test(physics_entity_test
     ${CMAKE_CURRENT_SOURCE_DIR}/physics_entity_test.cpp
     ${CODE_DIR}/PhysicsEntity.cpp
@@ -100,9 +100,9 @@ target_include_directories(physics_entity_test PRIVATE ${bullet3_SOURCE_DIR}/src
 target_link_libraries(physics_entity_test PRIVATE
     BulletDynamics BulletCollision LinearMath)
 
-# Faz 4.6d â€” librw stream doÄŸrulamasÄ±: gerÃ§ek Streams/*.RWS asset'i
-# RwStream shim Ã¼zerinden chunk chunk taranÄ±r (kapÄ± 4 sinyali).
-# add_sdk_test yerine elle: test argÃ¼man olarak asset yolunu alÄ±r.
+# Phase 4.6d - librw stream validation: real Streams/*.RWS asset
+# scanned chunk by chunk via the RwStream shim (4 gate signals).
+# manual instead of add_sdk_test: test takes the asset path as an argument.
 add_executable(rwlibrw_test
     ${CMAKE_CURRENT_SOURCE_DIR}/rwlibrw_test.cpp
     ${CODE_DIR}/rw_librw.cpp
@@ -112,8 +112,8 @@ target_link_libraries(rwlibrw_test PRIVATE librw::librw)
 add_test(NAME rwlibrw_test COMMAND rwlibrw_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6e â€” rwstudio konteyner parse: asset kaydÄ±/manifest envanteri +
-# gÃ¶mÃ¼lÃ¼ txd payload doÄŸrulamasÄ± (hexdump forensics ile sabit beklentiler).
+# Phase 4.6e - rwstudio container parse: asset record/manifest inventory +
+# embedded txd payload validation (fixed expectations via hexdump forensics).
 add_executable(rwstudio_test
     ${CMAKE_CURRENT_SOURCE_DIR}/rwstudio_test.cpp
     ${CODE_DIR}/rw_librw.cpp
@@ -126,8 +126,8 @@ add_test(NAME rwstudio_test COMMAND rwstudio_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/VIKING01.RWS)
 
-# Faz 4.6h â€” RenderBehaviourWorld property apply: 0x0704 idâ†’offset
-# haritasÄ± (FUN_004c3e40) gerÃ§ek MAINMENU obj#0 verisiyle doÄŸrulanÄ±r.
+# Phase 4.6h - RenderBehaviourWorld property apply: 0x0704 id->offset
+# map (FUN_004c3e40) verified with real MAINMENU obj#0 data.
 add_executable(renderworld_test
     ${CMAKE_CURRENT_SOURCE_DIR}/renderworld_test.cpp
     ${CODE_DIR}/RenderBehaviourWorld.cpp
@@ -139,8 +139,8 @@ target_link_libraries(renderworld_test PRIVATE librw::librw)
 add_test(NAME renderworld_test COMMAND renderworld_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6i â€” CWbCameraBehavior property apply: 51 case'lik switch
-# (sub_4C3450) gerÃ§ek MAINMENU obj#1 verisiyle doÄŸrulanÄ±r.
+# Phase 4.6i - CWbCameraBehavior property apply: 51-case switch
+# (sub_4C3450) verified with real MAINMENU obj#1 data.
 add_executable(camerastate_test
     ${CMAKE_CURRENT_SOURCE_DIR}/camerastate_test.cpp
     ${CODE_DIR}/CameraState.cpp
@@ -152,8 +152,8 @@ target_link_libraries(camerastate_test PRIVATE librw::librw)
 add_test(NAME camerastate_test COMMAND camerastate_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6j â€” CAudioStreamEntity property apply: 6 case'lik switch
-# (sub_458BD0) gerÃ§ek MAINMENU obj#2 verisiyle doÄŸrulanÄ±r.
+# Phase 4.6j - CAudioStreamEntity property apply: 6-case switch
+# (sub_458BD0) verified with real MAINMENU obj#2 data.
 add_executable(audiostream_test
     ${CMAKE_CURRENT_SOURCE_DIR}/audiostream_test.cpp
     ${CODE_DIR}/AudioStreamEntity.cpp
@@ -165,8 +165,8 @@ target_link_libraries(audiostream_test PRIVATE librw::librw)
 add_test(NAME audiostream_test COMMAND audiostream_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6k â€” BehaviourLoader create-by-name dispatch: sÄ±nÄ±f adÄ± â†’
-# CClassFactory â†’ create â†’ apply virtual; render/camera/audio uÃ§tan uca.
+# Phase 4.6k - BehaviourLoader create-by-name dispatch: class name ->
+# CClassFactory -> create -> apply virtual; render/camera/audio end to end.
 add_executable(behaviourloader_test
     ${CMAKE_CURRENT_SOURCE_DIR}/behaviourloader_test.cpp
     ${CODE_DIR}/BehaviourLoader.cpp
@@ -182,8 +182,8 @@ target_link_libraries(behaviourloader_test PRIVATE librw::librw)
 add_test(NAME behaviourloader_test COMMAND behaviourloader_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6l â€” GÃ¶mÃ¼lÃ¼ TXD (d3d8 IMAGE) decode: MAINMENU gÃ¶mÃ¼lÃ¼ txdsi
-# (16 texture) decode edilip name/format/piksel doÄŸrulanÄ±r.
+# Phase 4.6l - Embedded TXD (d3d8 IMAGE) decode: MAINMENU embedded txd
+# (16 textures) decoded and name/format/pixel verified.
 add_executable(txddecode_test
     ${CMAKE_CURRENT_SOURCE_DIR}/txddecode_test.cpp
     ${CODE_DIR}/TxdDecode.cpp
@@ -195,8 +195,8 @@ target_link_libraries(txddecode_test PRIVATE librw::librw)
 add_test(NAME txddecode_test COMMAND txddecode_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6m â€” Statik dÃ¼nya Ã§arpÄ±ÅŸma (.col / STATICWORLDCOLLISION): FUN_0043bfa0
-# dÃ¼zeni decode + PhysicsShape_CreateTriMesh; Ã¼Ã§ gerÃ§ek dÃ¼nya sayÄ±/bbox/shape.
+# Phase 4.6m - Static world collision (.col / STATICWORLDCOLLISION): FUN_0043bfa0
+# layout decode + PhysicsShape_CreateTriMesh; three real worlds count/bbox/shape.
 add_executable(coltrimesh_test
     ${CMAKE_CURRENT_SOURCE_DIR}/coltrimesh_test.cpp
     ${CODE_DIR}/StaticCollisionData.cpp
@@ -217,9 +217,9 @@ add_test(NAME coltrimesh_test COMMAND coltrimesh_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
-# Faz 4.6n â€” Render platformu smoke: librw sahne kurulumu + kare dÃ¶ngÃ¼sÃ¼
-# (clear/BeginUpdate/Im2D test karesi/EndUpdate) + terminate/yeniden kurulum.
-# NULL platform headless â€” device no-op; kare API sÃ¶zleÅŸmesi doÄŸrulanÄ±r.
+# Phase 4.6n - Render platform smoke: librw scene setup + frame loop
+# (clear/BeginUpdate/Im2D test frame/EndUpdate) + terminate/re-setup.
+# NULL platform headless - device no-op; frame API contract verified.
 add_executable(renderplatform_test
     ${CMAKE_CURRENT_SOURCE_DIR}/renderplatform_test.cpp
     ${CODE_DIR}/RenderPlatform.cpp
@@ -231,9 +231,9 @@ target_include_directories(renderplatform_test PRIVATE ${SDK_INCLUDE_DIRS})
 target_link_libraries(renderplatform_test PRIVATE librw::librw)
 add_test(NAME renderplatform_test COMMAND renderplatform_test)
 
-# Faz 4.6o â€” WorldGeometry decode + clump instantiate: [len][libid] prefix
-# + STRUCT/GEOMETRY/EXT + ATOMICÃ—N (gÃ¶mÃ¼lÃ¼ geometry) â€” Ã¼Ã§ gerÃ§ek dÃ¼nya
-# envanter sayÄ±larÄ± + VIKING01 clump (gÃ¶mÃ¼lÃ¼ streamRead) + bozuk girdi.
+# Phase 4.6o - WorldGeometry decode + clump instantiate: [len][libid] prefix
+# + STRUCT/GEOMETRY/EXT + ATOMIC x N (embedded geometry) - three real worlds
+# inventory counts + VIKING01 clump (embedded streamRead) + corrupt input.
 add_executable(worldgeometry_test
     ${CMAKE_CURRENT_SOURCE_DIR}/worldgeometry_test.cpp
     ${CODE_DIR}/WorldGeometry.cpp
@@ -247,8 +247,8 @@ add_test(NAME worldgeometry_test COMMAND worldgeometry_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
-# Faz 4.6s — WorldGeometry TRAILING chunk decode (atomikler sonrası 0x22/0x1E/
-# 0x39; Faz 4.6o'da yalnızca tip okunuyordu). Header alanları + body çözümü.
+# Phase 4.6s - WorldGeometry TRAILING chunk decode (after the atomics 0x22/0x1E/
+# 0x39; in Phase 4.6o only the type was read). Header fields + body decoding.
 add_executable(trailingchunk_test
     ${CMAKE_CURRENT_SOURCE_DIR}/trailingchunk_test.cpp
     ${CODE_DIR}/WorldGeometry.cpp
@@ -262,8 +262,8 @@ add_test(NAME trailingchunk_test COMMAND trailingchunk_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
-# GLOBAL.RWS varlık envanteri — gömülü txd'ler ve harici resource referansları
-# (keşif/regresyon; çıktı ctest logundan incelenir).
+# GLOBAL.RWS asset inventory - embedded txds and external resource references
+# (discovery/regression; output inspected from the ctest log).
 add_executable(globalassets_test
     ${CMAKE_CURRENT_SOURCE_DIR}/globalassets_test.cpp
     ${CODE_DIR}/RwStudioStream.cpp
@@ -274,8 +274,8 @@ target_link_libraries(globalassets_test PRIVATE librw::librw)
 add_test(NAME globalassets_test COMMAND globalassets_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS)
 
-# GLOBAL gömülü txd'yi PNG'lere döker — yükleme ekranı art'ının görsel
-# doğrulaması (çıktı <outdir>/tex_*.png; ctest regresyonu değil, araç).
+# Dumps the GLOBAL embedded txd to PNGs - visual check of the loading screen art
+# (output <outdir>/tex_*.png; not a ctest regression, a tool).
 add_executable(globaldump_test
     ${CMAKE_CURRENT_SOURCE_DIR}/globaldump_test.cpp
     ${CODE_DIR}/TxdDecode.cpp
@@ -288,8 +288,8 @@ add_test(NAME globaldump_test COMMAND globaldump_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Scratchpad/globaldump)
 
-# rwID_CLUMP (gemi .dff) format sondajı — librw clump reader ile çözülür
-# mü test eder (keşif aracı; ctest'e kayıtlı değil — dışarıdan çağır).
+# rwID_CLUMP (ship .dff) format probe - decoded with the librw clump reader
+# or tests it (discovery tool; not registered with ctest - call externally).
 add_executable(shipprobe_test
     ${CMAKE_CURRENT_SOURCE_DIR}/shipprobe_test.cpp
     ${CODE_DIR}/rw_librw.cpp
@@ -297,9 +297,9 @@ add_executable(shipprobe_test
 target_include_directories(shipprobe_test PRIVATE ${SDK_INCLUDE_DIRS})
 target_link_libraries(shipprobe_test PRIVATE librw::librw)
 
-# .RWS asset payload dökücü — rwID_CLUMP / wbID_WORLDGEOMETRY vb. ikili
-# payload'larını <out>.bin olarak döker (heksa/çıktı kontrolü için;
-# keşif aracı — ctest'e kayıtlı değil).
+# .RWS asset payload dumper - rwID_CLUMP / wbID_WORLDGEOMETRY etc. binary
+# payloads dumped as <out>.bin (for hex/output checking;
+# discovery tool - not registered with ctest).
 add_executable(assetdump_test
     ${CMAKE_CURRENT_SOURCE_DIR}/assetdump_test.cpp
     ${CODE_DIR}/RwStudioStream.cpp
@@ -308,9 +308,9 @@ add_executable(assetdump_test
 target_include_directories(assetdump_test PRIVATE ${SDK_INCLUDE_DIRS})
 target_link_libraries(assetdump_test PRIVATE librw::librw)
 
-# .RWS objectRecord/manifest tarayıcı — sınıf adları (örn. CShipPlayer,
-# CShipEnemy) ve asset kaynak yollarını (sourcePath .dff referansları)
-# listeler; gemilerin dff'lerini ve spawn davranışlarını bulmak için.
+# .RWS objectRecord/manifest scanner - class names (e.g. CShipPlayer,
+# CShipEnemy) and asset source paths (sourcePath .dff references)
+# listed; to find the ships' dffs and spawn behaviours.
 add_executable(shipscan_test
     ${CMAKE_CURRENT_SOURCE_DIR}/shipscan_test.cpp
     ${CODE_DIR}/RwStudioStream.cpp
@@ -322,8 +322,8 @@ add_test(NAME shipscan_test COMMAND shipscan_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/VIKING01.RWS)
 
-# Faz 4.6s — entegrasyon stres: dünya load → clump → unload zinciri
-# (A→B→C→A→B→C turları; seviye geçişi + unload yolunun çökmemesi).
+# Phase 4.6s - integration stress: world load -> clump -> unload chain
+# (A->B->C->A->B->C rounds; level transition + unload path must not crash).
 add_executable(worldcycle_test
     ${CMAKE_CURRENT_SOURCE_DIR}/worldcycle_test.cpp
     ${CODE_DIR}/WorldGeometry.cpp
@@ -337,9 +337,9 @@ add_test(NAME worldcycle_test COMMAND worldcycle_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
-# Faz 4.6p â€” dÃ¼nya spawn zinciri: 0x0704 kayÄ±tlarÄ± â†’ CClassFactory
-# create + apply (bilinen sÄ±nÄ±flar Ã¼retilir; bilinmeyenler sessiz atla).
-# WHOLE_ARCHIVE: RWS_REGISTER_CLASS statik kayÄ±tlarÄ± archive'tan Ã§ekilsin.
+# Phase 4.6p - world spawn chain: 0x0704 records -> CClassFactory
+# create + apply (known classes are created; unknown ones silently skipped).
+# WHOLE_ARCHIVE: RWS_REGISTER_CLASS static registrations should be pulled from the archive.
 add_executable(worldspawn_test
     ${CMAKE_CURRENT_SOURCE_DIR}/worldspawn_test.cpp
 )
@@ -350,8 +350,8 @@ add_test(NAME worldspawn_test COMMAND worldspawn_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/VIKING01.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS)
 
-# Faz 4.6q â€” ocean smoke: COcean Ä±zgara kurulumu + tile dalgalarÄ± + Im3D
-# render yolunun Ã§Ã¶kmeden Ã§alÄ±ÅŸmasÄ± (NULL device no-op).
+# Phase 4.6q - ocean smoke: COcean grid setup + tile waves + Im3D
+# render path running without crashing (NULL device no-op).
 add_executable(ocean_test
     ${CMAKE_CURRENT_SOURCE_DIR}/ocean_test.cpp
 )
@@ -360,8 +360,8 @@ target_link_libraries(ocean_test PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME ocean_test COMMAND ocean_test)
 
-# Faz 4.6r-1 â€” Rt2dMaestro .anm parser: Menu.anm (32 dÃ¼ÄŸÃ¼m) + CAG_Menu.anm
-# (44 dÃ¼ÄŸÃ¼m) fixture â€” header/node/sahne baÅŸlÄ±ÄŸÄ± birebir.
+# Phase 4.6r-1 - Rt2dMaestro .anm parser: Menu.anm (32 nodes) + CAG_Menu.anm
+# (44 nodes) fixture - header/node/scene header one-to-one.
 add_executable(rt2danim_test
     ${CMAKE_CURRENT_SOURCE_DIR}/rt2danim_test.cpp
 )
@@ -372,7 +372,7 @@ add_test(NAME rt2danim_test COMMAND rt2danim_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAPMENU.RWS)
 
-# Faz 4.6r-4/altyapÄ± â€” menÃ¼+harita durum makinesi (headless, enginesiz).
+# Phase 4.6r-4/infrastructure - menu+map state machine (headless, engineless).
 add_executable(menustate_test
     ${CMAKE_CURRENT_SOURCE_DIR}/menustate_test.cpp
 )
@@ -383,9 +383,9 @@ add_test(NAME menustate_test COMMAND menustate_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAINMENU.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/MAPMENU.RWS)
 
-# .RWS asset yol Ã§Ã¶zÃ¼cÃ¼ â€” CANNONCRUISE_STREAMS env ezmesi + sentinel Ã¶nek
-# taramasÄ± (derin build yerleÅŸimleri). Merkezi Ã§Ã¶zÃ¼cÃ¼ 5 elle-yazÄ±lÄ± aday
-# listesinin yerini alir (main.cpp / SceneManager.cpp).
+# .RWS asset path resolver - CANNONCRUISE_STREAMS env override + sentinel prefix
+# scan (deep build layouts). The central resolver replaces the 5 hand-written candidate
+# list (main.cpp / SceneManager.cpp).
 add_executable(rwsassets_test
     ${CMAKE_CURRENT_SOURCE_DIR}/rwsassets_test.cpp
     ${CODE_DIR}/RwsAssets.cpp
@@ -393,9 +393,9 @@ add_executable(rwsassets_test
 target_include_directories(rwsassets_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
 add_test(NAME rwsassets_test COMMAND rwsassets_test)
 
-# FMV sahne tanÄ±mlayicisi (CFMVBehavior) â€” 8 dosyalÄ±k geÃ§is grafigi (JINGLE/
-# INTRO1-3/CREDITS/OUTRO1-3), video yolu ".\Video\Win32\<ad>.bik" ve HEDEF
-# sahne baglantisi (INTRO1 -> NORDIC01; uppercase denemesi sart).
+# FMV scene descriptor (CFMVBehavior) - 8-file transition graph (JINGLE/
+# INTRO1-3/CREDITS/OUTRO1-3), video path ".\Video\Win32\<name>.bik" and TARGET
+# scene link (INTRO1 -> NORDIC01; uppercase attempt required).
 add_executable(fmvscene_test
     ${CMAKE_CURRENT_SOURCE_DIR}/fmvscene_test.cpp
     ${CODE_DIR}/FmvScene.cpp
@@ -404,8 +404,8 @@ add_executable(fmvscene_test
 target_include_directories(fmvscene_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
 add_test(NAME fmvscene_test COMMAND fmvscene_test)
 
-# LocalizationManager test - Localiza/lang.def, langmap.def ve lang_<dil>.txt
-# parsing, BOM dogrulama, string lookup ve MENUTRIGGER event dispatch.
+# LocalizationManager test - Localiza/lang.def, langmap.def and lang_<lang>.txt
+# parsing, BOM validation, string lookup and MENUTRIGGER event dispatch.
 add_executable(localization_test
     ${CMAKE_CURRENT_SOURCE_DIR}/localization_test.cpp
 )
@@ -413,7 +413,7 @@ target_include_directories(localization_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_
 target_link_libraries(localization_test PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME localization_test COMMAND localization_test)
 
-# CShipPlayer test - reflection class factory kaydi, skor, firtina ve respawn
+# CShipPlayer test - reflection class factory registration, score, storm and respawn
 add_executable(shipplayer_test
     ${CMAKE_CURRENT_SOURCE_DIR}/shipplayer_test.cpp
 )
@@ -421,7 +421,7 @@ target_include_directories(shipplayer_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DI
 target_link_libraries(shipplayer_test PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME shipplayer_test COMMAND shipplayer_test)
 
-# Sprint 1 - oyuncu gemisi Bullet dünyasında yaşıyor: hız + ilerleme asserts
+# Sprint 1 - player ship lives in the Bullet world: speed + progress asserts
 add_executable(playground_test
     ${CMAKE_CURRENT_SOURCE_DIR}/playground_test.cpp
 )
@@ -430,7 +430,7 @@ target_link_libraries(playground_test PRIVATE
     "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME playground_test COMMAND playground_test)
 
-# InputManager test - Focus stack, button edge trigger detection ve ShipPlayerInputProxy
+# InputManager test - Focus stack, button edge trigger detection and ShipPlayerInputProxy
 add_executable(inputmanager_test
     ${CMAKE_CURRENT_SOURCE_DIR}/inputmanager_test.cpp
 )

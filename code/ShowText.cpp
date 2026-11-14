@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Show Text Box Entity (ShowText.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ShowText.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004b38d0 — CShowText constructor & registration
 //   FUN_004b4270 — CShowText::Show
 //   FUN_004b4dcf — CShowText::Render
@@ -22,14 +22,14 @@
 RWS_REGISTER_CLASS(CShowText, []() -> void* { return new CShowText(); }, sizeof(CShowText));
 
 // ---------------------------------------------------------------------------
-// Gömülü 5x7 bitmap font — ASCII 32..126
+// Embedded 5x7 bitmap font — ASCII 32..126
 //
-// Not: Orijinal oyun custom bir font sistemi kullanır (fonts\*.met metrik
-// dosyaları, FUN_004cd660 / FUN_004cd9a0). Aşama 2'de Render önce
-// FontSystem'e (fonts/<ad>.met + doku) bakar; bulunamazsa bu gömülü 5x7
-// tablo fallback olarak kalır.
+// Note: the original game uses a custom font system (fonts\*.met metric
+// files, FUN_004cd660 / FUN_004cd9a0). In Phase 2, Render first
+// checks FontSystem (fonts/<name>.met + texture); if it is not found, this embedded 5x7
+// table remains as the fallback.
 //
-// Her karakter 7 satır; bit 4 (0x10) en sol piksel → bit 0 en sağ piksel.
+// Each character is 7 rows; bit 4 (0x10) is the leftmost pixel → bit 0 is the rightmost pixel.
 // ---------------------------------------------------------------------------
 namespace
 {
@@ -132,14 +132,14 @@ namespace
         {0x00,0x00,0x08,0x15,0x02,0x00,0x00}  // 126 '~'
     };
 
-    const int kFontGlyphW = 5;   // Bir glifin genişliği (piksel)
-    const int kFontGlyphH = 7;   // Bir glifin yüksekliği (piksel)
-    const int kFontAdvance = 6;  // Karakterler arası yatay adım (piksel + 1 boşluk)
-    const int kFontLineStep = 9; // Satırlar arası dikey adım
+    const int kFontGlyphW = 5;   // Width of one glyph (pixels)
+    const int kFontGlyphH = 7;   // Height of one glyph (pixels)
+    const int kFontAdvance = 6;  // Horizontal step between characters (pixels + 1 space)
+    const int kFontLineStep = 9; // Vertical step between lines
 
-    // Tek pikseli ekran koordinatında Im2D quad olarak çizer.
-    // NOT: C stub RwIm2DRenderPrimitive GL3'te no-op (rwstubs.cpp) — bu yüzden
-    // gerçek librw Im2D yoluna köprü kuran RenderPlatform kullanılır.
+    // Draws a single pixel as an Im2D quad in screen coordinates.
+    // NOTE: the C stub RwIm2DRenderPrimitive is a no-op in GL3 (rwstubs.cpp) — therefore
+    // RenderPlatform, which bridges to the real librw Im2D path, is used.
     void DrawPixel(RwReal x, RwReal y, RwReal size, RwReal recipZ, RwReal nearZ,
                    RwUInt8 r, RwUInt8 g, RwUInt8 b, RwUInt8 a)
     {
@@ -150,8 +150,8 @@ namespace
         RenderPlatform_DrawOverlayQuad(x, y, size, size, argb);
     }
 
-    // Aşama 2 — FontSystem metin yolu için satır sarmalama: '\n' ile
-    // bölünür; taşan segmentler kelime kelime MeasureText ile sarmalanır.
+    // Phase 2 — line wrapping for the FontSystem text path: split by '\n'
+    // overflowing segments are wrapped word by word with MeasureText.
     void SplitWrappedLines(const std::string& text, const CCFont* pFont,
                            RwReal maxWidthPx, std::vector<std::string>& out)
     {
@@ -162,7 +162,7 @@ namespace
             const char ch = atEnd ? '\n' : text[i];
             if (ch == '\n' || atEnd)
             {
-                // segmenti kelime kelime sarmala
+                // wrap segments word by word
                 std::string word;
                 std::string line;
                 for (size_t w = 0; w <= segment.size(); ++w)
@@ -205,7 +205,7 @@ namespace
                 }
                 else if (segment.empty())
                 {
-                    out.push_back(std::string()); // boş satır korunur
+                    out.push_back(std::string()); // empty line is preserved
                 }
                 segment.clear();
             }
@@ -231,8 +231,8 @@ CShowText::CShowText()
       m_bVisible(FALSE),
       m_RenderMsgId(RWS::CEventHandler::RegisterMsg("MSG_SHOWTEXT_RENDER"))
 {
-    // Aşama 2: FontSystem varsayılan font adı (fonts/Arial.met yoksa
-    // Render 5x7 fallback'e düşer)
+    // Phase 2: FontSystem default font name (if fonts/Arial.met is missing
+    // Render falls back to the 5x7 fallback)
     std::snprintf(m_FontName, sizeof(m_FontName), "Arial");
 }
 
@@ -249,7 +249,7 @@ CShowText::~CShowText()
  */
 void CShowText::HandleEvents(const RWS::CMsg& msg)
 {
-    // MSG_SHOWTEXT_RENDER → arka plan + metin çizimi
+    // MSG_SHOWTEXT_RENDER → background + text drawing
     if (msg.m_Id == m_RenderMsgId)
     {
         Render();
@@ -283,7 +283,7 @@ void CShowText::Hide()
 }
 
 /**
- * @brief Sets the FontSystem font name for rendering (Aşama 2).
+ * @brief Sets the FontSystem font name for rendering (Phase 2).
  * @param pFontName Requested font name; NULL resets to "Arial".
  */
 void CShowText::SetFontName(const char* pFontName)
@@ -311,7 +311,7 @@ void CShowText::Render()
     RwReal recipZ = 1.0f / RwCameraGetNearClipPlane(pCamera);
     RwReal nearZ = RwCameraGetNearClipPlane(pCamera);
 
-    // RenderStates ayarları
+    // RenderStates settings
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)0);
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)FALSE);
@@ -319,18 +319,18 @@ void CShowText::Render()
     RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 
-    // Alt yazılar için ekranın alt kısmında yatay siyah/yarı saydam bir şerit çiz
-    RwReal boxHeight = screenHeight * 0.15f; // Ekranın %15'i yüksekliğinde
-    RwReal boxY = screenHeight - boxHeight - (screenHeight * 0.05f); // Alt kenardan %5 boşluk
+    // For subtitles, draw a horizontal black/semi-transparent strip at the bottom of the screen
+    RwReal boxHeight = screenHeight * 0.15f; // 15% of the screen height
+    RwReal boxY = screenHeight - boxHeight - (screenHeight * 0.05f); // 5% margin from the bottom edge
 
-    // RenderPlatform köprüsü (librw Im2D) — C stub GL3'te no-op.
+    // RenderPlatform bridge (librw Im2D) — C stub is a no-op in GL3.
     RenderPlatform_DrawOverlayQuad(0.0f, boxY, screenWidth, boxHeight,
-                                   0x96000000u); // Yarı saydam siyah
+                                   0x96000000u); // Semi-transparent black
 
     // -----------------------------------------------------------------
-    // Metin çizimi — önce FontSystem (fonts/*.met + glif UV'leri,
-    // Aşama 2: FontSystem_DrawText sub_4CCC40 portu); font yoksa
-    // gömülü 5x7 bitmap font fallback.
+    // Text drawing — FontSystem first (fonts/*.met + glyph UVs,
+    // Phase 2: FontSystem_DrawText sub_4CCC40 port); if there is no font
+    // fall back to the embedded 5x7 bitmap font.
     // -----------------------------------------------------------------
     if (!m_Text.empty())
     {
@@ -341,7 +341,7 @@ void CShowText::Render()
 
         if (pFont != 0)
         {
-            // Font sistemi yolu — satır yüksekliği ölçek olarak verilir
+            // Font system path — line height is given as the scale
             const RwReal lineH = (screenHeight >= 720.0f) ? 24.0f : 16.0f;
             const RwReal maxWidthPx = screenWidth - 2.0f * textMarginX;
 
@@ -387,13 +387,13 @@ void CShowText::Render()
                     col = 0;
                     if (ch == '\n')
                         continue;
-                    // Taşan karakter aynı satırda çizilmeye devam eder
+                    // An overflowing character continues to be drawn on the same line
                 }
 
                 if (ch == '\n' || ch == '\r' || ch == '\t')
                     continue;
 
-                // ASCII 32..126 dışındaki karakterler boş kutu (boşluk) çizilir
+                // Characters outside ASCII 32..126 draw an empty box (space)
                 const RwUInt8* glyph = 0;
                 const unsigned char code = (unsigned char)ch;
                 if (code >= 32 && code <= 126)
@@ -406,7 +406,7 @@ void CShowText::Render()
                         const RwUInt8 bits = glyph[row];
                         for (int bx = 0; bx < kFontGlyphW; ++bx)
                         {
-                            // bit 4 = en sol piksel
+                            // bit 4 = leftmost pixel
                             if (bits & (RwUInt8)(0x10 >> bx))
                             {
                                 DrawPixel(textX + (RwReal)(bx * scale),
@@ -424,7 +424,7 @@ void CShowText::Render()
         }
     }
 
-    // Varsayılan duruma geri dön
+    // Return to the default state
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)TRUE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)TRUE);
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)FALSE);
@@ -432,8 +432,8 @@ void CShowText::Render()
 
 
 // ---------------------------------------------------------------------------
-// Gömülü 5x7 bitmap font ile düz metin çizimi (menü etiketleri / durum).
-// CShowText kutusu olmadan doğrudan Im2D; DrawPixel deseni.
+// Plain text drawing with the embedded 5x7 bitmap font (menu labels / status).
+// Direct Im2D without a CShowText box; DrawPixel pattern.
 // ---------------------------------------------------------------------------
 void ShowText_DrawBitmapText(const char *pText, RwReal x, RwReal y,
                              int scale, RwUInt8 r, RwUInt8 g, RwUInt8 b,
@@ -442,7 +442,7 @@ void ShowText_DrawBitmapText(const char *pText, RwReal x, RwReal y,
     if (pText == 0 || scale <= 0)
         return;
 
-    // im2d nearZ sabiti (kamera erişimi yok — DrawPixel'e sabit verilir)
+    // im2d nearZ constant (no camera access — a constant is passed to DrawPixel)
     const RwReal nearZ = 0.9997f;
     const RwReal recipZ = 1.0f;
     const RwReal pixelSize = (RwReal)scale;

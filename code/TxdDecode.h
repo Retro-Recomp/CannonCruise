@@ -1,21 +1,21 @@
 // ============================================================================
-// CannonCruise - Gömülü TXD (d3d8 IMAGE) decode
+// CannonCruise - Embedded TXD (d3d8 IMAGE) decode
 //
-// Binary veri kaynağı: MAINMENU.RWS 0x0716 asset'i, gömülü payload
-// (embeddedType=0x23, libId=0x1803FFFF). Payload düzeni (Faz 4.6l dump):
+// Binary data source: MAINMENU.RWS 0x0716 asset, embedded payload
+// (embeddedType=0x23, libId=0x1803FFFF). Payload layout (Phase 4.6l dump):
 //
-//   [u16 textureCount][u16 deviceID]                     (4 bayt başlık)
+//   [u16 textureCount][u16 deviceID]                     (4 byte header)
 //   repeat textureCount:
-//     [u32 flag]                                         (texture başına, dosyada 1)
+//     [u32 flag]                                         (per texture, 1 in file)
 //     [id=0x18][len][ver=0x1803FFFF]  raster: nested [id=1][16B:
-//         u32 width, u32 height, u32 depth(bpp), u32 pitch] + piksel
-//         verisi (pitch*height bayt; 4-aligned)
+//         u32 width, u32 height, u32 depth(bpp), u32 pitch] + pixels
+//         data (pitch*height bytes; 4-aligned)
 //     [id=0x06][len][ver]  texture struct: nested [id=1][4B:
 //         filterMode+addressing], [id=2][name], [id=2][maskName];
-//         gövde kuyruğunda [id=3][0][ver] terminator
+//         body tail holds the [id=3][0][ver] terminator
 //
-// Not: 0x18长 = 12(nested hdr) + 16 + piksel + pad; 0x06长 = 68+kısa isim
-// (nested toplam + 12B terminator). Piksel verisi d3d8 RGBA (ilk texture:
+// Note: 0x18 len = 12(nested hdr) + 16 + pixels + pad; 0x06 len = 68+short name
+// (nested total + 12B terminator). Pixel data is d3d8 RGBA (first texture:
 // beyaz 0x00FFFFFF).
 // ============================================================================
 
@@ -29,23 +29,23 @@
 
 /**
  * @struct RwTxdTexture
- * @brief Decode edilmiş tek bir d3d8 texture kaydı.
+ * @brief A single decoded d3d8 texture record.
  */
 struct RwTxdTexture {
-    RwChar name[rwtxdMAX_NAME];     ///< nested id=2 (NUL sonlu)
-    RwChar maskName[rwtxdMAX_NAME]; ///< nested id=2 (boş olabilir)
+    RwChar name[rwtxdMAX_NAME];     ///< nested id=2 (NUL-terminated)
+    RwChar maskName[rwtxdMAX_NAME]; ///< nested id=2 (may be empty)
     RwUInt32 filterFlags;           ///< nested id=1 (filter+addressing)
     RwUInt32 width;                 ///< raster nested: width
     RwUInt32 height;                ///< raster nested: height
     RwUInt32 depth;                 ///< raster nested: bpp (32)
-    RwUInt32 pitch;                 ///< raster nested: satır baytı
-    const RwUInt8 *pPixels;         ///< piksel verisi (payload içi işaretçi)
+    RwUInt32 pitch;                 ///< raster nested: row bytes
+    const RwUInt8 *pPixels;         ///< pixel data (pointer into the payload)
     RwUInt32 pixelBytes;            ///< pitch*height
 };
 
 /**
  * @struct RwTxdImage
- * @brief Decode edilmiş texture dictionary (d3d8 IMAGE).
+ * @brief Decoded texture dictionary (d3d8 IMAGE).
  */
 struct RwTxdImage {
     RwUInt16 textureCount;
@@ -55,25 +55,39 @@ struct RwTxdImage {
 };
 
 /**
- * @brief Gömülü TXD payload'ını decode eder.
+ * @brief Decodes the embedded TXD payload.
  *
- * Chunk sınırları ve nested yapılar bayt bayt doğrulanır; bozuk veride
- * kısmi sonuç + FALSE döner.
+ * Chunk boundaries and nested structures are validated byte by byte; on corrupt data
+ * a partial result + FALSE is returned.
  *
- * @param pPayload Gömülü payload (RwStudioAssetReadEmbedded çıktısı).
+ * @param pPayload Embedded payload (RwStudioAssetReadEmbedded output).
  * @param len      Payload boyutu (embeddedLength).
- * @param pOut     Çıktı (texture listesi + piksel işaretçileri).
- * @return TRUE ise başlık + tüm texture'lar başarıyla okundu.
+ * @param pOut     Output (texture list + pixel pointers).
+ * @return TRUE if the header + all textures were read successfully.
  */
 RwBool RwTxdDecodeImage(const RwUInt8 *pPayload, RwUInt32 len,
                         RwTxdImage *pOut);
 
 /**
- * @brief Seviye doku paketi decode (VIKING01 chunk0 özel formatı).
+ * @brief The UI (GUI_/compass_/fishbasic) textures inside the level texture pack
+ *        records (d3d8-IMAGE nested format; located at the tail of the level
+ *        chunk0).
  *
- * Kayıtlar: [06 11][02][len][libid]<isim> … tokenlar …
- * [01][0x10][libid]<w,h,depth,pitch> + piksel (pitch*h, 32bpp RGBA).
- * pPixels girdi tamponunu gösterir (upload bitene dek canlı tutulmalı).
+ * Record: [id=6][len][ver=0x1803FFFF] → [id=1][4B filter] →
+ *        [id=2][len][ver] name → [id=2]mask → [id=3] terminator →
+ *        [u32 flag]? → [id=0x18][len][ver] raster + id=1 dims + pixels,
+ *        followed by the mip chain (id=0x18...). Only the main mip is taken.
+ * pOut->textures[i].pPixels points into the input buffer (must remain alive).
+ */
+RwBool RwTxdDecodeGuiPack(const RwUInt8 *pData, RwUInt32 len,
+                          RwTxdImage *pOut);
+
+/**
+ * @brief Level texture pack decode (VIKING01 chunk0 special format).
+ *
+ * Records: [06 11][02][len][libid]<name> … tokens …
+ * [01][0x10][libid]<w,h,depth,pitch> + pixels (pitch*h, 32bpp RGBA).
+ * pPixels points into the input buffer (must remain alive until upload completes).
  */
 RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
                             RwTxdImage *pOut);

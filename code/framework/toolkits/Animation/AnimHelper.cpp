@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (AnimHelper.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Animation\AnimHelper.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include "AnimHelper.h"

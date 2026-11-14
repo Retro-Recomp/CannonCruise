@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Ocean Water Tile (OceanTile.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\OceanTile.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00432d10 / FUN_00432e00 — COceanTile::Initialize ("paColors != NULL Failed", "Memory leak !")
 //   FUN_004331e0 — COceanTile::Update
 //   FUN_00433540 / FUN_00433630 — COceanTile::Render ("Can't access array with size 0 !", "Trying to access nonexisting array !")
@@ -58,8 +58,8 @@ void COceanTile::Initialize(RwReal originX, RwReal originZ, RwReal size, RwInt32
     m_paVertices = (RwV3d*)malloc(m_uNumVertices * sizeof(RwV3d));
     assert(m_paVertices != 0 && "paVertices != NULL Failed");
 
-    // Düzlemsel grid: [originX, originX+size] × [originZ, originZ+size],
-    // Y=0 (Update dalgaları bindirir); UV 0..1; su mavisi.
+    // Planar grid: [originX, originX+size] × [originZ, originZ+size],
+    // Y=0 (Update imposes the waves); UV 0..1; water blue.
     const RwReal step = size / (RwReal)subdivisions;
     for (RwInt32 iz = 0; iz < side; ++iz) {
         for (RwInt32 ix = 0; ix < side; ++ix) {
@@ -72,7 +72,7 @@ void COceanTile::Initialize(RwReal originX, RwReal originZ, RwReal size, RwInt32
             m_paColors[v].red = 60;
             m_paColors[v].green = 130;
             m_paColors[v].blue = 200;
-            m_paColors[v].alpha = 255; // opak — alpha blend karanlıkleştiriyordu
+            m_paColors[v].alpha = 255; // opaque — alpha blend darkened it
         }
     }
 }
@@ -85,7 +85,7 @@ void COceanTile::Update(RwReal waveTime)
 {
     if (!m_paVertices) return;
 
-    // COcean::CalculateWaterHeight ile aynı formül (FUN_0042f500):
+    // Same formula as COcean::CalculateWaterHeight (FUN_0042f500):
     // y = sin(x*0.05 + t*2)*1.5 + cos(z*0.08 + t*1.5)*1.0
     for (RwUInt32 i = 0; i < m_uNumVertices; ++i)
     {

@@ -1,18 +1,18 @@
 // ============================================================================
-// CannonCruise - Sistem servisleri bootstrap (systemservices.cpp)
+// CannonCruise - System services bootstrap (systemservices.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\startup\systemservices.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with CC_ida.asm.
 //
-// Binary Fonksiyonları:
-//   FUN_005ca6c0 — FileSystemInit      (startup init zinciri, "Adım 3a")
-//   FUN_00428de0 — TextureCacheInit    (startup init zinciri, "Adım 3b")
-//   FUN_004cac40 — SubSystemShutdown   (startup shutdown zinciri, +1A)
-//   FUN_0040fd60 — ResourceShutdown    (startup shutdown zinciri, +2E)
-//   FUN_00405670 — GeneralShutdown     (startup shutdown zinciri, +33)
+// Binary Functions:
+//   FUN_005ca6c0 — FileSystemInit      (startup init chain, "Step 3a")
+//   FUN_00428de0 — TextureCacheInit    (startup init chain, "Step 3b")
+//   FUN_004cac40 — SubSystemShutdown   (startup shutdown chain, +1A)
+//   FUN_0040fd60 — ResourceShutdown    (startup shutdown chain, +2E)
+//   FUN_00405670 — GeneralShutdown     (startup shutdown chain, +33)
 //
-// Not: Dosya bağlamı yalnızca startup.cpp'deki çağrı XREF'lerinden biliniyor;
-//      ResourceShutdown haricinde (assert path cattributehandler.cpp) hiçbirinde
-//      dosya ispatı string'i yok.
+// Note: The file's context is only known from the call XREFs in startup.cpp;
+//      except for ResourceShutdown (assert path cattributehandler.cpp), none of them
+//      has a file proof string.
 // ============================================================================
 
 #include "rwcore.h"
@@ -32,56 +32,56 @@
 
 namespace
 {
-    // dword_658944 — RW alt sistem cihaz listesi başı (binary shutdown ilk
-    // iş olarak bunu test eder; null ise hemen çıkar). Cihaz listesi
-    // engine nesnesi (dword_65D7A4) vtable (+0x138h) üzerinden serbest
-    // bırakılır; RW motor altyapısı restor edilene kadar null kalır.
+    // dword_658944 — head of the RW subsystem device list (the binary, at the start of shutdown,
+    // tests this first; if null it exits immediately). The device list
+    // is released through the engine object (dword_65D7A4) vtable (+0x138h);
+    // until the RW engine infrastructure is restored, it stays null.
     void* s_pSubSystemList = 0;
 }
 
 // ============================================================================
 // FileSystemInit (FUN_005CA6C0)
-// Binary Adresi: 0x005ca6c0
-// XREF: sub_41A680 (startup init): 0041a7f8 — startup.cpp "Adım 3a"
-//       (shutdown'da da tekrar çağrılır: 0041abb9)
+// Binary Address: 0x005ca6c0
+// XREF: sub_41A680 (startup init): 0041a7f8 — startup.cpp "Step 3a"
+//       (called again during shutdown: 0041abb9)
 //
-// Çözüm: IDA'da bu adres 1 baytlık `nullsub_11` (`retn`) olarak etiketli
-// (sub_5CA6A0 ile sub_5CA6D0 arasındaki align boşluğu). Ghidra'daki
-// FUN_005ca6c0 CALL hedefi de aynı tek bayt. Yani binary'de dosya sistemi
-// başlatma ÇAĞRISI TAM BİR NO-OP'tur — gerçek kurulum statik başlatıcılar
-// ya da başka bir aşamada yapılır. Gerçeğe sadık olarak boş gövde yazılır.
+// Resolution: In IDA this address is labeled as the 1-byte `nullsub_11` (`retn`)
+// (the align gap between sub_5CA6A0 and sub_5CA6D0). The
+// FUN_005ca6c0 CALL target in Ghidra is the same single byte. So the file system
+// initialization CALL in the binary is a COMPLETE NO-OP — real setup is done by
+// static initializers or at some other stage. An empty body is written to stay true to the binary.
 // ============================================================================
 void FileSystemInit(void)
 {
-    // Binary: `retn` (nullsub_11) — bilinçli no-op.
+    // Binary: `retn` (nullsub_11) — deliberate no-op.
 }
 
 // ============================================================================
 // TextureCacheInit (FUN_00428DE0)
-// Binary Adresi: 0x00428de0
-// XREF: sub_41A680 (startup init): 0041a7fd — startup.cpp "Adım 3b"
+// Binary Address: 0x00428de0
+// XREF: sub_41A680 (startup init): 0041a7fd — startup.cpp "Step 3b"
 //
-// Binary gövdesi (WINMM):
+// Binary body (WINMM):
 //   1. timeGetDevCaps(&tc, sizeof(TIMECAPS))
-//   2. timeBeginPeriod(tc.wPeriodMin)     — zaman çözünürlüğünü yükselt
-//   3. ESI = timeGetTime()                — başlangıç damgası (dönüş değeri)
+//   2. timeBeginPeriod(tc.wPeriodMin)     — raise the timer resolution
+//   3. ESI = timeGetTime()                — start timestamp (return value)
 //   4. timeEndPeriod(tc.wPeriodMin)
-// Çağıran (startup) dönüş değerini yok sayar; yine de binary gibi zaman
-// damgası üretilir ve sıfır değilse TRUE döner.
-// Windows dışı ortamda WINMM yok → saat okuması yapılmadan TRUE.
-// Not (Faz 4.4b): Windows derlemesinde winmm.lib bağlantısı gerekir
-// (bu dosyadaki pragma MSVC'de halleder).
+// The caller (startup) ignores the return value; still, like the binary, a time
+// stamp is produced and TRUE is returned if it is non-zero.
+// On non-Windows platforms WINMM does not exist → TRUE without reading the clock.
+// Note (Phase 4.4b): The Windows build needs a winmm.lib link;
+// (the pragma in this file handles it on MSVC).
 // ============================================================================
 RwBool TextureCacheInit(void)
 {
 #ifdef _WIN32
     TIMECAPS tc;
     if (timeGetDevCaps(&tc, sizeof(tc)) != TIMERR_NOERROR)
-        return TRUE;                    // binary de hatada devam ederdi
+        return TRUE;                    // the binary would also continue on error
     timeBeginPeriod(tc.wPeriodMin);
     DWORD start = timeGetTime();
     timeEndPeriod(tc.wPeriodMin);
-    return TRUE;                        // dönüş değeri çağıranca yok sayılır
+    return TRUE;                        // return value is ignored by the caller
 #else
     return TRUE;
 #endif
@@ -89,49 +89,49 @@ RwBool TextureCacheInit(void)
 
 // ============================================================================
 // SubSystemShutdown (FUN_004CAC40)
-// Binary Adresi: 0x004cac40
-// XREF: sub_41AB90 (startup shutdown): 0041ab..+1A — startup.cpp shutdown zinciri
+// Binary Address: 0x004cac40
+// XREF: sub_41AB90 (startup shutdown): 0041ab..+1A — startup.cpp shutdown chain
 //
-// Binary gövdesi:
-//   1. dword_658944 (cihaz listesi başı) null → hemen dön
-//   2. dword_65894C varsa: sub_50D4A0 sonucunu nesnenin +0x10h alanına
-//      0x0B dword kopyala, dword_65894C = 0; yoksa nesne [+0x3C] geri
-//      çağırısını (arg=3) çalıştır
-//   3. Bağlı liste boyunca: her cihazın [+0x18h] geri çağırısı, engine
-//      vtable (+0x138h) üzerinden alan bırakma, sub_4CBCE0(cihaz, 2)
-//      ile serbest bırakma
-//   4. Son olarak engine vtable (+0x138h) ile liste başı nesnesini bırak
-// Cihaz listesi, motor alt sistem eklentileri (Faz 4.4b) tarafından
-// doldurulur; o zamana kadar binary de null başlıkla sessiz döner.
+// Binary body:
+//   1. dword_658944 (device list head) is null → return immediately
+//   2. if dword_65894C exists: copy the result of sub_50D4A0 into the object's +0x10h field
+//      0x0B dwords, dword_65894C = 0; otherwise invoke the object [+0x3C]
+//      callback (arg=3)
+//   3. Across the linked list: each device's [+0x18h] callback, release of
+//      the field through the engine vtable (+0x138h), release via
+//      sub_4CBCE0(device, 2)
+//   4. Finally release the list head object via the engine vtable (+0x138h)
+// The device list is filled by the engine subsystem plugins (Phase 4.4b);
+// until then the binary also silently returns with a null head.
 // ============================================================================
 void SubSystemShutdown(void)
 {
     if (!s_pSubSystemList)
         return;
 
-    // TODO(Faz 4.4b) — cihaz listesi zinciri + engine vtable[+0x138h]
-    // bırakma işlemi: sub_50D4A0 kopyası, cihaz [+0x18h] geri çağrısı,
-    // sub_4CBCE0(cihaz, 2). Liste restor edildiğinde burada yürünür.
+    // TODO(Phase 4.4b) — device list chain + engine vtable[+0x138h]
+    // release operations: sub_50D4A0 copy, device [+0x18h] callback,
+    // sub_4CBCE0(device, 2). This is walked here once the list is restored.
     s_pSubSystemList = 0;
 }
 
 // ============================================================================
 // ResourceShutdown (FUN_0040FD60)
-// Binary Adresi: 0x0040fd60
-// XREF: sub_41AB90 (startup shutdown): 0041ab..+2E — startup.cpp shutdown zinciri
+// Binary Address: 0x0040fd60
+// XREF: sub_41AB90 (startup shutdown): 0041ab..+2E — startup.cpp shutdown chain
 //
-// Assert path string'i dosya bağlamını kanıtlar:
+// The assert path string proves the file context:
 //   "D:\Projects\CannonCruisePC\code\framework\core\attributehandler\c..."
-//   "g_ptheMap->size() == 0 Failed" (cattributehandler.cpp, satır 0x53)
+//   "g_ptheMap->size() == 0 Failed" (cattributehandler.cpp, line 0x53)
 //
-// Binary gövdesi:
-//   1. dword_635650 (g_ptheMap = CAttributeHandler instance) null → dön
+// Binary body:
+//   1. dword_635650 (g_ptheMap = CAttributeHandler instance) null → return
 //   2. map size != 0 → assert "g_ptheMap->size() == 0 Failed"
 //      (assert yoksa: "Assert failed:" + dword_63564C testi → _exit)
 //   3. sub_411E20(instance) — dtor; sub_4053B0(instance) — delete
 //   4. dword_635650 = 0
-// Bu sözleşmenin mevcut karşılığı CAttributeHandler::Shutdown()tur
-// (cattributehandler.cpp: FUN_0040fd60 referansıyla restore edilmiştir).
+// The current counterpart of this contract is CAttributeHandler::Shutdown()
+// (restored by reference in cattributehandler.cpp: FUN_0040fd60).
 // ============================================================================
 void ResourceShutdown(void)
 {
@@ -140,22 +140,21 @@ void ResourceShutdown(void)
 
 // ============================================================================
 // GeneralShutdown (FUN_00405670)
-// Binary Adresi: 0x00405670
-// XREF: sub_41AB90 (startup shutdown): 0041ab..+33 — startup shutdown zinciri
-//       (startup shutdown'un SON adımı)
+// Binary Address: 0x00405670
+// XREF: sub_41AB90 (startup shutdown): 0041ab..+33 — startup shutdown chain
+//       (the LAST step of the startup shutdown)
 //
-// Binary gövdesi:
-//   1. dword_635574 (genel abonelik/kayıt listesi — sub_4055F0 lazy-init eder)
-//      null değilse: her kayıt için sub_4057A0 ile abonelik bağlantılarını
-//      kaldır (listeden çıkar + sub_4053B0 ile serbest bırak, sayaç-1)
-//   2. sub_48B3E0(kayıt) — kalan tüm bağlantıları toplu kaldır
-//   3. sub_4053B0(kayıt) — nesneyi sil
+// Binary body:
+//   1. dword_635574 (general subscription/registration list — lazy-inited by sub_4055F0)
+//      if not null: for each record, remove the subscription links via sub_4057A0
+//      (unlink + release via sub_4053B0, counter-1)
+//   2. sub_48B3E0(record) — bulk-remove all remaining links
+//   3. sub_4053B0(record) — delete the object
 //   4. dword_635574 = 0
 //
-// En yakın mevcut karşılık: olay sisteminin abonelik kayıtları
+// The closest existing counterpart: the event system's subscription records
 // (s_RegisteredEvents + s_EventSubscribers) — CEventHandler::Shutdown()
-// ikisini de temizler. dword_635574'nin tam sınıf kimliği Faz 4.4b'de
-// doğrulanacak.
+// clears both. The full class identity of dword_635574 will be verified in Phase 4.4b.
 // ============================================================================
 void GeneralShutdown(void)
 {

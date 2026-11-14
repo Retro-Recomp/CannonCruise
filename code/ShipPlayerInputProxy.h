@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Player Ship Input Proxy (ShipPlayerInputProxy.h)
 // Original path: D:\Projects\CannonCruisePC\code\ShipPlayerInputProxy.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Ship.h"

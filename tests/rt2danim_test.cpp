@@ -1,8 +1,8 @@
 // ============================================================================
 // CannonCruise — Rt2dMaestro .anm stream parser test (rt2danim_test)
 //
-// Fixtures: MAINMENU.RWS (Menu.anm, 32 düğüm) + MAPMENU.RWS
-// (CAG_Menu.anm, 44 düğüm) — bilinen header/node değerleri birebir.
+// Fixtures: MAINMENU.RWS (Menu.anm, 32 nodes) + MAPMENU.RWS
+// (CAG_Menu.anm, 44 nodes) — known header/node values, exact.
 // ============================================================================
 
 #include "Rt2dMaestro.h"
@@ -27,7 +27,7 @@ static int s_failures = 0;
         }                                                                      \
     } while (0)
 
-// RWS içinde rwID_2DMAESTRO taşıyan 0x0716 chunk payload'unu bul
+// find the 0x0716 chunk payload carrying rwID_2DMAESTRO inside the RWS
 static std::vector<RwUInt8> LoadAnimAsset(const char *pPath)
 {
     std::vector<RwUInt8> out;
@@ -46,7 +46,7 @@ static std::vector<RwUInt8> LoadAnimAsset(const char *pPath)
     }
     std::fclose(f);
 
-    // chunk tarama: [u32 type][u32 len][u32 libid] + payload
+    // chunk scan: [u32 type][u32 len][u32 libid] + payload
     static const char kId[] = "rwID_2DMAESTRO";
     size_t off = 0;
     while (off + 12 <= file.size()) {
@@ -81,7 +81,7 @@ static void CheckAnim(const std::vector<RwUInt8> &asset, const char *label,
     CHECK(Rt2dMaestro_FindAnimInAsset(asset.data(), (RwUInt32)asset.size(),
                                       &off, &len) == TRUE);
     if (off == 0 || len < 44) {
-        std::printf("%s: anim stream bulunamadı\n", label);
+        std::printf("%s: anim stream not found\n", label);
         return;
     }
     Rt2dMaestroStreamInfo info;
@@ -93,7 +93,7 @@ static void CheckAnim(const std::vector<RwUInt8> &asset, const char *label,
     CHECK(info.sceneNumRecords > 0);
     CHECK(info.sceneSizeA > 0 && info.sceneSizeB > 0);
 
-    // ilk group + isim kontrolleri
+    // first group + name checks
     if (info.nodeCount > 0 && firstName != nullptr) {
         RwBool found = FALSE;
         for (RwUInt32 i = 0; i < info.nodeCount; ++i) {
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    // Bozuk girdi
+    // Invalid input
     Rt2dMaestroStreamInfo info;
     CHECK(Rt2dMaestro_Inspect(nullptr, 100, &info) == FALSE);
     CHECK(Rt2dMaestro_Inspect("x", 4, &info) == FALSE);
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
                   "MapMenuEnter");
     }
 
-    // Rt2dMaestro nesne API — engine boot (Im2D render NULL no-op).
+    // Rt2dMaestro object API — engine boot (Im2D render NULL no-op).
     if (RwEngineInit(0, 0, 0) != TRUE || RwEngineOpen() != TRUE ||
         RwEngineStart() != TRUE) {
         std::printf("engine boot failed\n");
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
             if (cmd0 != nullptr) {
                 std::printf("Menu first command: %s\n", cmd0);
             }
-            // seçim yuvarlama: komut sayısı kadar Next → başa sar
+            // selection wrap-around: Next as many times as command count → wraps to start
             const RwInt32 n = pMaestro->commandCount;
             for (RwInt32 i = 0; i < n; ++i) {
                 CHECK(Rt2dMaestroSelectNext(pMaestro) == TRUE);
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
             CHECK(pMaestro->selection == 0);
             CHECK(Rt2dMaestroSelectPrev(pMaestro) == TRUE);
             CHECK(pMaestro->selection == n - 1);
-            // Update biriktirir, Render no-op kare (NULL im2d)
+            // Update accumulates, Render no-op frame (NULL im2d)
             Rt2dMaestroUpdate(pMaestro, 0.5f);
             CHECK(pMaestro->time > 0.4f);
             Rt2dMaestroRender(pMaestro);

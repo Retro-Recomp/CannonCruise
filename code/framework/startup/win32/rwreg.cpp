@@ -6,19 +6,19 @@
 
 // ============================================================================
 // CannonCruise - RenderWare Registry Interface (rwreg.cpp)
-// Orijinal dosya:
-// D:\Projects\CannonCruisePC\code\framework\startup\win32\rwreg.cpp Tersine
-// mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Original file:
+// D:\Projects\CannonCruisePC\code\framework\startup\win32\rwreg.cpp — reverse-
+// engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Tüm RenderWare ayarları Windows Registry'de şu kök altında tutulur:
+// All RenderWare settings are kept in the Windows Registry under this root:
 //   HKEY_CURRENT_USER\Software\Criterion\RenderWare\<path>
 // ============================================================================
 
-// RenderWare'in kayıt defteri kök yolu (0x00612e88)
+// RenderWare's registry root path (0x00612e88)
 static const char *const RW_REG_ROOT = "Software\\Criterion\\RenderWare\\";
 
-// Ortak: tam anahtar yolunu oluştur
-// Örn: path="CannonCruise/3.6", subKey="" ->
+// Common: build the full key path
+// e.g.: path="CannonCruise/3.6", subKey="" ->
 // "Software\Criterion\RenderWare\CannonCruise/3.6"
 static std::string BuildKeyPath(const std::string &path,
                                 const std::string &subKey) {
@@ -37,12 +37,12 @@ static std::string BuildKeyPath(const std::string &path,
 
 // ============================================================================
 // RwRegSetString (FUN_00416080)
-// Binary Adresi: 0x00416080
-// Görevi: Belirtilen anahtar ve değer adı altında bir string yazar.
+// Binary Address: 0x00416080
+// Task: Writes a string under the given key and value name.
 //   - Adresler: RegCreateKeyExA (0x002103FEh), RegSetValueExA (0x002103ECh),
 //   RegCloseKey
 //   - Assert: !entry.empty() (0x00612eec)
-//   - Kök: HKEY_CURRENT_USER
+//   - Root: HKEY_CURRENT_USER
 // ============================================================================
 void RwRegSetString(const std::string &path, const std::string &subKey,
                     const std::string &entry, const std::string &value) {
@@ -80,11 +80,11 @@ void RwRegSetString(const std::string &path, const std::string &subKey,
 
 // ============================================================================
 // RwRegGetString (FUN_00416690)
-// Binary Adresi: 0x00416690
-// Görevi: Belirtilen anahtar altındaki string değerini okur.
-//   - İlk HKCU dener (okuma modu: 0x20019), başarısız olursa HKLM dener,
-//     o da başarısız olursa HKCU'da yeni anahtar oluşturur ve varsayılanı
-//     yazar.
+// Binary Address: 0x00416690
+// Task: Reads the string value under the given key.
+//   - Tries HKCU first (read mode: 0x20019), if that fails tries HKLM,
+//     if that fails too, creates a new key under HKCU and writes the default
+//     value.
 //   - Assert: !entry.empty()
 // ============================================================================
 std::string RwRegGetString(const std::string &path, const std::string &subKey,
@@ -94,7 +94,7 @@ std::string RwRegGetString(const std::string &path, const std::string &subKey,
 
   std::string fullKey = BuildKeyPath(path, subKey);
 
-  // Önce HKCU'yu oku (READ_ONLY)
+  // Read HKCU first (READ_ONLY)
   HKEY hKey = NULL;
   LONG result = RegOpenKeyExA(HKEY_CURRENT_USER, // DAT_80000001
                               fullKey.c_str(), 0,
@@ -102,21 +102,21 @@ std::string RwRegGetString(const std::string &path, const std::string &subKey,
                               &hKey);
 
   if (result != ERROR_SUCCESS) {
-    // HKCU başarısızsa HKLM dene (READ_ONLY)
+    // If HKCU fails, try HKLM (READ_ONLY)
     result = RegOpenKeyExA(HKEY_LOCAL_MACHINE, // DAT_80000002
                            fullKey.c_str(), 0,
                            KEY_READ | KEY_WRITE, // samDesired = 0x20019
                            &hKey);
 
     if (result != ERROR_SUCCESS) {
-      // İkisi de başarısız: HKCU'da yeni anahtar oluştur,
-      // varsayılan değeri yaz (FUN_00416080 call at 0x004169a7)
+      // Both fail: create a new key under HKCU,
+      // write the default value (FUN_00416080 call at 0x004169a7)
       RwRegSetString(path, subKey, entry, defaultValue);
       return defaultValue;
     }
   }
 
-  // Anahtar açıldı, değeri sorgula
+  // Key opened, query the value
   char buffer[MAX_PATH] = {};
   DWORD dwType = REG_SZ;
   DWORD dwSize = sizeof(buffer);
@@ -132,9 +132,9 @@ std::string RwRegGetString(const std::string &path, const std::string &subKey,
 }
 
 // ============================================================================
-// RwRegSetInt (FUN_00416080 ile aynı mekanizma, REG_DWORD)
-// Tamsayı yardımcıları — binary'de ayrı bir fonksiyon yoktur;
-// tamsayılar da REG_SZ (string) olarak depolanır, sscanf ile okunur.
+// RwRegSetInt (same mechanism as FUN_00416080, REG_DWORD)
+// Integer helpers — there is no separate function for this in the binary;
+// integers are stored as REG_SZ (string) too, and are read with sscanf.
 // ============================================================================
 void RwRegSetInt(const std::string &path, const std::string &subKey,
                  const std::string &entry, int value) {

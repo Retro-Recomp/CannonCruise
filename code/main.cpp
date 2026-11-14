@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // CannonCruise - Platform Smoke + RWS Pipeline Entry (main.cpp)
 // Phase 4.5: Link verification (-force_load resolves all symbols).
 // Phase 4.6n: Render platform frame loop smoke.
@@ -24,8 +24,8 @@
 #include "Rt2dMaestroStream.h"
 #include "MenuBehavior.h"
 #include "AfterGameMenuBehavior.h"
-#include "RwsAssets.h"   // .RWS asset yol Ã§Ã¶zÃ¼cÃ¼ (merkezi)
-#include "FmvScene.h"    // FMV sahne tanÄ±mlayÄ±cÄ±sÄ± (CFMVBehavior) + hedef geÃ§iÅŸi
+#include "RwsAssets.h"   // .RWS asset path resolver (central)
+#include "FmvScene.h"    // FMV scene identifier (CFMVBehavior) + target transition
 
 // FMV story (SCR.mov/SCR1.mov) game state machine -- Phase 4.6s target.
 // BOOT -> LOGO_ITE -> LOADING -> MAINMENU -> OPTIONS -> SOUND/CREDITS -> MAPMENU
@@ -39,18 +39,34 @@ enum EGameState {
     GAMESTATE_OUTRO, GAMESTATE_QUIT
 };
 static EGameState s_gameState = GAMESTATE_BOOT;
+// Camera stays inside the map: XZ over the ocean grid (small inset),
+// Y between water level and island top + margin. Computed after world load.
+static RwReal s_camBoundMin[3] = {0.0f, 0.0f, 0.0f};
+static RwReal s_camBoundMax[3] = {0.0f, 0.0f, 0.0f};
+static RwBool s_camBoundsSet = FALSE;
+
+static void ClampCameraToMap(RwReal camPos[3]) {
+    if (s_camBoundsSet != TRUE) {
+        return;
+    }
+    for (int i = 0; i < 3; ++i) {
+        if (camPos[i] < s_camBoundMin[i]) camPos[i] = s_camBoundMin[i];
+        if (camPos[i] > s_camBoundMax[i]) camPos[i] = s_camBoundMax[i];
+    }
+}
 #include "RwStudioStream.h"
 #include "ShowText.h"
 #include "StaticCollisionData.h"
 #include "WorldGeometry.h"
 #include "WorldSpawn.h"
 #include "LocalizationManager.h"
-#include "BinkPlayer.h"  // binkw32 oynatici - .bik oynatimi (sub_45F350/45F270)
-#include "LoadingScreen.h" // Faz 4.6ab — LOADING overlay (GLOBAL art)
+#include "BinkPlayer.h"  // binkw32 player - .bik playback (sub_45F350/45F270)
+#include "LoadingScreen.h" // Phase 4.6ab � LOADING overlay (GLOBAL art)
 #include "rwcore.h"
 #include "AudioManager.h"
 #include "SpeakManager.h"
-#include "PlayerShip.h"   // Faz 4.6s — placeholder tekne + chase kamera
+#include "PlayerShip.h"   // Phase 4.6s -- placeholder ship + chase camera
+#include "HUD.h"         // Sprint 2 � minimal HUD overlay
 
 #include <cmath>
 #include <cstdio>
@@ -81,7 +97,7 @@ int IsFmvPhaseTarget(const char *pTarget) {
 
 /// RWS inventory + WorldGeometry clump + .col shape -- single world pipeline.
 struct RwsPipeline {
-    void *pClump;             ///< rw::Clump* (RenderPlatform'a eklendi)
+    void *pClump;             ///< rw::Clump* (added to RenderPlatform)
     void *pCollisionShape;    ///< PhysicsShape* (btBvhTriangleMeshShape)
     RwUInt32 assetCount;
     RwUInt32 worldGeomBytes;
@@ -338,7 +354,7 @@ int main(int argc, char **argv) {
         for (RwUInt32 i = 0; i < 2 && bWorldLoaded == FALSE; ++i) {
             if (!RwsAssets_Resolve(kBootWorlds[i], resolvedWorldPath,
                                    sizeof(resolvedWorldPath))) {
-                continue; // dosya bu yerleÅŸimde yok
+                continue; // file not present at this location
             }
             RenderPlatform_LoadWorldDictionary(resolvedWorldPath);
             if (RwsPipeline_Load(resolvedWorldPath, &pipeline) == TRUE &&
@@ -355,7 +371,7 @@ int main(int argc, char **argv) {
     // -- MAPMENU selection set up with single load (reload + RemoveClump +
     // double-spawn not needed). (4.6r-4 MAPMENU)
     COcean *pOcean = nullptr; // quit-cleanup notification (setup below)
-    // Sprint 1 — oyuncunun top'u için test kuleleri + cannonball kayıtları
+    // Sprint 1 -- test towers for the player's cannon + cannonball records
     std::vector<CTowerCatapult *> s_towers;
     std::vector<CCannonball *> s_cannonballs;
 
@@ -366,14 +382,14 @@ int main(int argc, char **argv) {
     // CANNONCRUISE_MENU_FRAMES: frame cap (0=skip menu, -1=unlimited).
     RwBool bQuitApp = FALSE;
     // 4.6r-5 -- GLOBAL.RWS (binary sub_4A2010: GLOBAL -> JINGLE).
-    //  - Embedded texture dictionary (RwStudio ayrıştırıcısıyla; gömülü
-    //    asset 0xe8'de DEĞİL) decode + upload — isimler loglanır.
+    //  - Embedded texture dictionary (via RwStudio parser; embedded
+    //    asset NOT at 0xe8) decode + upload -- names are logged.
     //  - Global objectRecords (CAudioManager, CDifficultyLevels, CEventProxy
-    //    CSystemCommands ... + rwID_2DMAESTRO) — kayıtlı fabrika yok;
-    //    binary davranışla bilinmeyen sınıflar atlanır (kayıt yok).
-    //  - Image_Win32.rws (5.6 MB UI pack) — format çözülmedi, decode yok;
-    //    menü font/atlas MAINMENU txd'den geliyor (4.6r). Decode eklenirse
-    //    buraya bağlanır.
+    //    CSystemCommands ... + rwID_2DMAESTRO) -- no registered factory;
+    //    unknown classes are skipped (no registration) per binary behavior.
+    //  - Image_Win32.rws (5.6 MB UI pack) -- format not solved, no decode;
+    //    menu font/atlas comes from MAINMENU txd (4.6r). If decode is added
+    //    it will be wired in here.
     {
         char globalPath[512] = {0};
         if (RwsAssets_Resolve("Streams/GLOBAL.RWS", globalPath,
@@ -382,7 +398,7 @@ int main(int argc, char **argv) {
             std::printf("GLOBAL: %u embedded textures uploaded\n",
                         (unsigned)gCount);
         } else {
-            std::printf("GLOBAL: Streams/GLOBAL.RWS bulunamadi -> atlandi\n");
+            std::printf("GLOBAL: Streams/GLOBAL.RWS not found -> skipped\n");
         }
     }
     if (bBootFlow == TRUE) {
@@ -416,8 +432,8 @@ int main(int argc, char **argv) {
             // FMV descriptor: CFMVBehavior -> FMV name + target scene
             FmvSceneDescriptor fmv;
             if (FmvScene_Load(fmvRel, &fmv) != 1) {
-                std::printf("FMV: %s â†’ tanÄ±mlayÄ±cÄ± deÄŸil (seviye/dÃ¼nya) â†’ "
-                            "zincir sonu\n",
+                std::printf("FMV: %s -> not a descriptor (level/world) -> "
+                            "end of chain\n",
                             fmvRel);
                 break;
             }
@@ -436,11 +452,11 @@ int main(int argc, char **argv) {
             // target connection visible here: target -> Streams/<TARGET>.RWS
             std::printf("FMV[%u]: %s fmv='%s' target='%s'%s%s\n",
                         (unsigned)ii, fmv.guid, fmv.behaviour, fmv.target,
-                        (hasNext == 1) ? " â†’ " : "",
-                        (hasNext == 1) ? nextRel : "(sahne yok)");
+                        (hasNext == 1) ? " → " : "",
+                        (hasNext == 1) ? nextRel : "(no scene)");
             if (hasVideo == 1) {
                 std::printf("  video: %s (%s)\n", video,
-                            (videoOk == 1) ? "oynat" : "yok â†’ skip");
+                            (videoOk == 1) ? "play" : "none -> skip");
             }
             // title card loop
             // ------------------------------------------------------------------
@@ -460,7 +476,7 @@ int main(int argc, char **argv) {
                 if (pBink != nullptr) {
                     const int vw = BinkPlayer_Width(pBink);
                     const int vh = BinkPlayer_Height(pBink);
-                    std::printf("  oynat: %s (%dx%d, %d kare) %s\n", videoFull,
+                    std::printf("  play: %s (%dx%d, %d frames) %s\n", videoFull,
                                 vw, vh, BinkPlayer_TotalFrames(pBink),
                                 BinkPlayer_LastError());
                     std::vector<unsigned char> fmvPixels((size_t)vw *
@@ -481,7 +497,7 @@ int main(int argc, char **argv) {
                         }
                         if (BinkPlayer_DecodeRGBA(pBink, fmvPixels.data(),
                                                   fmvPitch) != 1) {
-                            std::printf("  video kare hatasi (%s)\n",
+                            std::printf("  video frame error (%s)\n",
                                         BinkPlayer_LastError());
                             break;
                         }
@@ -511,11 +527,11 @@ int main(int argc, char **argv) {
                         BinkPlayer_Next(pBink);
                     }
                     BinkPlayer_Close(pBink);
-                    std::printf("  video bitti: %d kare%s oynatildi\n", fmvShown,
-                                (s_fmvSkip == TRUE) ? " (atlandi)" : "");
+                    std::printf("  video finished: %d frames%s played\n", fmvShown,
+                                (s_fmvSkip == TRUE) ? " (skipped)" : "");
                     RenderPlatform_ClearTextures(); // release FMV texture
                 } else {
-                    std::printf("  video acilamadi: %s (%s)\n", videoFull,
+                    std::printf("  video failed to open: %s (%s)\n", videoFull,
                                 BinkPlayer_LastError());
                 }
             }
@@ -617,7 +633,7 @@ int main(int argc, char **argv) {
                               fmvNextRel);
                 pWorldPath = mapLevelPath;
                 bWorldLoaded = TRUE;
-                std::printf("FMV: hedef seviye '%s' yÃ¼klendi (%s)\n",
+                std::printf("FMV: target level '%s' loaded (%s)\n",
                             fmvTerminalTarget, fmvNextRel);
             } else {
                 RwsPipeline_Unload(&pipeline);
@@ -629,7 +645,7 @@ int main(int argc, char **argv) {
                         bWorldLoaded = TRUE;
                     }
                 }
-                std::printf("FMV: hedef seviye yÃ¼klenemedi ('%s')\n",
+                std::printf("FMV: target level failed to load ('%s')\n",
                             fmvTerminalTarget);
             }
         }
@@ -864,7 +880,7 @@ int main(int argc, char **argv) {
                             ++mapFrame;
                             if (mapAutoSel >= 0 &&
                                 mapAutoSel < mapmenu.GetLevelCount()) {
-                                // otomatik seÃ§im (seÃ§im 0'dan baÅŸlar)
+                                // automatic selection (selection starts at 0)
                                 for (int k = 0; k < mapAutoSel; ++k) {
                                     mapmenu.MoveNext();
                                 }
@@ -1036,11 +1052,11 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Faz 4.6ab -- LOADING overlay (GLOBAL art). Dünya yüklü ama henüz
-    // AddClump edilmedi; kullanıcıya parchament + Hugo + "LOADING" gösterilir.
-    // NOT: librw win iskeletinde pencere boyutu = 640x480 (buffer birebir);
-    // draw space'i de 640x480 olarak veriyoruz (FMV/menü 1280x720'ye çizip
-    // crop'luyor — kırık olurdu).
+    // Phase 4.6ab -- LOADING overlay (GLOBAL art). World is loaded but not yet
+    // AddClump'ed; the user is shown parchment + Hugo + "LOADING".
+    // NOTE: in the librw win skeleton the window size = 640x480 (buffer matches);
+    // draw space is also given as 640x480 (FMV/menu render at 1280x720 and get
+    // cropped -- would break).
     {
         const char *loadEnv = std::getenv("CANNONCRUISE_LOADING_FRAMES");
         const int loadFrames =
@@ -1160,6 +1176,7 @@ int main(int argc, char **argv) {
                             (double)camPos[2]);
             }
         }
+        ClampCameraToMap(camPos);
         RenderPlatform_SetCameraPose(camPos, camLook);
         // mouse look init: yaw/pitch derived from (look-pos) direction
         {
@@ -1193,10 +1210,22 @@ int main(int argc, char **argv) {
                             (double)tileSize,
                             (double)(cx - 2.5f * tileSize),
                             (double)(cz - 2.5f * tileSize));
+                // Camera bounds: XZ edge = ocean grid (inner margin),
+                // Y = sea surface..island top + margin.
+                {
+                    const RwReal half = span * 1.25f - 2.0f;
+                    s_camBoundMin[0] = cx - half;
+                    s_camBoundMax[0] = cx + half;
+                    s_camBoundMin[1] = 1.5f;
+                    s_camBoundMax[1] = bb.max[1] + 40.0f;
+                    s_camBoundMin[2] = cz - half;
+                    s_camBoundMax[2] = cz + half;
+                    s_camBoundsSet = TRUE;
+                }
             }
         }
-        // Phase 4.6s -- tekne follow: placeholder boat at sea, facing the
-        // island centre. CANNONCRUISE_SHIP=x,y,z,yaw ile override.
+        // Phase 4.6s -- ship follow: placeholder boat at sea, facing the
+        // island centre. Override with CANNONCRUISE_SHIP=x,y,z,yaw.
         {
             WorldGeometryBounds bb;
             if (WorldGeometry_GetLastBounds(&bb) == TRUE) {
@@ -1219,14 +1248,15 @@ int main(int argc, char **argv) {
                     }
                 }
                 PlayerShip_Spawn(&shipPos, shipYaw);
+                RWS::HUD_Initialize();
                 std::printf("CannonCruise: player ship placeholder spawn "
                             "(%.1f, %.1f, %.1f) yaw=%.2f\n",
                             (double)shipPos.x, (double)shipPos.y,
                             (double)shipPos.z, (double)shipYaw);
-                // Sprint 1 — iki Bullet-işlevlisini icra eden kule bırak:
-                // yükselebilen "catapult kulesi" adayı ile vurulmayı test eder.
-                // Vatikan körfezi tarafına: mavi ada girişinde iki kale
-                // kule'sinin bulunduğu yer.
+                // Sprint 1 -- spawn towers exercising the Bullet functionality:
+                // tests getting hit by a rising "catapult tower" candidate.
+                // Toward the Vatican bay side: at the blue island entrance two
+                // castle towers are located.
                 {
                     WorldGeometryBounds bb2;
                     if (WorldGeometry_GetLastBounds(&bb2) == TRUE) {
@@ -1266,7 +1296,7 @@ int main(int argc, char **argv) {
     }
     const int kFrames = (bWorldLoaded == TRUE) ? frameCap : 3;
     int framesRendered = 0;
-    s_gameState = GAMESTATE_GAMEPLAY; // video-kurgu: NORMAL kamera kipi
+    s_gameState = GAMESTATE_GAMEPLAY; // video cutscene: NORMAL camera mode
     for (int frame = 0; kFrames < 0 || frame < kFrames; ++frame) {
         RwPlatformPollEvents(); // GLFW event pump (keys + mouse delta)
         if (RwPlatformShouldClose() == TRUE) {
@@ -1278,8 +1308,8 @@ int main(int argc, char **argv) {
             break;
         }
         if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
-            // Fizik adımı: gerçek dinamikler (bujinin/cannonball + gemi)
-            // Bullet'ta çalışır. Kare başına 1/60 s (oynayan frame hızı 60Hz).
+            // Physics step: real dynamics (buoyancy/cannonball + ship)
+            // run in Bullet. 1/60 s per frame (running frame rate 60Hz).
             {
                 CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
                 if (pWorld != nullptr) {
@@ -1287,9 +1317,12 @@ int main(int argc, char **argv) {
                 }
             }
             RenderPlatform_RenderScene();
-            // Sprint 1 — oyuncu ' ' ile top atışı yapsın; tekne ilerisi ok;
-            // cannonball Bullet ile kayırılıyor. Kuleye isabet → hasar alır.
+            // Sprint 1 -- player fires cannon with ' '; ship sails with arrows;
+            // cannonball is simulated with Bullet. A tower hit takes damage.
             if (RwPlatformKeyDown(' ')) {
+                if (RWS::HUD_GetAmmo() <= 0) {
+                    RWS::HUD_FlashNoAmmo();
+                } else {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
                     RwV3d fwd = {std::sin(ss.yaw), 0.25f, std::cos(ss.yaw)};
@@ -1310,6 +1343,7 @@ int main(int argc, char **argv) {
                     if (pBall != nullptr) {
                         pBall->Spawn(spawnData);
                         s_cannonballs.push_back(pBall);
+                        RWS::HUD_UseAmmo(1);
                         std::printf("CannonCruise: fired cannonball from "
                                     "(%.1f,%.1f,%.1f) vel=(%.1f,%.1f,%.1f)%s\n",
                                     firePos.x, firePos.y, firePos.z,
@@ -1319,9 +1353,10 @@ int main(int argc, char **argv) {
                     }
                 }
                 audioMgr.PlaySound("Audio_CannonFire");
+                } // ammo > 0
             }
-            // Sprint 1 — top ↔ kule çarpışması: mermi konumuyla
-            // kule merkezini sphere-AABB yanyana ARADAN mesafe (broadphase).
+            // Sprint 1 -- cannon vs tower collision: using the projectile position and
+            // the tower center, sphere-vs-AABB separation (broadphase).
             {
                 const RwReal ballRadius = 0.8f;
                 const RwReal towerHalf = 18.0f;
@@ -1330,7 +1365,7 @@ int main(int argc, char **argv) {
                     CTowerCatapult *pT = s_towers[ti];
                     if (pT->IsDestroyed()) continue;
                     const RwV3d &tp = pT->GetWorldPosition();
-                    // kule kolu +-8 m enkesiti, merkez y=18 (base 0 + 18)
+                    // tower column +-8 m cross-section, center y=18 (base 0 + 18)
                     for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
                         CCannonball *pB = s_cannonballs[bi];
                         void *pBody = pB->GetRigidBody();
@@ -1348,14 +1383,18 @@ int main(int argc, char **argv) {
                                         "(%.1f,%.1f,%.1f) (ball=(%.1f,%.1f,%.1f))\n",
                                         ti, tp.x, tp.y, tp.z,
                                         bp.x, bp.y, bp.z);
-                            pT->TakeDamage(100.0f); // 100 zarar → 150 HP'den 50 kalır
-                            // Cannonball hasar vurduktan sonra yok olur
+                            pT->TakeDamage(100.0f); // 100 damage -- 50 left of 150 HP
+                            if (pT->IsDestroyed()) {
+                                RWS::HUD_RegisterTowerDestroyed();
+                                std::printf("CannonCruise: tower #%zu DESTROYED; score tick\n", ti);
+                            }
+                            // Cannonball is destroyed after dealing damage
                             pB->OnHit(pT, 0);
                         }
                     }
                 }
             }
-            // Sprint 1 — ölmüş top'ları listeden temizle
+            // Sprint 1 -- remove dead cannonballs from the list
             {
                 for (auto it = s_cannonballs.begin();
                      it != s_cannonballs.end();) {
@@ -1385,7 +1424,7 @@ int main(int argc, char **argv) {
             // Q/E (vertical) + arrow keys (yaw/pitch). Null platform no key/
             // mouse -> no-op. View derived from yaw/pitch.
             if (bFollowCam == TRUE) {
-                // Tekne: W/S gaz, A/D dümen; fare X kamera orbit (sönümlü).
+                // Ship: W/S throttle, A/D rudder; mouse X camera orbit (clamped).
                 const RwReal kDt = 1.0f / 60.0f;
                 RwReal throttle = 0.0f;
                 if (RwPlatformKeyDown('W')) {
@@ -1405,7 +1444,7 @@ int main(int argc, char **argv) {
                 if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
                     followOrbit += (RwReal)mdx * 0.0035f;
                 }
-                followOrbit *= 0.94f; // sönüm — gemi arkasına döner
+                followOrbit *= 0.94f; // clamp -- turns behind the ship
                 PlayerShip_Update(kDt, (RwReal)frame * kDt, throttle,
                                   rudder);
                 PlayerShipState shipState;
@@ -1415,6 +1454,7 @@ int main(int argc, char **argv) {
                     camPos[0] = shipState.pos.x + std::sin(ang) * 13.0f;
                     camPos[1] = shipState.pos.y + 3.8f;
                     camPos[2] = shipState.pos.z + std::cos(ang) * 13.0f;
+                    ClampCameraToMap(camPos);
                     camLook[0] = shipState.pos.x;
                     camLook[1] = shipState.pos.y + 1.0f;
                     camLook[2] = shipState.pos.z;
@@ -1454,7 +1494,7 @@ int main(int argc, char **argv) {
                     camPitch -= (RwReal)mdy * sens; // drag up = look up
                     lookChanged = TRUE;
                 }
-                const RwReal kMaxPitch = 1.55f; // ~89Â°
+                const RwReal kMaxPitch = 1.55f; // ~89°
                 if (camPitch > kMaxPitch) {
                     camPitch = kMaxPitch;
                 }
@@ -1467,7 +1507,7 @@ int main(int argc, char **argv) {
                                        std::sin(camPitch),
                                        std::cos(camYaw) * cp};
                 const RwReal right[3] = {std::cos(camYaw), 0.0f,
-                                         -std::sin(camYaw)}; // yaw+90Â°
+                                         -std::sin(camYaw)}; // yaw+90°
                 RwReal delta[3] = {0.0f, 0.0f, 0.0f};
                 if (RwPlatformKeyDown('W')) {
                     delta[0] += fwd[0] * speed;
@@ -1501,6 +1541,7 @@ int main(int argc, char **argv) {
                     camPos[0] += delta[0];
                     camPos[1] += delta[1];
                     camPos[2] += delta[2];
+                    ClampCameraToMap(camPos);
                 }
                 if (lookChanged == TRUE || moved == TRUE) {
                     camLook[0] = camPos[0] + fwd[0];
@@ -1514,6 +1555,23 @@ int main(int argc, char **argv) {
                 pOcean->Render(); // between Begin/End
             }
             PlayerShip_Render(); // placeholder hull (GL3: im3d; NULL: no-op)
+            // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
+            {
+                PlayerShipState ss;
+                if (PlayerShip_GetState(&ss) == TRUE) {
+                    // Player HP: 150/150 if alive, drop on tower hits later
+                    RWS::HUD_SetHealth(150.0f / 150.0f);
+                    RWS::HUD_SetShipHeading(ss.yaw);
+                    for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                        CTowerCatapult *pT = s_towers[ti];
+                        const RwV3d &tp = pT->GetWorldPosition();
+                        RWS::HUD_SetTowerBlip(
+                            (RwInt32)ti, tp.x - ss.pos.x, tp.z - ss.pos.z,
+                            pT->IsDestroyed() ? FALSE : TRUE);
+                    }
+                }
+                RWS::HUD_Render();
+            }
         }
         if (RenderPlatform_RenderTestQuad(0.0f, 0.0f, 0.25f, 0.25f,
                                           0xFF40A0FF) != TRUE) {
@@ -1552,7 +1610,7 @@ int main(int argc, char **argv) {
     s_towers.clear();
     for (auto *b : s_cannonballs) { delete b; }
     s_cannonballs.clear();
-    PlayerShip_Shutdown(); // PhysicsWorld dtor assert'i için rigid body temizliği
+    PlayerShip_Shutdown(); // PhysicsWorld dtor assert'i i�in rigid body temizligi
     delete pOcean; // COcean::Shutdown + tile cleanup
     RwPlatformSetMouseCapture(FALSE); // cursor back
 

@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Input Manager (InputManager.h)
 // Original path: D:\Projects\CannonCruisePC\code\InputManager.h
-// Tersine mÃ¼hendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazÄ±lmÄ±ÅŸtÄ±r.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Singleton.h"

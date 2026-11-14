@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Level Loader (LoadLevel.h)
 // Original path: D:\Projects\CannonCruisePC\code\LoadLevel.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
@@ -19,7 +19,7 @@ public:
 
     virtual void HandleEvents(const RWS::CMsg& msg);
 
-    // Seviye yükleme tetikleyicisi
+    // Level load trigger
     void RequestLevel(const char* pLevelName);
 
 private:

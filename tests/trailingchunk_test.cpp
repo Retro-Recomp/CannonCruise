@@ -1,24 +1,24 @@
 // ============================================================================
-// CannonCruise - WorldGeometry ATOMIC grup decode (trailingchunk_test.cpp)
+// CannonCruise - WorldGeometry ATOMIC group decode (trailingchunk_test.cpp)
 //
-// Faz 4.6s: WorldGeometry payload'unun atomikler SONRASI kalan bölümünün
-// çözümü. Faz 4.6o bu bölümü "[trailing chunk — tipe göre dünya varyantı
-// 0x22/0x1E/0x39]" olarak kaydetmiş ve yalnızca TİPİ okumuştu; içerik
-// çözülmemişti. Ayrıca bu bölüm hiç instantiate edilmiyordu (96 atomic
-// render edilirken 34'ü atlanıyordu).
+// Phase 4.6s: solving the section remaining AFTER the atomics in the
+// WorldGeometry payload. Phase 4.6o had recorded this section as "[trailing
+// chunk — world variant 0x22/0x1E/0x39 by type]" and only read the TYPE;
+// the content was unsolved. Also this section was never instantiated
+// (while 96 atomics were rendered, 34 were skipped).
 //
-// BULGU (dosya verisi + binary FUN_004c9b70 modeli):
+// FINDING (file data + binary FUN_004c9b70 model):
 //   WorldGeometry payload =
 //     [u32 prefixSectionLength][u32 libid=0x1803FFFF]
 //     [prefix: STRUCT(16) + GEOMETRY + EXTENSION]
-//     [ATOMIC × N]                       ← count YOK; tip!=0x14 olana kadar
-//     [u32 count2][ATOMIC × count2]      ← İKİNCİ GRUP (eski "trailing chunk")
-//     [2-3 bayt asset padding]
-//   FUN_004c9b70: "u32 count → tekrar: chunk header (assert type==0x14) →
-//   sektör/atomic oku (FUN_004dbdb0) → dünyaya ekle".
-//   Yani 0x22/0x1E/0x39 bir "tip" DEĞİL, grup2 atomic SAYISI (34/30/57).
+//     [ATOMIC × N]                       ← NO count; until type!=0x14
+//     [u32 count2][ATOMIC × count2]      ← SECOND GROUP (the old "trailing chunk")
+//     [2-3 byte asset padding]
+//   FUN_004c9b70: "u32 count → repeat: chunk header (assert type==0x14) →
+//   read sector/atomic (FUN_004dbdb0) → add to world".
+//   So 0x22/0x1E/0x39 is NOT a "type", it is the group2 atomic COUNT (34/30/57).
 //
-// Üç dünya envanteri sabittir ve birebir doğrulanır.
+// The three world inventories are fixed and verified exactly.
 // ============================================================================
 
 #include "WorldGeometry.h"
@@ -44,7 +44,7 @@ static int s_failures = 0;
         }                                                                      \
     } while (0)
 
-/// RWS'ten WorldGeometry payload'unu okur (malloc; çağırıcı free).
+/// Reads the WorldGeometry payload from the RWS (malloc; caller free).
 static unsigned char *LoadWorldGeometryPayload(const char *pPath,
                                                unsigned int *pLen) {
     RwStudioFile *pFile = RwStudioFileOpen(pPath);
@@ -85,7 +85,7 @@ static unsigned int U32(const unsigned char *p) {
     return v;
 }
 
-/// Clump içindeki atomic sayısı (grup1 + grup2 gerçekten eklendi mi?).
+/// Atomic count inside the clump (were group1 + group2 really added?).
 static int CountClumpAtomics(void *pClumpPtr) {
     if (pClumpPtr == nullptr) {
         return -1;
@@ -96,10 +96,10 @@ static int CountClumpAtomics(void *pClumpPtr) {
 
 struct Expected {
     const char *pName;
-    unsigned int group1;   ///< ilk ATOMIC grubu (count yok)
-    unsigned int group2;   ///< [u32 count2] — eski "trailing chunk type"
-    unsigned int group2V;  ///< grup2 vertice
-    unsigned int group2T;  ///< grup2 üçgen
+    unsigned int group1;   ///< first ATOMIC group (no count)
+    unsigned int group2;   ///< [u32 count2] — old "trailing chunk type"
+    unsigned int group2V;  ///< group2 vertices
+    unsigned int group2T;  ///< group2 triangles
 };
 
 int main(int argc, char **argv) {
@@ -135,18 +135,18 @@ int main(int argc, char **argv) {
         std::memset(&info, 0, sizeof(info));
         CHECK(WorldGeometry_Inspect(pPayload, len, &info) == TRUE);
 
-        // grup1: Faz 4.6o'dan beri bilinen değer (değişmedi)
+        // group1: known value since Phase 4.6o (unchanged)
         CHECK(info.atomicCount == kExpected[i].group1);
-        // grup2: Faz 4.6s çözümü
+        // group2: Phase 4.6s solution
         CHECK(info.atomicGroup2Count == kExpected[i].group2);
         CHECK(info.group2Vertices == kExpected[i].group2V);
         CHECK(info.group2Triangles == kExpected[i].group2T);
 
-        // 0x22/0x1E/0x39 bir "tip" değil, grup2 SAYISI → aynı u32
+        // 0x22/0x1E/0x39 is not a "type", it is the group2 COUNT → same u32
         CHECK(info.trailingChunkType == kExpected[i].group2);
         CHECK(info.trailingChunkType == info.atomicGroup2Count);
         CHECK(info.atomicGroup2Offset == info.trailingChunkOffset);
-        // grup2, grup1'in hemen ardından gelir
+        // group2 comes right after group1
         CHECK(info.atomicGroup2Offset > 8 + info.prefixSectionLength);
 
         std::printf("%s: group1=%u group2=%u (+%u verts/+%u tris) "
@@ -155,12 +155,12 @@ int main(int argc, char **argv) {
                     info.atomicGroup2Count, info.group2Vertices,
                     info.group2Triangles, info.atomicGroup2Offset);
 
-        // ham u32 ile bağımsız doğrulama (Inspect'a güvenmeden)
+        // independent verification with raw u32 (without trusting Inspect)
         CHECK(U32(pPayload + info.atomicGroup2Offset) ==
               kExpected[i].group2);
         CHECK(U32(pPayload + info.atomicGroup2Offset + 4) == 0x14);
 
-        // CreateClump: İKİ grubu da instantiate etmeli
+        // CreateClump: must instantiate BOTH groups
         void *pClump = WorldGeometry_CreateClump(pPayload, len);
         CHECK(pClump != nullptr);
         const int nAtomics = CountClumpAtomics(pClump);
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
         std::memset(&bounds, 0, sizeof(bounds));
         CHECK(WorldGeometry_GetLastBounds(&bounds) == TRUE);
         CHECK(bounds.valid == TRUE);
-        std::printf("  clump atomics=%d (beklenen %u) bounds "
+        std::printf("  clump atomics=%d (expected %u) bounds "
                     "(%.0f..%.0f, %.0f..%.0f, %.0f..%.0f)\n",
                     nAtomics, kExpected[i].group1 + kExpected[i].group2,
                     (double)bounds.min[0], (double)bounds.max[0],

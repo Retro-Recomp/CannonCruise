@@ -1,18 +1,18 @@
 // ============================================================================
-// CannonCruise - .RWS Asset Yol Çözücü Test (rwsassets_test.cpp)
+// CannonCruise - .RWS Asset Path Resolver Test (rwsassets_test.cpp)
 //
-// Doğrulanan davranış (code/RwsAssets.cpp):
-//   - CANNONCRUISE_STREAMS ortam değişkeni önceliklidir ve normalize edilir
-//     (sondaki / veya \ eklenir/korunur)
-//   - YOKSA sentinel (Streams/MAINMENU.RWS) ile aday önek taraması —
-//     derin VS build yerleşimleri (code/build_<x>/tests → kök 3 seviye
-//     yukarı) dahil edilir
-//   - RwsAssets_Resolve yalnızca dosya MEVCUTSA yol döndürür
-//   - bulunamayan dosya → 0 ve boş dize
+// Verified behavior (code/RwsAssets.cpp):
+//   - the CANNONCRUISE_STREAMS environment variable takes priority and is normalized
+//     (a trailing / or \ is appended/preserved)
+//   - OTHERWISE a candidate prefix scan with the sentinel (Streams/MAINMENU.RWS) —
+//     deep VS build layouts (code/build_<x>/tests → root 3 levels
+//     up) are included
+//   - RwsAssets_Resolve returns a path only if the file EXISTS
+//   - file not found → 0 and an empty string
 //
-// Önceki hata: main.cpp/SceneManager.cpp içinde 5 ayrı yerde elle yazılmış
-// 3-önekli liste ("" / "../" / "../../") vardı; build çıktısı daha derin
-// olduğu için asset hiç bulunamıyor (clump=0, assets=0).
+// Previous bug: a hand-written 3-prefix list ("" / "../" / "../../") existed in
+// 5 separate places in main.cpp/SceneManager.cpp; since the build output is deeper,
+// assets could never be found (clump=0, assets=0).
 // ============================================================================
 
 #include "RwsAssets.h"
@@ -35,7 +35,7 @@ static void Check(bool cond, const char *pExpr, int line) {
 
 #define CHECK(expr) Check((expr), #expr, __LINE__)
 
-// Uygulama-bağımlı ortam değişkeni seti (Windows/POSIX)
+// platform-dependent environment variable setter (Windows/POSIX)
 static void SetEnv(const char *pName, const char *pValue) {
 #if defined(_WIN32)
     _putenv_s(pName, pValue != nullptr ? pValue : "");
@@ -49,20 +49,20 @@ static void SetEnv(const char *pName, const char *pValue) {
 }
 
 // ---------------------------------------------------------------------------
-// 1) Ortam değişkeni ezme yolu — en yüksek öncelik, normalize edilmiş dize
+// 1) Environment variable override path — highest priority, normalized string
 // ---------------------------------------------------------------------------
 static void TestEnvOverride() {
     RwsAssets_Reset();
-    SetEnv("CANNONCRUISE_STREAMS", "Z:/bogus_streams"); // sondaki ayraç YOK
+    SetEnv("CANNONCRUISE_STREAMS", "Z:/bogus_streams"); // NO trailing separator
     const char *pDir = RwsAssets_Dir();
     CHECK(pDir != nullptr);
-    // normalize: sondaki '/' eklenmeli
+    // normalize: trailing '/' must be appended
     CHECK(std::string(pDir) == "Z:/bogus_streams/");
-    SetEnv("CANNONCRUISE_STREAMS", "Z:/bogus_streams/"); // sondaki '/' VAR
+    SetEnv("CANNONCRUISE_STREAMS", "Z:/bogus_streams/"); // trailing '/' PRESENT
     RwsAssets_Reset();
-    CHECK(std::string(RwsAssets_Dir()) == "Z:/bogus_streams/"); // çift ekleme yok
+    CHECK(std::string(RwsAssets_Dir()) == "Z:/bogus_streams/"); // no double append
 
-    // env geçersizken Resolve bulamaz → 0 + boş dize
+    // when env is invalid Resolve cannot find it → 0 + empty string
     char out[512];
     CHECK(RwsAssets_Resolve("Streams/MAINMENU.RWS", out, sizeof(out)) == 0);
     CHECK(out[0] == '\0');
@@ -72,40 +72,40 @@ static void TestEnvOverride() {
 }
 
 // ---------------------------------------------------------------------------
-// 2) Sentinel taraması — Streams/ kökünü önek derinliğinden bulur
+// 2) Sentinel scan — finds the Streams/ root from the prefix depth
 // ---------------------------------------------------------------------------
 static void TestSentinelScan() {
     RwsAssets_Reset();
     const char *pDir = RwsAssets_Dir();
     CHECK(pDir != nullptr);
-    // build/tests CWD'den kök ne kadar yukarı olursa olsun boş olmamalı
-    // (5 aday önek: "" → "../../../../../")
+    // must be non-empty no matter how far up the root is from build/tests CWD
+    // (5 candidate prefixes: "" → "../../../../../")
     CHECK(pDir[0] != '\0');
 
-    // kök bulunduysa sentinel Resolve edilebilmeli
+    // if the root was found, the sentinel must be resolvable
     char out[512];
     const int found =
         RwsAssets_Resolve("Streams/MAINMENU.RWS", out, sizeof(out));
     if (found) {
-        // yol kök dizin + dosya adıyla başlamalı
+        // path must start with the root dir + file name
         CHECK(std::strncmp(out, pDir, std::strlen(pDir)) == 0);
         CHECK(std::strstr(out, "MAINMENU.RWS") != nullptr);
-        // ve gerçekten açılabilir olmalı
+        // and it should actually be openable
         FILE *f = std::fopen(out, "rb");
         CHECK(f != nullptr);
         if (f != nullptr) {
             std::fclose(f);
         }
     } else {
-        // CWD ağacın dışında olabilir — bu bir başarısızlık değil, ama
-        // raporlayalım ki tarama derinliği yetersiz kalmasın.
-        std::printf("NOTE: Streams/MAINMENU.RWS sentinel bulunamadı "
-                    "(CWD kökün dışında olabilir), pDir='%s'\n", pDir);
+        // CWD may be outside the tree — this is not a failure, but
+        // let's report it so the scan depth doesn't fall short.
+        std::printf("NOTE: Streams/MAINMENU.RWS sentinel not found "
+                    "(CWD may be outside the root), pDir='%s'\n", pDir);
     }
 }
 
 // ---------------------------------------------------------------------------
-// 3) Önbellek — ikinci çağrı aynı sonucu verir, dosya yoksa 0 döner
+// 3) Cache — second call returns the same result, returns 0 if file is missing
 // ---------------------------------------------------------------------------
 static void TestCacheAndMissing() {
     RwsAssets_Reset();
@@ -115,18 +115,18 @@ static void TestCacheAndMissing() {
     CHECK(ra == rb);
     CHECK(std::string(a) == std::string(b));
 
-    // var olmayan dosya → 0, tampon temizlenir
+    // nonexistent file → 0, buffer is cleared
     char m[512] = {0x7f};
     CHECK(RwsAssets_Resolve("Streams/__NO_SUCH_FILE__.RWS", m, sizeof(m)) ==
           0);
     CHECK(m[0] == '\0');
 
-    // null/boş girdi → güvenli
+    // null/empty input → safe
     CHECK(RwsAssets_Resolve(nullptr, m, sizeof(m)) == 0);
     CHECK(RwsAssets_Resolve("", m, sizeof(m)) == 0);
     CHECK(RwsAssets_Resolve("Streams/MAINMENU.RWS", nullptr, 512) == 0);
 
-    // mevcut ama farklı aday (GLOBAL/VIKING01) tutarlı çözülmeli
+    // existing but different candidates (GLOBAL/VIKING01) must resolve consistently
     char g[512];
     const int rg = RwsAssets_Resolve("Streams/GLOBAL.RWS", g, sizeof(g));
     if (rg) {
@@ -139,7 +139,7 @@ static void TestCacheAndMissing() {
 }
 
 // ---------------------------------------------------------------------------
-// 4) Reset — env değişkeni tekrar değerlendirilir
+// 4) Reset — env variable is re-evaluated
 // ---------------------------------------------------------------------------
 static void TestResetReevaluatesEnv() {
     RwsAssets_Reset();
@@ -147,9 +147,9 @@ static void TestResetReevaluatesEnv() {
     CHECK(std::string(RwsAssets_Dir()) == "Y:/first/");
 
     SetEnv("CANNONCRUISE_STREAMS", "Y:/second/");
-    // önbellekliyken ESKİ değer korunmalı
+    // while cached, the OLD value must be kept
     CHECK(std::string(RwsAssets_Dir()) == "Y:/first/");
-    // Reset sonrası yeniden değerlendirilir
+    // re-evaluated after Reset
     RwsAssets_Reset();
     CHECK(std::string(RwsAssets_Dir()) == "Y:/second/");
 

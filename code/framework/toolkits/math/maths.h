@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (maths.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\math\maths.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include <rwcore.h>
@@ -15,48 +15,48 @@ namespace RWS
 {
     /**
      * @namespace RWS::Maths
-     * @brief Matematik, vektör işlemleri ve trigonometri yardımcıları.
+     * @brief Math, vector operations and trigonometry helpers.
      *
-     * Oyun motoru içerisindeki rotasyon hesaplamaları, interpolasyon (Lerp)
-     * ve vektörel çarpım gibi temel lineer cebir işlemlerini barındırır.
-     * Gemi fiziği, yapay zeka (PathFinding) ve mermi yörüngeleri bu
-     * araçlara güvenir.
+     * Contains the core linear algebra operations like rotation calculations, interpolation (Lerp)
+     * and vector products inside the game engine.
+     * Ship physics, AI (PathFinding) and projectile trajectories rely
+     * on these utilities.
      */
     namespace Maths
     {
-        /// Pi sayısı (3.1415...)
+        /// Pi constant (3.1415...)
         const RwReal PI = 3.14159265358979323846f;
         /// 2 * Pi (360 derece)
         const RwReal TWO_PI = 6.28318530717958647692f;
         /// Pi / 2 (90 derece)
         const RwReal HALF_PI = 1.57079632679489661923f;
-        /// Dereceden radyana çevrim çarpanı (Pi / 180)
+        /// Degree to radian conversion factor (Pi / 180)
         const RwReal DEG_TO_RAD = 0.01745329251994329576f;
-        /// Radyandan dereceye çevrim çarpanı (180 / Pi)
+        /// Radian to degree conversion factor (180 / Pi)
         const RwReal RAD_TO_DEG = 57.2957795130823208767f;
-        /// Kayar nokta (float) hata toleransı / sıfıra yakınlık sınırı
+        /// Floating-point (float) error tolerance / near-zero limit
         const RwReal EPSILON = 0.00001f;
 
         /**
-         * @brief Derece cinsinden açıyı radyana çevirir.
+         * @brief Converts an angle in degrees to radians.
          * @param deg Derece (0-360)
          * @return RwReal — Radyan (0 - 2PI)
          */
         inline RwReal DegToRad(RwReal deg) { return deg * DEG_TO_RAD; }
 
         /**
-         * @brief Radyan cinsinden açıyı dereceye çevirir.
+         * @brief Converts an angle in radians to degrees.
          * @param rad Radyan (0 - 2PI)
          * @return RwReal — Derece (0-360)
          */
         inline RwReal RadToDeg(RwReal rad) { return rad * RAD_TO_DEG; }
 
         /**
-         * @brief Değeri belirtilen minimum ve maksimum aralığına sıkıştırır (Clamp).
-         * @param val    Sınanacak değer.
-         * @param minVal Minimum sınır.
-         * @param maxVal Maksimum sınır.
-         * @return T — Sınırlar içerisindeki değer.
+         * @brief Clamps the value into the given minimum and maximum range (Clamp).
+         * @param val    Value to test.
+         * @param minVal Minimum bound.
+         * @param maxVal Maximum bound.
+         * @return T — Value clamped within the bounds.
          */
         template <typename T>
         inline T Clamp(T val, T minVal, T maxVal)
@@ -68,23 +68,23 @@ namespace RWS
         }
 
         /**
-         * @brief İki değerden küçüğünü döndürür.
+         * @brief Returns the smaller of two values.
          */
         template <typename T>
         inline T Min(T a, T b) { return (a < b) ? a : b; }
 
         /**
-         * @brief İki değerden büyüğünü döndürür.
+         * @brief Returns the larger of two values.
          */
         template <typename T>
         inline T Max(T a, T b) { return (a > b) ? a : b; }
 
         /**
-         * @brief İki kayar nokta sayı arasında doğrusal interpolasyon yapar (Lerp).
-         * @param a Başlangıç değeri.
-         * @param b Bitiş değeri.
-         * @param t Geçiş ağırlığı (0.0 - 1.0).
-         * @return RwReal — Araya girilen (interpolated) değer.
+         * @brief Linearly interpolates between two floating-point numbers (Lerp).
+         * @param a Start value.
+         * @param b End value.
+         * @param t Blend weight (0.0 - 1.0).
+         * @return RwReal — The interpolated value.
          */
         inline RwReal Lerp(RwReal a, RwReal b, RwReal t)
         {
@@ -92,11 +92,11 @@ namespace RWS
         }
 
         /**
-         * @brief İki vektör arasında doğrusal interpolasyon yapar.
-         * @param pOut Çıkış vektörü (hesaplanan değer buraya yazılır).
-         * @param pA   Başlangıç vektörü.
-         * @param pB   Bitiş vektörü.
-         * @param t    Geçiş ağırlığı (0.0 - 1.0).
+         * @brief Linearly interpolates between two vectors.
+         * @param pOut Output vector (computed value is written here).
+         * @param pA   Start vector.
+         * @param pB   End vector.
+         * @param t    Blend weight (0.0 - 1.0).
          */
         inline void VectorLerp(RwV3d* pOut, const RwV3d* pA, const RwV3d* pB, RwReal t)
         {
@@ -106,8 +106,8 @@ namespace RWS
         }
 
         /**
-         * @brief Vektörün büyüklüğünü (uzunluğunu) döndürür.
-         * @param pV Hedef vektör.
+         * @brief Returns the vector's magnitude (length).
+         * @param pV Target vector.
          * @return RwReal — Uzunluk.
          */
         inline RwReal VectorLength(const RwV3d* pV)
@@ -116,9 +116,9 @@ namespace RWS
         }
 
         /**
-         * @brief Vektörün karesel uzunluğunu (karekök almadan) döndürür.
+         * @brief Returns the vector's squared length (without square root).
          *
-         * Sadece uzaklık karşılaştırmaları yapılacaksa daha hızlıdır.
+         * Faster when only distance comparisons are needed.
          */
         inline RwReal VectorLengthSquared(const RwV3d* pV)
         {
@@ -126,9 +126,9 @@ namespace RWS
         }
 
         /**
-         * @brief Vektörü birim vektöre çevirir (Normalize eder) ve eski uzunluğunu döndürür.
-         * @param pV Normalize edilecek vektör.
-         * @return RwReal — Vektörün normalize edilmeden önceki uzunluğu.
+         * @brief Converts the vector to a unit vector (normalizes it) and returns the old length.
+         * @param pV Vector to normalize.
+         * @return RwReal — The vector's length before normalization.
          */
         inline RwReal VectorNormalize(RwV3d* pV)
         {
@@ -144,10 +144,10 @@ namespace RWS
         }
 
         /**
-         * @brief İki vektörün skaler (Nokta / Dot) çarpımını hesaplar.
-         * @param pA İlk vektör.
-         * @param pB İkinci vektör.
-         * @return RwReal — Skaler çarpım sonucu (Kosinüs benzerliği).
+         * @brief Computes the scalar (dot / Dot) product of two vectors.
+         * @param pA First vector.
+         * @param pB Second vector.
+         * @return RwReal — Result of the scalar product (cosine similarity).
          */
         inline RwReal VectorDotProduct(const RwV3d* pA, const RwV3d* pB)
         {
@@ -155,10 +155,10 @@ namespace RWS
         }
 
         /**
-         * @brief İki vektörün vektörel (Çapraz / Cross) çarpımını hesaplar.
-         * @param pOut Çıkış vektörü (iki vektöre de dik olan yeni vektör).
-         * @param pA   İlk vektör.
-         * @param pB   İkinci vektör.
+         * @brief Computes the vector (cross / Cross) product of two vectors.
+         * @param pOut Output vector (new vector perpendicular to both vectors).
+         * @param pA   First vector.
+         * @param pB   Second vector.
          */
         inline void VectorCrossProduct(RwV3d* pOut, const RwV3d* pA, const RwV3d* pB)
         {

@@ -1,47 +1,47 @@
 # CannonCruise
 
-CannonCruisePC oyununun tersine mühendislikle yeniden inşa edilen kaynak kodu.
-Orijinal 2004 tarihli 32-bit Windows oyunu (`CannonCruise.exe`) Ghidra ve IDA
-analizleri (`CC.asm`, `CC_ida.asm`) temel alınarak C++14 ile yeniden yazılmaktadır.
+Source code of the CannonCruisePC game rebuilt by reverse engineering.
+The original 2004 32-bit Windows game (`CannonCruise.exe`) is being rewritten
+in C++14 based on Ghidra and IDA analyses (`CC.asm`, `CC_ida.asm`).
 
-**Durum:** Aktif geliştirme — Faz 4 (derleme/link) doğrulandı: macOS/Clang'de
-`CannonCruiseLib` + link doğrulama hedefi; Windows'ta VS 18 (2026) ile Win32
-derlemesi ve ctest 33/33 geçti (NULL ve D3D9 platformları). D3D9'da gerçek
-pencere ile oyun render edildiği görsel olarak doğrulandı (ada + okyanus +
-sonra VIEW kamerası); GLOBAL.RWS içerikleri çözüldü ve LOADING ekranı orijinal
-art'larla (parchament, dalga bordürü, Hugo) çalışıyor.
+**Status:** Active development — Phase 4 (build/link) verified: macOS/Clang
+`CannonCruiseLib` + link verification target; Windows Win32 build with VS 18
+(2026) and ctest 33/33 passed (NULL and D3D9 platforms). In D3D9, actual
+rendering of the game with a real window was visually verified (island + ocean +
+VIEW camera afterward); GLOBAL.RWS contents were resolved and the LOADING
+screen works with the original art (parchment, wave border, Hugo).
 
-## Dizin yapısı
+## Directory layout
 
-| Yol | İçerik |
+| Path | Contents |
 |---|---|
-| `code/` | Yeniden yazılmış kaynak kodu (oyun + framework) |
-| `code/framework/` | RenderWare Studio framework çekirdeği (event/attribute/stream/memory) |
-| `code/havok/` | Havok Physics 2.2.1 stub header'ları (Faz 4.3) |
-| `code/rwstubs.cpp` | RenderWare SDK link stub'ları (Faz 4.5) |
-| `code/build/` | CMake çıktıları (izlenmez) |
-| `CC.asm` / `CC_ida.asm` | Ghidra / IDA tersine mühendislik dökümleri (referans) |
-| `tests/` | SDK bağımsız birim testleri (ör. Havok allocator) |
-| `tools/`, `validation/` | Arayüz denetim betikleri ve doğrulama JSON çıktıları |
-| `DLLs/`, `Streams/`, `Sound/`, `Localiza/`, `Setup/` | Orijinal oyun dosyaları (referans/varlık) |
+| `code/` | Rewritten source code (game + framework) |
+| `code/framework/` | RenderWare Studio framework core (event/attribute/stream/memory) |
+| `code/havok/` | Havok Physics 2.2.1 stub headers (Phase 4.3) |
+| `code/rwstubs.cpp` | RenderWare SDK link stubs (Phase 4.5) |
+| `code/build/` | CMake outputs (not tracked) |
+| `CC.asm` / `CC_ida.asm` | Ghidra / IDA reverse engineering dumps (reference) |
+| `tests/` | SDK-independent unit tests (e.g. Havok allocator) |
+| `tools/`, `validation/` | Interface audit scripts and validation JSON outputs |
+| `DLLs/`, `Streams/`, `Sound/`, `Localiza/`, `Setup/` | Original game files (reference/assets) |
 
-## Derleme
+## Build
 
-### macOS (doğrulanmış)
+### macOS (verified)
 
 ```bash
 cd code
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8
-./build/CannonCruise        # link doğrulama girişi — "link verification OK" yazmalıdır
+./build/CannonCruise        # link verification entry — should print "link verification OK"
 ```
 
-- `CannonCruiseLib` statik kütüphanesi + `CannonCruise` link doğrulama hedefi üretilir.
-- Hedef, `-Wl,-force_load` ile tüm arşiv nesnelerini bağlar; eksik sembol varsa
-  link hatası verir. Ayrıca `CannonCruise` hedefi yalnızca sistem kütüphanelerine
-  dinamik bağlanır (oyun SDK'ları henüz link edilmiyor).
+- The `CannonCruiseLib` static library + `CannonCruise` link verification target are produced.
+- The target links all archive objects with `-Wl,-force_load`; a missing symbol
+  produces a link error. Also, the `CannonCruise` target links only
+  dynamically against system libraries (game SDKs are not linked yet).
 
-### Windows (doğrulandı — VS 18 2026)
+### Windows (validated — VS 18 2026)
 
 ```bat
 cd code
@@ -50,43 +50,43 @@ cmake --build build --config Release --parallel 8
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-- `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (pencereli) | `GL3`.
-- D3D9: pencere gerçek zamanlı render — Pull-and-write: dünya asset'leri +
-  GLOBAL + LOADING yükleme sonrası ilk karelerden itibaren görünür
-  (`CANNONCRUISE_CAM=FOLLOW|FREE|AUTO|DATA`). Ekran görüntüsü desteği:
-  `CANNONCRUISE_SCREENSHOT=<dosya.png>` (CAMERATEXTURE RT → systemmem
-  surface → PNG; `EndFrame` swap öncesi). Yükleme ekranı karesi için
-  `CANNONCRUISE_SCREENSHOT_LOADING=<dosya.png>`, oyun dünyası karesi
-  için `CANNONCRUISE_SCREENSHOT`.
-- Yükleme ekranı **30 fps** sabittir (`std::chrono::steady_clock` +
-  `sleep_for`); kare sayısı `CANNONCRUISE_LOADING_FRAMES` (default 100;
-  `0` = atla). Esc/Space/Enter erken çıkış.
-- **Dikkat — izlenen build çıktıları:** `code/build_win32_v180/` repo ile birlikte
-  gelir ve eski (VS 17 2022 generator'lı, D3D9) bayat bir CMakeCache içerir;
-  VS 18 ile yerinde kullanamazsınız. Temiz yol: yeni bir build dizini kullanın
-  (`cmake -B build_win32 ...`) ve iş bitince silin; ya da `build_win32_v180/`
-  içindeki `CMakeCache.txt`/`CMakeFiles/`/`*.vcxproj*` silinip yeniden
-  yapılandırılabilir (izlenen çıktılar git'te durur).
-- D3D9 notu: `GetRenderTargetData` ile backbuffer okuyan D3D9 ekran görüntüsü
-  path'i `CAMERATEXTURE` raster'e taşındı (scene → camera texture RT → systemmem
-  surface → PNG); `EndFrame`, `showRaster`'dan önce camera RT'yi backbuffer'a
-  `StretchRect` ile kopyalar — aksi halde pencere siyah kalır (backbuffer
-  SWAPEFFECT_DISCARD).
-- `build_cannoncruise.cmd` VS 18 recipe'i içerir ve D3D9 platformuyla çalışır;
-  `build_win32/` ve `build_d3d9/` dizinleri gitignore'ta (silmek güvenlidir).
+- `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (windowed) | `GL3`.
+- D3D9: real-time windowed rendering — Pull-and-write: world assets +
+  GLOBAL + LOADING visible from the first frames after loading
+  (`CANNONCRUISE_CAM=FOLLOW|FREE|AUTO|DATA`). Screenshot support:
+  `CANNONCRUISE_SCREENSHOT=<file.png>` (CAMERATEXTURE RT → systemmem
+  surface → PNG; `EndFrame` before swap). For a loading-screen frame use
+  `CANNONCRUISE_SCREENSHOT_LOADING=<file.png>`, for a game world frame use
+  `CANNONCRUISE_SCREENSHOT`.
+- The loading screen is fixed at **30 fps** (`std::chrono::steady_clock` +
+  `sleep_for`); frame count is `CANNONCRUISE_LOADING_FRAMES` (default 100;
+  `0` = skip). Esc/Space/Enter early exit.
+- **Caution — tracked build outputs:** `code/build_win32_v180/` ships with the
+  repo and contains a stale CMakeCache (generated with the VS 17 2022 generator,
+  D3D9); it cannot be used in place with VS 18. Clean path: use a new build
+  directory (`cmake -B build_win32 ...`) and delete it when done; or the
+  `CMakeCache.txt`/`CMakeFiles/`/`*.vcxproj*` inside `build_win32_v180/` can be
+  deleted and reconfigured (the tracked outputs remain in git).
+- D3D9 note: the D3D9 screenshot path that reads the backbuffer via
+  `GetRenderTargetData` was moved to the `CAMERATEXTURE` raster (scene → camera
+  texture RT → systemmem surface → PNG); `EndFrame` copies the camera RT to the
+  backbuffer with `StretchRect` before `showRaster` — otherwise the window stays
+  black (backbuffer SWAPEFFECT_DISCARD).
+- `build_cannoncruise.cmd` contains the VS 18 recipe and works with the D3D9 platform;
+  the `build_win32/` and `build_d3d9/` directories are in gitignore (safe to delete).
 
-## Belgeler
+## Documents
 
-- [ROADMAP_NEXT.md](ROADMAP_NEXT.md) — güncel yol haritası (nerede olduğumuz + bu hafta ne)
-- [ROADMAP.md](ROADMAP.md) — tarihsel faz günlüğü (Faz 1–4.6ab)
-- [ROADMAP_MACOS.md](ROADMAP_MACOS.md) — macOS port yol haritası
-- [BUILDING.md](BUILDING.md) — Windows/MSVC derleme reçetesi ve bağımlılık envanteri
-- [SDK_INTERFACE_AUDIT.md](SDK_INTERFACE_AUDIT.md) — RenderWare/Havok arayüz denetimi
+- [ROADMAP_NEXT.md](ROADMAP_NEXT.md) — current roadmap (where we are + this week)
+- [ROADMAP.md](ROADMAP.md) — historical phase log (Phases 1–4.6ab)
+- [ROADMAP_MACOS.md](ROADMAP_MACOS.md) — macOS port roadmap
+- [BUILDING.md](BUILDING.md) — Windows/MSVC build recipe and dependency inventory
+- [SDK_INTERFACE_AUDIT.md](SDK_INTERFACE_AUDIT.md) — RenderWare/Havok interface audit
 - [LICENSE](LICENSE) — GPL-3.0
 
-## Testler
+## Tests
 
-SDK bağımsız testler `tests/` altındadır. Tümü CMake/ctest ile çalışır:
+SDK-independent tests live under `tests/`. All run with CMake/ctest:
 
 ```bash
 cd code
@@ -95,15 +95,15 @@ cmake --build build -j8
 ctest --test-dir build --output-on-failure
 ```
 
-Kapsam: `havok_memory_manager` (allocator), `ceventhandler` (RegisterMsg/
-LinkMsg/SendMsg/yaşam döngüsü), `cclassfactory` (Register/Create/Shutdown),
-`cattributehandler` (instance registry + paket öngörücüler),
-`worldcycle_test` (VIKING01/IDUNA03/BEAVER01 load→clump→unload stresi,
-Faz 4.6s), `fmvscene_test` (FMV geçiş grafiği, 8 tanımlayıcı),
-`globalassets_test` (GLOBAL.RWS envanteri: gömülü txd + harici resource),
-`globaldump_test` (GLOBAL gömülü txd → PNG dökümü). Tüm paket
-**ctest 33/33** ile çalışır. Tek testi
-sanitizer ile elle de derleyebilirsiniz:
+Coverage: `havok_memory_manager` (allocator), `ceventhandler` (RegisterMsg/
+LinkMsg/SendMsg/lifecycle), `cclassfactory` (Register/Create/Shutdown),
+`cattributehandler` (instance registry + packet predictors),
+`worldcycle_test` (VIKING01/IDUNA03/BEAVER01 load→clump→unload stress,
+Phase 4.6s), `fmvscene_test` (FMV transition graph, 8 identifiers),
+`globalassets_test` (GLOBAL.RWS inventory: embedded txd + external resources),
+`globaldump_test` (GLOBAL embedded txd → PNG dump). The whole package
+runs with **ctest 33/33**. You can also compile a single test with a
+sanitizer manually:
 
 ```bash
 c++ -std=c++14 -fsanitize=address,undefined \
@@ -111,19 +111,19 @@ c++ -std=c++14 -fsanitize=address,undefined \
     -Icode -o /tmp/havok_test && /tmp/havok_test
 ```
 
-## Mimari notlar
+## Architecture notes
 
-- **RenderWare 3.6 / RenderWare Studio:** Yerel stub başlıklar (`code/rwcore.h`
-  vb.) bildirim sağlar; gerçek SDK kütüphaneleri bağlanmamıştır. Oyun kodu
-  RenderWare tipleriyle (`RpClump*`, `RwFrame*` vb.) yazar.
-- **Havok Physics 2.2.1:** `code/havok/` stub header'ları binary adlandırmasıyla
-  (`hkWorld`, `hkRigidBody` — `hkp` öneki yok) eşleşir. `CPhysicsWorld` /
-  `CPhysicsEntity` şimdilik `void*` kullanır; SDK entegrasyonu bekliyor.
+- **RenderWare 3.6 / RenderWare Studio:** local stub headers (`code/rwcore.h`
+  etc.) provide declarations; the real SDK libraries are not linked. Game code
+  is written against RenderWare types (`RpClump*`, `RwFrame*` etc.).
+- **Havok Physics 2.2.1:** the `code/havok/` stub headers match the binary naming
+  (`hkWorld`, `hkRigidBody` — no `hkp` prefix). `CPhysicsWorld` /
+  `CPhysicsEntity` currently use `void*`; awaiting SDK integration.
 - **Framework:** `RWS::CEventHandler`, `CAttributeHandler`, `CClassFactory`
-  RenderWare Studio davranışını taklit eder; `FUN_*` binary adresleri kod
-  yorumlarında korunur.
+  mimic RenderWare Studio behavior; `FUN_*` binary addresses are preserved in
+  code comments.
 
-## Uyarı
+## Warning
 
-Bu proje tersine mühendislik içerir; orijinal oyun telif hakkıyla korunur.
-Depodaki orijinal oyun dosyaları yalnızca analiz/referans amaçlıdır.
+This project involves reverse engineering; the original game is protected by copyright.
+The original game files in the repository are for analysis/reference purposes only.

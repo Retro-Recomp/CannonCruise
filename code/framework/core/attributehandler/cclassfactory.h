@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cclassfactory.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\cclassfactory.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00403000 - FUN_004032e0 (RWS::CClassFactory)
 // ============================================================================
 
@@ -19,47 +19,47 @@ namespace RWS
 
     /**
      * @typedef ClassCreationFunc
-     * @brief Sınıf örneği oluşturmak için kullanılan fabrika fonksiyon işaretçisi.
+     * @brief Factory function pointer used to create class instances.
      *
-     * `CClassFactory::Register()` ile kaydedilir; `Create()` çağrıldığında çağrılır.
+     * Registered via `CClassFactory::Register()`; called when `Create()` is invoked.
      */
     typedef void* (*ClassCreationFunc)(void);
 
     /**
      * @typedef ClassPacketCreationFunc
-     * @brief Özellik paketi ile sınıf örneği oluşturmak için fonksiyon işaretçisi.
+     * @brief Function pointer to create a class instance with an attribute packet.
      */
     typedef void* (*ClassPacketCreationFunc)(const CAttributePacket& packet);
 
     /**
      * @struct ClassData
-     * @brief Kayıtlı bir sınıfın fabrika verisini tutan yapı.
+     * @brief Structure holding the factory data of a registered class.
      */
     struct ClassData
     {
-        ClassCreationFunc m_pCreationFunc; ///< Nesne oluşturma fonksiyonu
-        RwUInt32          m_Size;          ///< Sınıf boyutu (bayt)
+        ClassCreationFunc m_pCreationFunc; ///< Object creation function
+        RwUInt32          m_Size;          ///< Class size (bytes)
     };
 
     /**
      * @class CClassFactory
-     * @brief RenderWare Studio nesne fabrikası — sınıf adına göre nesne oluşturur.
+     * @brief RenderWare Studio object factory — creates objects by class name.
      *
-     * `CAttributeHandler::ProcessPacket()` bir nesne oluşturma paketi aldığında
-     * `CClassFactory::Create(pClassName)` çağrılarak uygun sınıf örneği oluşturulur.
-     * Tüm oyun sınıfları `RWS_REGISTER_CLASS` makrosu aracılığıyla bu fabrikaya kaydolur.
+     * When `CAttributeHandler::ProcessPacket()` receives an object creation packet,
+     * `CClassFactory::Create(pClassName)` is called to create the appropriate class instance.
+     * All game classes register with this factory via the `RWS_REGISTER_CLASS` macro.
      *
-     * **Kullanım:**
+     * **Usage:**
      * ```cpp
-     * // Sınıf tanımı içinde:
+     * // Inside the class definition:
      * RWS_DECLARE_CLASS(CShip)
      * RWS_MAKENEWCLASS(CShip)
      *
-     * // CPP dosyasında:
+     * // In the CPP file:
      * RWS_REGISTER_CLASS(CShip)
      * ```
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Create: `FUN_00403000`
      * - Register: `FUN_00403080`
      * - ClassIsRegistered: `FUN_004030f0`
@@ -69,74 +69,74 @@ namespace RWS
     public:
         enum
         {
-            m_AlignmentSize = 64 ///< Nesne bellek hizalaması (bayt)
+            m_AlignmentSize = 64 ///< Object memory alignment (bytes)
         };
 
-        /// @return Tekil CClassFactory örneğine işaretçi
+        /// @return Pointer to the singleton CClassFactory instance
         static CClassFactory* Instance();
-        /// @brief CClassFactory örneğini siler
+        /// @brief Deletes the CClassFactory instance
         static void Delete();
-        /// @brief Fabrikayı kapatır ve kayıtlı tüm sınıfları temizler
+        /// @brief Shuts down the factory and clears all registered classes
         static void Shutdown();
 
         /**
-         * @brief Sınıf adına göre yeni bir nesne oluşturur.
-         * @param pClassName Oluşturulacak sınıfın adı (örn. "CShip").
-         * @return void* — Oluşturulan nesne işaretçisi (tipe dönüştürülmeli).
+         * @brief Creates a new object by class name.
+         * @param pClassName Name of the class to create (e.g. "CShip").
+         * @return void* — Pointer to the created object (must be cast to the type).
          */
         static void* Create(const char* pClassName);
 
         /**
-         * @brief Belirtilen sınıf adının fabrikaya kayıtlı olup olmadığını kontrol eder.
-         * @param pClassName Kontrol edilecek sınıf adı.
-         * @return TRUE ise sınıf kayıtlı.
+         * @brief Checks whether the given class name is registered with the factory.
+         * @param pClassName Class name to check.
+         * @return TRUE if the class is registered.
          */
         static RwBool ClassIsRegistered(const char* pClassName);
 
         /**
-         * @brief Fabrikaya yeni bir sınıf kaydeder.
-         * @param pClassName   Kaydedilecek sınıf adı.
-         * @param pCreateFunc  Nesne oluşturma fonksiyonu.
-         * @param size         Sınıf boyutu (bayt, isteğe bağlı).
-         * @param flags        Kayıt bayrakları (isteğe bağlı).
-         * @return void* — Kayıt kaydı işaretçisi (genellikle NULL olmayan sentinel).
+         * @brief Registers a new class with the factory.
+         * @param pClassName   Class name to register.
+         * @param pCreateFunc  Object creation function.
+         * @param size         Class size (bytes, optional).
+         * @param flags        Registration flags (optional).
+         * @return void* — Pointer to the registration record (usually a non-NULL sentinel).
          */
         static void* Register(const char* pClassName, ClassCreationFunc pCreateFunc, RwUInt32 size = 0, RwUInt32 flags = 0);
 
         /**
-         * @brief Belirtilen sınıfın fabrika kaydını kaldırır.
-         * @param pClassName Kaydı kaldırılacak sınıf adı.
+         * @brief Removes the given class's registration from the factory.
+         * @param pClassName Class name whose registration should be removed.
          */
         static void UnRegister(const char* pClassName);
 
-        /// @brief Tüm kayıtlı sınıfları fabrikadan kaldırır
+        /// @brief Removes all registered classes from the factory
         static void UnRegisterAll();
 
     private:
         CClassFactory();
         ~CClassFactory();
 
-        static CClassFactory* sm_pInstance; ///< Tekil örnek işaretçisi
+        static CClassFactory* sm_pInstance; ///< Singleton instance pointer
 
-        std::map<std::string, ClassData*> m_RegisteredClasses; ///< Ad → ClassData eşleştirme tablosu
+        std::map<std::string, ClassData*> m_RegisteredClasses; ///< Name → ClassData mapping table
     };
 
     /**
      * @class CAutoRegisterClass
-     * @brief Statik başlatma sırasında sınıfı CClassFactory'ye otomatik kaydeden yardımcı.
+     * @brief Helper that automatically registers the class with CClassFactory during static initialization.
      *
-     * `RWS_REGISTER_CLASS` makrosu bu sınıftan statik bir örnek oluşturarak
-     * sınıfın fabrikaya `.cpp` dosyası yüklendiğinde kaydolmasını sağlar.
+     * The `RWS_REGISTER_CLASS` macro creates a static instance of this class,
+     * ensuring the class registers with the factory when the `.cpp` file is loaded.
      */
     class CAutoRegisterClass
     {
     public:
         /**
-         * @brief Sınıfı CClassFactory'ye kaydeder.
-         * @param pClassName  Kaydedilecek sınıf adı.
-         * @param pCreateFunc Nesne oluşturma fonksiyonu.
-         * @param size        Sınıf boyutu (isteğe bağlı).
-         * @param flags       Kayıt bayrakları (varsayılan: 1).
+         * @brief Registers the class with CClassFactory.
+         * @param pClassName  Class name to register.
+         * @param pCreateFunc Object creation function.
+         * @param size        Class size (optional).
+         * @param flags       Registration flags (default: 1).
          */
         CAutoRegisterClass(const char* pClassName, ClassCreationFunc pCreateFunc, RwUInt32 size = 0, RwUInt32 flags = 1)
         {
@@ -145,26 +145,26 @@ namespace RWS
     };
 
     /**
-     * @brief Boş fabrika fonksiyonu — 1-arg kayıtlarda create=NULL deseni.
-     * MSVC geleneksel preprocessörü makro içindeki lambda syntax'ını
-     * bozduğundan (C2059: '[') lambda yerine sabit fonksiyon kullanılır.
+     * @brief Empty factory function — create=NULL pattern for 1-arg registrations.
+     * MSVC's traditional preprocessor mangles lambda syntax inside macros
+     * (C2059: '['), so a fixed function is used instead of a lambda.
      */
     inline void* NullCreationFunc() { return 0; }
 
     /**
      * @def RWS_REGISTER_CLASS(className[, factory[, size]])
-     * @brief Sınıfı CClassFactory'ye statik başlatmayla kaydeden makro.
+     * @brief Macro that registers the class with CClassFactory via static initialization.
      *
-     * Kullanım (codegen):
+     * Usage (codegen):
      * ```cpp
-     * RWS_REGISTER_CLASS(CShip)  // ad kaydı — create sonradan BehaviorLoader
+     * RWS_REGISTER_CLASS(CShip)  // name registration — create is supplied later by BehaviorLoader
      * RWS_REGISTER_CLASS(CShip, MakeCShip, sizeof(CShip))
      * ```
-     * 3-arg biçim fabrika fonksiyonunu gerçekten kaydeder (Create çağırır);
-     * 1-arg biçim binary ad-kaydı desenidir (create NULL).
+     * The 3-arg form actually registers the factory function (calls Create);
+     * the 1-arg form is the binary name-registration pattern (create NULL).
      *
-     * NOT: MSVC lambda syntax'ı makro içinde bozulur (C2059/C2512).
-     * Lambda yerine statik fabrika fonksiyonu veya NullCreationFunc kullanın.
+     * NOTE: MSVC lambda syntax breaks inside macros (C2059/C2512).
+     * Use a static factory function or NullCreationFunc instead of a lambda.
      */
     #define RWS_GET_MACRO(_1, _2, _3, NAME, ...) NAME
     #define RWS_REGISTER_CLASS1(className)                                   \
@@ -184,21 +184,21 @@ namespace RWS
 
     /**
      * @def RWS_MAKENEWCLASS(className)
-     * @brief Özellik paketi ile nesne oluşturan statik fabrika metodu tanımlar.
+     * @brief Defines a static factory method that creates an object from an attribute packet.
      */
     #define RWS_MAKENEWCLASS(className) \
         static void* MakeNewClass(const RWS::CAttributePacket& packet) { return new className(packet); }
 
     /**
      * @def RWS_DECLARE_CLASS(className)
-     * @brief Sınıf adını döndüren `GetClassName()` metodunu tanımlar.
+     * @brief Defines the `GetClassName()` method that returns the class name.
      */
     #define RWS_DECLARE_CLASS(className) \
         static const char* GetClassName() { return #className; }
 
     /**
      * @def RWS_CLASS_INDEX(className)
-     * @brief Sınıfın özellik paketindeki indeksini döndürür (CannonCruise'da her zaman 0).
+     * @brief Returns the class's index in the attribute packet (always 0 in CannonCruise).
      */
     #define RWS_CLASS_INDEX(className) 0
 }

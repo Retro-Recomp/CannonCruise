@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - Gömülü TXD (d3d8 IMAGE) decode testi
-// Gerçek MAINMENU.RWS gömülü txdsi (16 texture, Menu_137..Menu_074)
-// decode edilip piksel/name/format alanları doğrulanır.
-// Çalıştırma: txddecode_test <MAINMENU.RWS>
+// CannonCruise - Embedded TXD (d3d8 IMAGE) decode test
+// The real MAINMENU.RWS embedded txd (16 textures, Menu_137..Menu_074)
+// is decoded and the pixel/name/format fields are verified.
+// Usage: txddecode_test <MAINMENU.RWS>
 // ============================================================================
 
 #include "TxdDecode.h"
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 CHECK(asset.embeddedLibId == 0x1803FFFF);
-                // payload tamponu (1.68MB)
+                // payload buffer (1.68MB)
                 RwUInt8 *pBuf =
                     static_cast<RwUInt8 *>(std::malloc(asset.embeddedLength));
                 CHECK(pBuf != 0);
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
                     CHECK(pImage->deviceId == 1);
                     CHECK(pImage->count == 16);
 
-                    // ilk texture: Menu_137, 128×32×32bpp, pitch 512
+                    // first texture: Menu_137, 128×32×32bpp, pitch 512
                     const RwTxdTexture *pT0 = &pImage->textures[0];
                     CHECK(std::strcmp(pT0->name, "Menu_137") == 0);
                     CHECK(pT0->width == 128);
@@ -77,11 +77,11 @@ int main(int argc, char **argv) {
                     CHECK(pT0->pixelBytes == 16384);
                     CHECK(pT0->filterFlags == 0x00011101);
                     CHECK(pT0->pPixels != 0);
-                    // ilk piksel = 0x00FFFFFF (beyaz)
+                    // first pixel = 0x00FFFFFF (white)
                     CHECK(pT0->pPixels[0] == 0xFF && pT0->pPixels[1] == 0xFF &&
                           pT0->pPixels[2] == 0xFF && pT0->pPixels[3] == 0x00);
 
-                    // son texture: Menu_074 (640×480 arka plan)
+                    // last texture: Menu_074 (640×480 background)
                     const RwTxdTexture *pTL =
                         &pImage->textures[pImage->count - 1];
                     CHECK(std::strcmp(pTL->name, "Menu_074") == 0);
@@ -91,12 +91,12 @@ int main(int argc, char **argv) {
                     CHECK(pTL->pixelBytes == 1228800);
                     CHECK(pTL->pPixels != 0);
 
-                    // boyut çeşitliliği: tex14 = 512×128 şerit
+                    // size variety: tex14 = 512×128 strip
                     CHECK(pImage->textures[14].width == 512);
                     CHECK(pImage->textures[14].height == 128);
                     CHECK(pImage->textures[14].pixelBytes == 262144);
 
-                    // tüm isimler "Menu_" önekli, pikseller payload içinde
+                    // all names prefixed with "Menu_", pixels are inside the payload
                     RwBool allMenu = TRUE;
                     RwBool pixelsInRange = TRUE;
                     RwBool sizeConsistent = TRUE;
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    // bozuk girdi → FALSE
+    // invalid input → FALSE
     CHECK(RwTxdDecodeImage(0, 0, 0) == FALSE);
     const RwUInt8 junk[8] = {1, 2, 3, 4, 5, 6, 7, 8};
     RwTxdImage tmpImage;

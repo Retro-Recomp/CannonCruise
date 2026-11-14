@@ -3,7 +3,7 @@
 // ============================================================================
 // CannonCruise - Lifebuoy Score Pickup (Lifebuoy.h)
 // Original path: D:\Projects\CannonCruisePC\code\Lifebuoy.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Flotsam.h"

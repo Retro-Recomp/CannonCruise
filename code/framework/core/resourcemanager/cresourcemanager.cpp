@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cresourcemanager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\resourcemanager\cresourcemanager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004059a0 — CResourceManager::FindResource
 //   FUN_00405ef0 — CResourceManager::RegisterResource
 //   FUN_00406360 — CResourceManager::UnRegisterResource
@@ -60,7 +60,7 @@ namespace RWS
 
     // ========================================================================
     // CResourceManager::FindResource (FUN_004059a0)
-    // ASM: 004059a0 — Kaynak ID ve türüne göre kaynağı bul
+    // ASM: 004059a0 — Find the resource by its ID and type
     // ========================================================================
     void* CResourceManager::FindResource(const char* pResId, const char* pStrType)
     {
@@ -87,7 +87,7 @@ namespace RWS
 
     // ========================================================================
     // CResourceManager::RegisterResource (FUN_00405ef0)
-    // ASM: 00405ef0 — Yeni bir kaynağı yöneticide kaydet
+    // ASM: 00405ef0 — Register a new resource with the manager
     // ========================================================================
     RwBool CResourceManager::RegisterResource(const char* pResId, const char* pStrType, const char* pStrName, void* pData)
     {
@@ -107,7 +107,7 @@ namespace RWS
 
     // ========================================================================
     // CResourceManager::UnRegisterResource (FUN_00406360)
-    // ASM: 00406360 — Kaynağın kaydını sil
+    // ASM: 00406360 — Remove the resource's registration
     // ========================================================================
     void CResourceManager::UnRegisterResource(const char* pResId)
     {
@@ -119,7 +119,7 @@ namespace RWS
 
     // ========================================================================
     // CResourceManager::UnRegisterAll (FUN_00406680)
-    // ASM: 00406680 — Tüm kaynak kayıtlarını temizle
+    // ASM: 00406680 — Clear all resource registrations
     // ========================================================================
     void CResourceManager::UnRegisterAll()
     {

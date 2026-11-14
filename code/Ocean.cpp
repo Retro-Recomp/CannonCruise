@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Ocean Water Simulation (Ocean.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\Ocean.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0042d870 — COcean constructor & class registration ("COcean")
 //   FUN_0042d8b0 — COcean mesh tessellation ("Error in Tristripper")
 //   FUN_0042dbf0 — COcean::Initialize ("Cannot create sky dome clump.", "Cannot create ocean atomic ")
@@ -79,7 +79,7 @@ void COcean::HandleEvents(const RWS::CMsg& msg)
 void COcean::Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
                         RwReal originX, RwReal originZ)
 {
-    // mevcut ızgarayı temizle (yeniden-init güvenli)
+    // clear the existing grid (re-init safe)
     for (size_t i = 0; i < m_Tiles.size(); ++i) {
         delete m_Tiles[i];
     }
@@ -88,7 +88,7 @@ void COcean::Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
     if (numTilesX < 1) numTilesX = 1;
     if (numTilesZ < 1) numTilesZ = 1;
     if (tileSize <= 0.0f) tileSize = 100.0f;
-    const RwInt32 kSubdivisions = 8; // 9×9 grid/tile — Im3D altında
+    const RwInt32 kSubdivisions = 8; // 9×9 grid/tile — under Im3D
 
     for (RwInt32 z = 0; z < numTilesZ; ++z) {
         for (RwInt32 x = 0; x < numTilesX; ++x) {

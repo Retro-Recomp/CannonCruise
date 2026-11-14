@@ -73,8 +73,8 @@ namespace
     // sub_5154D0 texture reader (test injection) — 0 = default path
     FontTextureReader s_pTextureReader = 0;
 
-    // dword_66DCC0 — yükleme geri çağrısı (sub_4CD660 kaydeder;
-    // sub_4CEE90 buradan çağırır). Portta doğrudan FontSystemLoad kullanılır.
+    // dword_66DCC0 — load callback (registered by sub_4CD660;
+    // sub_4CEE90 calls it from here). The port uses FontSystemLoad directly.
     typedef CCFont *(*FontLoaderCallback)(const char *);
     FontLoaderCallback s_pLoader = &FontSystemLoad;
 
@@ -142,9 +142,9 @@ namespace
         }
     }
 
-    // sub_4CE000 — genişletilmiş (>=0x80) kod haritasını derler.
-    // dword_66DE1C[] (glif indeksi → kod) taranır; min..max aralığında
-    // uint16 tablo üretilir (boş girdiler 0xFFFF — binary: or eax,-1 dolgu).
+    // sub_4CE000 — builds the extended (>=0x80) code map.
+    // dword_66DE1C[] (glyph index → code) is scanned; in the min..max range
+    // a uint16 table is produced (empty entries 0xFFFF — binary: or eax,-1 fill).
     void FontFinalizeExtMap(CCFont *pFont) {
         RwInt32 count = pFont->glyphCount;
         if (count <= 0 || !s_pExtScratch) {
@@ -191,9 +191,9 @@ namespace
     }
 
     // ---------------------------------------------------------------------------
-    // Glif kodu kaydı — sub_4CDBC0 (M1) ve sub_4CE870 (M3) ortak bloğu:
-    // <0x80 → ascii[]; >=0x80 → glyphFlags|=2 + dword_66DE1C çizme dizisi
-    // (kapasite +0x20 büyür; her eleman başta 0xFFFFFFFF).
+    // Glyph code registration — common block of sub_4CDBC0 (M1) and sub_4CE870 (M3):
+    // <0x80 → ascii[]; >=0x80 → glyphFlags|=2 + dword_66DE1C paint array
+    // (capacity grows by +0x20; each element starts as 0xFFFFFFFF).
     // ---------------------------------------------------------------------------
     RwBool RegisterGlyphCode(CCFont *pFont, RwInt32 code, RwInt32 glyphIndex) {
         if (code < 0x80) {
@@ -218,18 +218,18 @@ namespace
             s_extScratchCap = newCap;
         }
         pFont->glyphFlags |= 2;                 // [esi+0x10] |= 2
-        s_pExtScratch[glyphIndex] = code;       // dword_66DE1C[idx] = kod
+        s_pExtScratch[glyphIndex] = code;       // dword_66DE1C[idx] = code
         return TRUE;
     }
 
     // ---------------------------------------------------------------------------
-    // Vektör kontur yardımcıları — sub_4D0C90 (alt yol tahsisi), sub_4CFE80/
-    // 4CFF40/4D0040 (nokta ekleme), sub_4D0220 (closepath), sub_4D0BA0 +
-    // sub_4D0DB0 (sonlandırma). Binary engine havuz/array (sub_51A0A0/
-    // sub_51A230) kullanır; port düz malloc ile aynı zincir semantiğini
-    // modelleyen çağırıcı sözleşmesi kurar:
-    //   *ppHead → zincir başı; moveto (aktif yol doluysa) sonraki alt yola
-    //     geçer; PPHead güncellenir.
+    // Vector contour helpers — sub_4D0C90 (subpath allocation), sub_4CFE80/
+    // 4CFF40/4D0040 (point insertion), sub_4D0220 (closepath), sub_4D0BA0 +
+    // sub_4D0DB0 (finalization). The binary uses the engine pool/array (sub_51A0A0/
+    // sub_51A230); the port flat-mallocs while modeling the same chain semantics,
+    // establishing a caller contract:
+    //   *ppHead → chain head; moveto (when the active path is full) advances to the next subpath
+    //     ; PPHead is updated.
     // ---------------------------------------------------------------------------
     CCFontContour **ContourCurrent(CCFontContour **ppHead) {
         CCFontContour **ppCur = ppHead;
@@ -252,8 +252,8 @@ namespace
         return pC;
     }
 
-    // sub_4CFE80 moveto: aktif yol boşsa nokta ekle; doluysa (binary: kök
-    // dizi count!=0) yeni alt yol başlat ve oraya ekle.
+    // sub_4CFE80 moveto: if the active path is empty, add the point; if full (binary: root
+    // array count!=0) start a new subpath and add there.
     RwBool ContourMoveTo(CCFontContour **ppHead, RwReal x, RwReal y) {
         CCFontContour **ppCur = ContourCurrent(ppHead);
         if (!*ppCur) {
@@ -294,8 +294,8 @@ namespace
         return TRUE;
     }
 
-    // nokta ekleme (lineto/curveto) — aktif yolun son alt yoluna; yoksa
-    // moveto gibi başlat (binary arg yoklama — port sağlamlık sapması).
+    // point insertion (lineto/curveto) — to the last subpath of the active path; otherwise
+    // start like moveto (binary arg probing — port robustness deviation).
     RwBool ContourAddPoint(CCFontContour **ppHead, RwUInt32 type, const RwReal *pF,
                            RwInt32 floatCount) {
         CCFontContour **ppCur = ContourCurrent(ppHead);
@@ -331,7 +331,7 @@ namespace
         return TRUE;
     }
 
-    // sub_4D0C20 / sub_4D0BA0 + sub_4D0DB0 — glif kontur zincirini bırak.
+    // sub_4D0C20 / sub_4D0BA0 + sub_4D0DB0 — release the glyph contour chain.
     void ContourFreeChain(CCFontContour *pHead) {
         while (pHead) {
             CCFontContour *pNext = pHead->pNext;
@@ -344,29 +344,29 @@ namespace
     }
 
     // ---------------------------------------------------------------------------
-    // ParseMetrics3 (sub_4CE870) — METRICS3 vektör kontur biçimi:
-    //   METRICS3\n                       — FontSystemLoad tüketir (dispatch)
-    //   <ad>\n                           — "%[^\n]" (yerel; port okur ve atlar)
-    //   <önek><UTF-8 kod>\n              — pending==0 satırı: binary buf[1]'den
-    //                                      UTF-8 (1..6 bayt, eski 5/6 bayt
-    //                                      formları dâhil) çözümleyip pending
-    //                                      kodunu kurar; önek buf[0] yok
-    //                                      sayılır (port biçimi: ')
-    //   begin\n / end\n                  — alt yol başlangıcı / glif sonu
+    // ParseMetrics3 (sub_4CE870) — METRICS3 vector contour format:
+    //   METRICS3\n                       — consumed by FontSystemLoad (dispatch)
+    //   <name>\n                          — "%[^\n]" (local; port reads and skips)
+    //   <prefix><UTF-8 code>\n           — pending==0 line: binary from buf[1]
+    //                                      UTF-8 (1..6 bytes, legacy 5/6 byte
+    //                                      forms included) decoded to set the pending
+    //                                      code; prefix buf[0] is treated as absent
+    //                                      (port format: ')
+    //   begin\n / end\n                  — subpath start / glyph end
     //   moveto %f %f / lineto %f %f / curveto %f×6 / closepath\n
-    // Glif sonunda: aspect = son path-op'un ilk float'ı (var_A0 — binary
-    // quirk), data = kontur zinciri, doku = 0; çizim sub_4CCAF0 (vektör).
+    // At glyph end: aspect = first float of the last path-op (var_A0 — binary
+    // quirk), data = contour chain, texture = 0; drawn by sub_4CCAF0 (vector).
     // ---------------------------------------------------------------------------
     RwBool ParseMetrics3(CCFont *pFont, std::FILE *pFile) {
         char line[256];
 
-        // 1) ad satırı — binary var_80'e okur (kullanımı gözlenmedi); port
-        //    atlar.
+        // 1) name line — binary reads it into var_80 (never observed used); port
+        //    skips.
         if (!std::fgets(line, sizeof(line), pFile)) {
             return FALSE;
         }
 
-        // 2) glif dizisi — kapasite [font+0x130] (taze nesnede 0 → 0x100)
+        // 2) glyph array — capacity [font+0x130] (0 in a fresh object → 0x100)
         RwInt32 capacity = pFont->glyphCount > 0 ? pFont->glyphCount : 0x100;
         pFont->glyphs = static_cast<CCFontGlyph *>(
             PoolAlloc(static_cast<size_t>(capacity) * sizeof(CCFontGlyph)));
@@ -376,26 +376,26 @@ namespace
         std::memset(pFont->glyphs, 0, static_cast<size_t>(capacity) * sizeof(CCFontGlyph));
 
         RwInt32 glyphCount = 0;   // var_B0
-        RwInt32 pendingCode = 0;  // var_B8 — 0 = kod satırı bekleniyor
+        RwInt32 pendingCode = 0;  // var_B8 — 0 = waiting for a code line
         CCFontContour *pContour = 0;
-        // var_A0 — son path-op'un ilk float'ı (glif aspect'i). Binary'de
-        // yığın slottur ve glifler arasında SIFIRLANMAZ (yapışkan); port
-        // belirsizliği gidermek için başta 0 başlatır.
+        // var_A0 — first float of the last path-op (glyph aspect). In the binary
+        // it is a stack slot and is NOT zeroed between glyphs (sticky); the port
+        // initializes it to 0 up front to remove the ambiguity.
         RwReal lastFirstFloat = 0.0f;
         RwBool failed = FALSE;
 
         while (std::fgets(line, sizeof(line), pFile)) {
-            // binary ReadLine \n'yi korur ve komutlar "begin\n" gibi tam
-            // satırla strcmp edilir; port StripNewline sonrası eşler.
+            // binary ReadLine keeps \n and commands stay exact like "begin\n"
+            // compared via strcmp with the line; the port compares after StripNewline.
             StripNewline(line);
 
             if (pendingCode == 0) {
-                // kod satırı — UTF-8 buf[1]'den (binary: 1..6 bayt eski form)
+                // code line — UTF-8 from buf[1] (binary: 1..6 bytes legacy form)
                 const unsigned char *p = reinterpret_cast<const unsigned char *>(line) + 1;
                 RwUInt32 code = 0;
                 unsigned char b0 = p[0];
                 if (b0 == 0) {
-                    failed = TRUE; // önek sonrası boş satır — sert hata
+                    failed = TRUE; // empty line after prefix — hard error
                     break;
                 }
                 if ((b0 & 0x80u) == 0) {
@@ -426,7 +426,7 @@ namespace
                            (static_cast<RwUInt32>(p[4] & 0x3Fu) << 6) |
                            (p[5] & 0x3Fu);
                 } else {
-                    failed = TRUE; // geçersiz önek — binary: var_B4=0 → fail
+                    failed = TRUE; // invalid prefix — binary: var_B4=0 → fail
                     break;
                 }
                 if (code > 0xFFFF) {
@@ -448,8 +448,8 @@ namespace
                     break;
                 }
             } else if (std::strcmp(line, "end") == 0) {
-                // glif kaydı — binary sub_4D0BA0 + sub_4D0DB0 (sonlandır),
-                // kod kaydı, glyph[data]=contour, glyph[aspect]=var_A0
+                // glyph registration — binary sub_4D0BA0 + sub_4D0DB0 (finalize),
+                // code registration, glyph[data]=contour, glyph[aspect]=var_A0
                 if (glyphCount >= capacity) {
                     capacity += 0x20;
                     CCFontGlyph *pNewGlyphs = static_cast<CCFontGlyph *>(
@@ -471,8 +471,8 @@ namespace
                     break;
                 }
                 CCFontGlyph &glyph = pFont->glyphs[glyphCount];
-                glyph.aspect = lastFirstFloat; // var_A0 — son op ilk float
-                glyph.texture = 0;             // vektör glif — doku yok
+                glyph.aspect = lastFirstFloat; // var_A0 — last op first float
+                glyph.texture = 0;             // vector glyph — no texture
                 glyph.data = pContour;
                 glyph.flags = 0;
                 pContour = 0;
@@ -498,15 +498,15 @@ namespace
                     break;
                 }
             } else if (std::strcmp(line, "closepath") == 0) {
-                // sub_4D0220 — binary ilk/son nokta farkını ölçüp kapanış
-                // ekler; port kapatma bayrağını işaretler (raster TODO).
+                // sub_4D0220 — binary measures first/last point difference and
+                // appends a closing segment; the port just marks the closed flag (raster TODO).
                 CCFontContour **ppCur = ContourCurrent(&pContour);
                 if (*ppCur) {
                     (*ppCur)->closed = TRUE;
                 }
             }
-            // bilinmeyen satır — binary strcmp/sscanf zinciri sessizce
-            // düşer; port da atlar.
+            // unknown line — the binary strcmp/sscanf chain silently
+            // falls through; the port skips it too.
         }
 
         if (failed) {
@@ -514,12 +514,12 @@ namespace
             return FALSE;
         }
         if (pendingCode != 0) {
-            // kod satırı bloksuz kaldı — binary blok beklemede takılıp
-            // EOF'te glyphsiz döner; port yarım glifi atlar.
+            // code line left without a block — the binary stays stuck waiting for a block and
+            // returns without a glyph at EOF; the port skips the half-done glyph.
             ContourFreeChain(pContour);
         }
 
-        // bitiş — sub_4CE870 son blok
+        // finalization — sub_4CE870 trailing block
         pFont->glyphCount = glyphCount;
         FontFinalizeExtMap(pFont);
         if (s_pExtScratch) {
@@ -527,23 +527,23 @@ namespace
                 s_pExtScratch[i] = -1;
             }
         }
-        // [font+0x138] = &sub_4CCAF0 (vektör işleyici) — portta tek yol
-        // FontSystem_DrawText; raster sub_4D54C0 Faz 4.4b TODO.
+        // [font+0x138] = &sub_4CCAF0 (vector handler) — single path in the port
+        // FontSystem_DrawText; raster sub_4D54C0 Phase 4.4b TODO.
         pFont->drawHandler = 0;
         return TRUE;
     }
 
     // ---------------------------------------------------------------------------
-    // ParseMetrics1 (sub_4CDBC0) — METRICS1 metin biçimi:
+    // ParseMetrics1 (sub_4CDBC0) — METRICS1 text format:
     //   METRICS1\n
-    //   <doku-ad> [maske]\n     — "%s %s" (maske opsiyonel)
-    //   <boyut>\n               — "%d"
-    //   <kod> <sol> <üst> <sağ> <alt>  — "%i %i %i %i %i" (EOF'a kadar)
+    //   <texture-name> [mask]\n     - "%s %s" (mask optional)
+    //   <size>\n               - "%d"
+    //   <code> <left> <top> <right> <bottom>  — "%i %i %i %i %i" (until EOF)
     // ---------------------------------------------------------------------------
     RwBool ParseMetrics1(CCFont *pFont, std::FILE *pFile) {
         char line[256];
 
-        // 1) başlık satırı — token1 = doku adı, token2 = maske (opsiyonel)
+        // 1) header line — token1 = texture name, token2 = mask (optional)
         if (!std::fgets(line, sizeof(line), pFile)) {
             return FALSE;
         }
@@ -555,11 +555,11 @@ namespace
             return FALSE;
         }
 
-        // 2) doku çözümü
+        // 2) texture resolution
         const char *pMask = 0;
         if (tokens == 1) {
-            // Binary: sprintf(scratch, "%sm%s", "fonts\", ad) → varlık yoklaması;
-            // bulunursa maske = "m<ad>", bulunmazsa NULL.
+            // Binary: sprintf(scratch, "%sm%s", "fonts\", name) → asset probe;
+            // if found mask = "m<name>", otherwise NULL.
             std::snprintf(s_Scratch, sizeof(s_Scratch), "%sm%s", kFontPath, token1);
             if (FileExists(s_Scratch)) {
                 std::snprintf(s_Scratch, sizeof(s_Scratch), "m%s", token1);
@@ -573,11 +573,11 @@ namespace
         RwInt32 texHeight = 0;
         RwTexture *pTex = ReadTexture(token1, pMask, &texWidth, &texHeight);
         if (!pTex || texWidth <= 0 || texHeight <= 0) {
-            return FALSE; // binary: doku yoksa tüm yükleme başarısız
+            return FALSE; // binary: failure to find the texture fails the whole load
         }
         pFont->textures[0] = pTex;
 
-        // 3) boyut satırı
+        // 3) size line
         if (!std::fgets(line, sizeof(line), pFile)) {
             return FALSE;
         }
@@ -590,7 +590,7 @@ namespace
         const RwReal recipWidth = 1.0f / static_cast<RwReal>(texWidth);
         const RwReal recipHeight = 1.0f / static_cast<RwReal>(texHeight);
 
-        // 4) glif dizisi — kapasite [esi+0x130] (taze nesnede 0 → varsayılan 256)
+        // 4) glyph array — capacity [esi+0x130] (0 in a fresh object → default 256)
         RwInt32 capacity = pFont->glyphCount > 0 ? pFont->glyphCount : 0x100;
         pFont->refCount = 0; // sub_4CDBC0: dword ptr [esi] = 0
         pFont->glyphs = static_cast<CCFontGlyph *>(
@@ -601,9 +601,9 @@ namespace
         std::memset(pFont->glyphs, 0, static_cast<size_t>(capacity) * sizeof(CCFontGlyph));
 
         RwInt32 glyphCount = 0;              // var_30
-        RwInt32 lastTop = 0;                 // var_28 (son satırın üst değeri)
-        RwInt32 lastBottom = 0;              // var_2C (son satırın alt değeri)
-        RwBool  failed = FALSE;              // var_38 == font imleci → başarılı
+        RwInt32 lastTop = 0;                 // var_28 (last line's top value)
+        RwInt32 lastBottom = 0;              // var_2C (last line's bottom value)
+        RwBool  failed = FALSE;              // var_38 == font cursor → success
 
         while (std::fgets(line, sizeof(line), pFile)) {
             StripNewline(line);
@@ -611,21 +611,21 @@ namespace
             RwInt32 code, left, top, right, bottom;
             if (std::sscanf(line, "%i %i %i %i %i", &code, &left, &top, &right,
                             &bottom) != 5) {
-                continue; // binary: 5 alan değilse satır atlanır
+                continue; // binary: line skipped if not exactly 5 fields
             }
             if (code > 0xFFFF) {
-                failed = TRUE; // binary: var_38 = 0 → sert hata
+                failed = TRUE; // binary: var_38 = 0 → hard error
                 break;
             }
 
-            // genişletilmiş kod çizme dizisi — her glif için kapasite
-            // denetimi (ortak kayıt bloğu RegisterGlyphCode)
+            // extended code paint array — capacity check per glyph
+            // (common registration block RegisterGlyphCode)
             if (!RegisterGlyphCode(pFont, code, glyphCount)) {
                 failed = TRUE;
                 break;
             }
 
-            // UV + en-boy — piksel merkezi düzeltmesi 0.5 (flt_5EF624)
+            // UV + aspect — pixel center correction 0.5 (flt_5EF624)
             CCFontGlyph &glyph = pFont->glyphs[glyphCount];
             glyph.u0 = (static_cast<RwReal>(left) + 0.5f) * recipWidth;
             glyph.v0 = (static_cast<RwReal>(top) + 0.5f) * recipHeight;
@@ -661,16 +661,16 @@ namespace
             return FALSE;
         }
 
-        // bitiş — sub_4CDBC0 son blok
+        // finalization — sub_4CDBC0 trailing block
         pFont->glyphCount = glyphCount;
         FontFinalizeExtMap(pFont);
         if (s_pExtScratch) {
-            // binary: genişletilmiş çizme dizisini 0xFFFFFFFF ile sıfırla
+            // binary: zero the extended paint array with 0xFFFFFFFF
             for (RwInt32 i = 0; i < s_extScratchCap; ++i) {
                 s_pExtScratch[i] = -1;
             }
         }
-        pFont->spacing = 0.0f; // [esi+0Ch] = 0 — glif arası boşluk (M1)
+        pFont->spacing = 0.0f; // [esi+0Ch] = 0 — inter-glyph spacing (M1)
         pFont->lineExtent = static_cast<RwReal>(lastBottom - lastTop);
         pFont->sizeScale = pFont->lineExtent != 0.0f
                                ? static_cast<RwReal>(sizePx) / pFont->lineExtent
@@ -678,7 +678,7 @@ namespace
         return TRUE;
     }
 
-    // sub_4CD4D0 — font nesnesi tahsisi (0x144 havuz + alan başlangıçları)
+    // sub_4CD4D0 — font object allocation (0x144 pool + field initializers)
     CCFont *FontAlloc(void) {
         CCFont *pFont = static_cast<CCFont *>(PoolAlloc(sizeof(CCFont)));
         if (!pFont) {
@@ -687,7 +687,7 @@ namespace
         pFont->refCount = 1;
         pFont->lineExtent = 1.0f; // [esi+4] = 3F800000h
         pFont->sizeScale = 0.0f;
-        pFont->spacing = 0.0f; // [esi+0Ch] (M1 bitişte yazılır)
+        pFont->spacing = 0.0f; // [esi+0Ch] (written at the end in M1)
         pFont->glyphFlags = 0;
         for (int i = 0; i < 4; ++i) {
             pFont->textures[i] = 0;
@@ -700,8 +700,8 @@ namespace
             PoolAlloc(0x20 * sizeof(CCFontGlyph))); // sub_51A0A0(0x20, 0x30190)
         pFont->reserved1 = 0;
         pFont->reserved2 = 0;
-        // +0x138 — binary offset sub_4CCC40 (per-font çizim işleyicisi).
-        // TODO(Faz 2): sub_4CCC40 gövdesi restor edildiğinde bağlanır.
+        // +0x138 — binary offset sub_4CCC40 (per-font draw handler).
+        // TODO(Phase 2): wire it up when the sub_4CCC40 body is restored.
         pFont->drawHandler = 0;
         for (int i = 0; i < 128; ++i) {
             pFont->ascii[i] = 0xFFFF; // sub_4CD4D0: rep stosd -1
@@ -714,7 +714,7 @@ namespace
         return pFont;
     }
 
-    // sub_4CD8C0 — font serbest bırakma
+    // sub_4CD8C0 — font release
     RwBool FontFree(CCFont *pFont) {
         if (!pFont) {
             return FALSE;
@@ -722,8 +722,8 @@ namespace
         if (pFont->glyphs) {
             for (RwInt32 i = 0; i < pFont->glyphCount; ++i) {
                 if (pFont->glyphs[i].data) {
-                    // sub_4D0C20 — glif kontur verisi (M3: CCFontContour*
-                    // alt yol zinciri; M1'de hiç dolmaz)
+                    // sub_4D0C20 — glyph contour data (M3: CCFontContour*
+                    // subpath chain; never filled in M1)
                     ContourFreeChain(
                         static_cast<CCFontContour *>(pFont->glyphs[i].data));
                     pFont->glyphs[i].data = 0;
@@ -748,24 +748,24 @@ namespace
 // ============================================================================
 // FontSystemAllocBuffers (FUN_004CEFD0)
 // Binary: engine+0x134(0x2400, 0x40190) → dword_66D5C4;
-//         sub_50DBF0(0x78, ...) → dword_66D5C0; dönüş değeri 1.
-// 0x2400 vertex tamponu glyph çizim adımı (sub_4CC690, Faz 2) içindir.
+//         sub_50DBF0(0x78, ...) → dword_66D5C0; return value 1.
+// The 0x2400 vertex buffer is for the glyph draw step (sub_4CC690, Phase 2).
 // ============================================================================
 RwBool FontSystemAllocBuffers(void) {
     if (!s_pVertexBuffer) {
         s_pVertexBuffer = PoolAlloc(0x2400);
     }
-    // dword_66D5C0 0x78'lik havuz — POD statik (TODO: freelist semantiği)
+    // dword_66D5C0 0x78-sized pool — POD static (TODO: freelist semantics)
     return s_pVertexBuffer != 0;
 }
 
 // ============================================================================
 // FontSystemInit (FUN_004CD660)
-// Binary sıra: yol tamponu kopyası ("fonts\"), 64×çeyrek-dörtgen indeks
-// tablosu, dword_66D5D8=0, sub_515130 liste başı, dword_66DCC0 = &sub_4CD9A0.
+// Binary order: path buffer copy ("fonts\"), 64×quad index
+// table, dword_66D5D8=0, sub_515130 list head, dword_66DCC0 = &sub_4CD9A0.
 // ============================================================================
 RwBool FontSystemInit(void) {
-    // indeks tablosu — binary döngüsü (ecx=3, adım 4, 64 blok)
+    // index table — binary loop (ecx=3, step 4, 64 blocks)
     RwUInt16 *pOut = &s_QuadIndices[0][0];
     RwUInt32 base = 3;
     for (RwUInt32 block = 0; block < 64; ++block, base += 4) {
@@ -780,7 +780,7 @@ RwBool FontSystemInit(void) {
 
     s_pFontListHead = 0; // dword_66D5D8
     if (!s_pListNode) {
-        s_pListNode = PoolAlloc(sizeof(RwUInt32)); // sub_515130 karşılığı
+        s_pListNode = PoolAlloc(sizeof(RwUInt32)); // counterpart of sub_515130
     }
     ScratchString_Set(kFontPath); // sub_517CF0(dword_66D5CC) — "fonts\"
     s_pLoader = &FontSystemLoad;  // dword_66DCC0 = offset sub_4CD9A0
@@ -789,12 +789,12 @@ RwBool FontSystemInit(void) {
 
 // ============================================================================
 // FontSystemLoad (FUN_004CD9A0)
-// Binary: "fonts\<ad>.met" tamponu kurulur, ';' ile ayrılmış adaylar sırayla
-// denenir; başlık METRICS1/METRICS2/METRICS3 kontrolü parser'e devreder.
-// NOT (port): binary dword_66D5CC tamponunu engine dize operatörleriyle
-// kopyalar (strcat + ';' döngüsü); port ad listesini doğrudan böler —
-// gözlemlenen davranış (önceki adaylar başarısızsa sonraki denenir) aynıdır.
-// METRICS1/METRICS3 ayrıştırıcıları bağlı; METRICS2 (sub_004ce0d0) port bloklu.
+// Binary: the "fonts\<name>.met" buffer is built, candidates separated by ';' are tried in order
+// ; header METRICS1/METRICS2/METRICS3 check is delegated to the parser.
+// NOTE (port): the binary copies the dword_66D5CC buffer with engine string operators
+// (strcat + ';' loop); the port splits the name list directly —
+// the observed behavior (if earlier candidates fail the next is tried) is the same.
+// METRICS1/METRICS3 parsers are wired up; METRICS2 (sub_004ce0d0) still blocked in the port.
 // ============================================================================
 CCFont *FontSystemLoad(const char *pFontList) {
     if (!pFontList || !pFontList[0]) {
@@ -830,8 +830,8 @@ CCFont *FontSystemLoad(const char *pFontList) {
                 } else if (std::strcmp(header, "METRICS3") == 0) {
                     parsed = ParseMetrics3(pFont, pFile);
                 } else {
-                    // TODO(Faz 4.4b): METRICS2 (FUN_004ce0d0) — raster
-                    // piksel taramasına dayalı; port bloklu (ROADMAP.md)
+                    // TODO(Phase 4.4b): METRICS2 (FUN_004ce0d0) - raster
+                    // based on pixel scanning; blocked in the port (ROADMAP.md)
                     parsed = FALSE;
                 }
             }
@@ -842,9 +842,9 @@ CCFont *FontSystemLoad(const char *pFontList) {
         }
 
         if (pCandidate[0] != ';') {
-            break; // NUL — aday listesi tükendi (binary: jz çıkış)
+            break; // NUL — candidate list exhausted (binary: jz exit)
         }
-        ++pCandidate; // ';' — sonraki adayı dene (fallback zinciri)
+        ++pCandidate; // ';' — try the next candidate (fallback chain)
     }
 
     FontFree(pFont);
@@ -853,33 +853,33 @@ CCFont *FontSystemLoad(const char *pFontList) {
 
 // ---------------------------------------------------------------------------
 // FontSystem_LoadFromStream (FUN_004CC690) + LoadContourFromStream
-// (FUN_004D11D0) — binary stream font yükleyici (sub_491700 zinciri).
+// (FUN_004D11D0) — binary stream font loader (sub_491700 chain).
 //
-// Akış: tip etiketi ((etiket>>24) >= 1), font başlığı (refCount YOL
-// SEÇER: 0 → doku, ≠0 → vektör), extTable ham, ascii 0x100, glifler.
-// SAPMALAR: doku bağlamı kaydet/geri al (sub_5154C0/5154A0) no-op; hazır
-// stroke kayıtları (0x18) yol noktalarına çevrilir (type0 → moveto,
-// diğer → lineto — curveto zaten parse'da düzleşmiş); normal/uzunluk
-// render'da yeniden (Aşama 3b ile aynı sapma); kontur[+0x10] vestigial;
-// doku indeksi [0,3] + texCount ≤ 4 port doğrulamaları (binary
-// doğrulamaz); drawHandler = 0 (DrawText tek yol).
+// Stream: type tag ((tag>>24) >= 1), font header (refCount SELECTS THE
+// PATH: 0 → texture, ≠0 → vector), extTable raw, ascii 0x100, glyphs.
+// DEVIATIONS: texture context save/restore (sub_5154C0/5154A0) no-op; prebaked
+// stroke records (0x18) are converted to path points (type0 → moveto,
+// others → lineto — curveto already flattened during parse); normal/length
+// recomputed at render (same deviation as Phase 3b); contour[+0x10] vestigial;
+// texture index [0,3] + texCount ≤ 4 are port validations (the binary
+// does not validate); drawHandler = 0 (single DrawText path).
 // ---------------------------------------------------------------------------
 
-// sub_4D11D0 — type-5 kontur kaydı: 0x10 başlık {sürüm=1, pointCount,
-// flags, extra} + pointCount×0x18 hazır stroke kaydı (type/x/y/normal/
-// accLen); flags&4 → findChunk(0x1A1) + zincir alt kontur ([head+0x14]).
+// sub_4D11D0 — type-5 contour record: 0x10 header {version=1, pointCount,
+// flags, extra} + pointCount×0x18 prebaked stroke records (type/x/y/normal/
+// accLen); flags&4 → findChunk(0x1A1) + chained sub-contour ([head+0x14]).
 static CCFontContour *LoadContourFromStream(CCFontStream *pStream) {
     RwUInt32 header[4];
     if (!pStream->readExact(pStream, header, 0x10)) {
         return 0;
     }
     if (header[0] != 1) {
-        return 0; // binary: dec eax / jnz fail — sürüm 1
+        return 0; // binary: dec eax / jnz fail — version 1
     }
     const RwUInt32 pointCount = header[1];
     const RwUInt32 flags = header[2];
-    // header[3] → binary node+0x10 (var_88 — render'da strokeWidth'a
-    // eklenir; portta 0 varsayılır, okunur ama yok sayılır)
+    // header[3] → binary node+0x10 (var_88 — to strokeWidth at render
+    // appended; the port assumes 0, read but ignored)
     CCFontContour *pContour = ContourAlloc();
     if (!pContour) {
         return 0;
@@ -897,8 +897,8 @@ static CCFontContour *LoadContourFromStream(CCFontStream *pStream) {
             ContourFreeChain(pContour);
             return 0;
         }
-        // type0 → moveto; diğer (1/2 — curveto zaten düzleştirilmiş)
-        // → lineto; normal/accLen render'da yeniden hesaplanır
+        // type0 → moveto; others (1/2 — curveto already flattened)
+        // → lineto; normal/accLen recomputed at render
         const RwReal f[2] = {rec.x, rec.y};
         if (!ContourAddPoint(&pContour, (rec.type == 0) ? 0u : 1u, f, 2)) {
             ContourFreeChain(pContour);
@@ -906,7 +906,7 @@ static CCFontContour *LoadContourFromStream(CCFontStream *pStream) {
         }
     }
     if (flags & 4) {
-        // zincir alt kontur — binary: [head+0x14] = child
+        // chained sub-contour — binary: [head+0x14] = child
         if (!pStream->findChunk(pStream, 0x1A1)) {
             ContourFreeChain(pContour);
             return 0;
@@ -937,10 +937,10 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
         return 0;
     }
     if ((static_cast<RwInt32>(tag) >> 24) < 1) {
-        FontFree(pFont); // binary: shr 18h / jge — tip baytı ≥ 1
+        FontFree(pFont); // binary: shr 18h / jge — type byte ≥ 1
         return 0;
     }
-    // font başlığı — refCount akıştan gelir ve yol seçer
+    // font header — refCount comes from the stream and selects the path
     if (!pStream->read(pStream, &pFont->refCount, 4) ||
         !pStream->read(pStream, &pFont->lineExtent, 4) ||
         !pStream->read(pStream, &pFont->sizeScale, 4) ||
@@ -952,11 +952,11 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
         FontFree(pFont);
         return 0;
     }
-    if (pFont->glyphCount < 0) { // port sağlamlık (binary doğrulamaz)
+    if (pFont->glyphCount < 0) { // port robustness (the binary does not validate)
         FontFree(pFont);
         return 0;
     }
-    // extTable — ham (extCount ×2 bayt); finalize gereksiz (harita hazır)
+    // extTable — raw (extCount ×2 bytes); finalize unnecessary (map is ready)
     if (pFont->extCount > 0) {
         pFont->extTable = static_cast<RwUInt16 *>(PoolAlloc(
             static_cast<size_t>(pFont->extCount) * sizeof(RwUInt16)));
@@ -972,13 +972,13 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
             return 0;
         }
     }
-    // ascii harita — 0x100 bayt ham (128 × RwUInt16)
+    // ascii map — 0x100 bytes raw (128 × RwUInt16)
     if (!pStream->read(pStream, pFont->ascii, 0x100)) {
         FontFree(pFont);
         return 0;
     }
-    // glif dizisi — glyphCount × 0x20 (sub_51A230 resize; FontAlloc'ın
-    // 32'lik ön tahsisi bırakılır)
+    // glyph array — glyphCount × 0x20 (sub_51A230 resize; FontAlloc's
+    // 32-element preallocation is left as-is)
     const RwInt32 glyphCount = pFont->glyphCount;
     PoolFree(pFont->glyphs);
     pFont->glyphs = 0;
@@ -995,8 +995,8 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
     }
 
     if (pFont->refCount == 0) {
-        // ----- doku yolu (loc_4CC993) -----
-        // sub_5154C0/5154A0 doku bağlamı — port ReadTexture bağımsız (no-op)
+        // ----- texture path (loc_4CC993) -----
+        // sub_5154C0/5154A0 texture context — port ReadTexture independent (no-op)
         for (RwInt32 i = 0; i < glyphCount; ++i) {
             CCFontGlyph &glyph = pFont->glyphs[i];
             if (!pStream->readExact(pStream, &glyph.u0, 0x10) || // u0,v0,u1,v1
@@ -1011,12 +1011,12 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
             FontFree(pFont);
             return 0;
         }
-        if (texCount > 4) { // port sağlamlık (binary textures[4] doğrulamaz)
+        if (texCount > 4) { // port robustness (the binary does not validate textures[4])
             FontFree(pFont);
             return 0;
         }
         for (RwUInt32 i = 0; i < texCount; ++i) {
-            char name[0x21] = {0}; // 0x20 + NUL emniyeti
+            char name[0x21] = {0}; // 0x20 + NUL safety
             if (!pStream->readExact(pStream, name, 0x20)) {
                 FontFree(pFont);
                 return 0;
@@ -1034,21 +1034,21 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
             const int idx =
                 static_cast<int>(static_cast<RwInt8>(glyph.flags));
             if (idx < 0 || idx > 3 || !pFont->textures[idx]) {
-                FontFree(pFont); // binary: [tex]==0 → fail; indeks[port]
+                FontFree(pFont); // binary: [tex]==0 → fail; index[port]
                 return 0;
             }
             glyph.texture = pFont->textures[idx];
         }
         pFont->reserved1 = 0;
         pFont->reserved2 = 0;
-        pFont->drawHandler = 0; // sub_4CCC40 — port: DrawText tek yol
+        pFont->drawHandler = 0; // sub_4CCC40 - port: DrawText single path
     } else {
-        // ----- vektör yolu -----
+        // ----- vector path -----
         for (RwInt32 i = 0; i < glyphCount; ++i) {
             CCFontGlyph &glyph = pFont->glyphs[i];
             RwUInt32 scratch = 0;
             RwUInt32 type = 0;
-            if (!pStream->read(pStream, &scratch, 4) || // atık (arg_0)
+            if (!pStream->read(pStream, &scratch, 4) || // waste (arg_0)
                 !pStream->read(pStream, &glyph.aspect, 4) ||
                 !pStream->read(pStream, &type, 4)) {
                 FontFree(pFont);
@@ -1066,25 +1066,25 @@ CCFont *FontSystem_LoadFromStream(CCFontStream *pStream) {
                 }
                 glyph.data = pContour;
                 if (!pStream->read(pStream, &scratch, 4)) {
-                    FontFree(pFont); // post-kontur atık okuması
+                    FontFree(pFont); // post-contour waste read
                     return 0;
                 }
             }
             if (!pStream->read(pStream, &scratch, 4)) {
-                FontFree(pFont); // ortak atık (loc_4CC939)
+                FontFree(pFont); // common waste (loc_4CC939)
                 return 0;
             }
         }
-        pFont->drawHandler = 0; // sub_4CCAF0 — port: DrawText tek yol
+        pFont->drawHandler = 0; // sub_4CCAF0 - port: DrawText single path
     }
     return pFont;
 }
 
 // ============================================================================
 // FontSystemGet (FUN_004CEE90)
-// Binary: dword_66D5D8 listesinde strcmp (engine+0x114) ile arar; bulunamazsa
-// dword_66DCC0 (FontSystemLoad) ile yükler, havuz dword_66D5D4'den düğüm
-// alıp başa ekler (düğüm: +0 name strdup, +4 font, +8 eski baş).
+// Binary: searches the dword_66D5D8 list with strcmp (engine+0x114); if not found
+// it loads via dword_66DCC0 (FontSystemLoad) and takes a node from the dword_66D5D4 pool
+// prepending it (node: +0 name strdup, +4 font, +8 old head).
 // ============================================================================
 CCFontNode *FontSystemGet(const char *pFontName) {
     if (!pFontName) {
@@ -1123,10 +1123,10 @@ CCFontNode *FontSystemGet(const char *pFontName) {
 
 // ============================================================================
 // FontSystemGetGlyph
-// Binary karşılığı çizim yolunda (sub_4CC690, Faz 2); alan düzeni
-// sub_4CD4D0/sub_4CDBC0 ile doğrudan okunur:
-//   0..127  → font+0x24 (uint16[128], 0xFFFF = yok)
-//   >=0x80  → font+0x12C tablosu (extMin aralığı, 0xFFFF = yok)
+// Its binary counterpart is in the draw path (sub_4CC690, Phase 2); the field layout is
+// read directly by sub_4CD4D0/sub_4CDBC0:
+//   0..127  → font+0x24 (uint16[128], 0xFFFF = none)
+//   >=0x80  → font+0x12C table (extMin range, 0xFFFF = none)
 // ============================================================================
 const CCFontGlyph *FontSystemGetGlyph(const CCFont *pFont, RwUInt32 code) {
     if (!pFont || !pFont->glyphs) {
@@ -1150,9 +1150,9 @@ const CCFontGlyph *FontSystemGetGlyph(const CCFont *pFont, RwUInt32 code) {
 
 // ============================================================================
 // FontSystemTeardown (FUN_004CD580 — __ioterm+62)
-// Binary: ad listesi düğümü zinciri (name free + sub_4CD8C0 + havuz free),
-// sub_5151D0 liste başı, sub_50DC00 havuz ×2, dword_66DE1C free,
-// dword_66D5CC yol tamponu free; hepsi sıfırlanır.
+// Binary: name list node chain (name free + sub_4CD8C0 + pool free),
+// sub_5151D0 list head, sub_50DC00 pool ×2, dword_66DE1C free,
+// dword_66D5CC path buffer free; all zeroed out.
 // ============================================================================
 void FontSystemTeardown(void) {
     CCFontNode *pNode = s_pFontListHead;
@@ -1178,32 +1178,32 @@ void FontSystemTeardown(void) {
         s_pExtScratch = 0;
         s_extScratchCap = 0;
     }
-    // yol tamponu (dword_66D5CC) portta sabit dize → no-op;
-    // havuzlar (dword_66D5C8/D4) POD → no-op (TODO: freelist semantiği)
+    // path buffer (dword_66D5CC) is a fixed string in the port → no-op;
+    // pools (dword_66D5C8/D4) POD → no-op (TODO: freelist semantics)
 }
 
 // ============================================================================
 // FontSystemShutdown (FUN_004CEF90 — __ioterm+67)
-// Binary: sub_50DC00(dword_66D5C0) havuz + engine+0x138(dword_66D5C4) free.
+// Binary: sub_50DC00(dword_66D5C0) pool + engine+0x138(dword_66D5C4) free.
 // ============================================================================
 void FontSystemShutdown(void) {
     if (s_pVertexBuffer) {
         PoolFree(s_pVertexBuffer); // dword_66D5C4
         s_pVertexBuffer = 0;
     }
-    // dword_66D5C0 0x78'lik havuz POD → no-op
+    // dword_66D5C0 0x78-sized pool POD → no-op
 }
 
 // ============================================================================
-// FontSystem_SetTextureReader — sub_5154D0 test enjeksiyonu (NULL = varsayılan
-// RwTextureRead rotası).
+// FontSystem_SetTextureReader — sub_5154D0 test injection (NULL = default
+// RwTextureRead route).
 // ============================================================================
 void FontSystem_SetTextureReader(FontTextureReader pReader) {
     s_pTextureReader = pReader;
 }
 
 // ============================================================================
-// FontSystem_GetQuadIndices — unk_66D2C4..0x66D5C4 tablosu (sub_4CD660 üretir)
+// FontSystem_GetQuadIndices — unk_66D2C4..0x66D5C4 table (produced by sub_4CD660)
 // ============================================================================
 const RwUInt16 (*FontSystem_GetQuadIndices(void))[6] {
     return &s_QuadIndices[0];
@@ -1211,15 +1211,15 @@ const RwUInt16 (*FontSystem_GetQuadIndices(void))[6] {
 
 namespace
 {
-    // Son batch vertex sayısı — FontSystem_GetDrawVertices test erişimi
-    // (sub_4CCC40 portunun batch flush doğrulaması).
+    // Last batch vertex count — FontSystem_GetDrawVertices test access
+    // (batch flush validation of the sub_4CCC40 port).
     RwInt32 s_lastBatchVerts = 0;
 
-    // sub_4CCC40 batch flush — binary sub_518EC0 (vertex aralığı) +
-    // sub_518FC0 (indeksler unk_66D2C0, tip 3) + sub_518F90 (çizim).
-    // Port: doğrudan RwIm2DRenderIndexedPrimitive (rwPRIMTYPETRILIST).
-    // Her flush'ta batch quad 0'dan başlar → tablonun ilk quadCount
-    // bloğu kullanılır.
+    // sub_4CCC40 batch flush — binary sub_518EC0 (vertex range) +
+    // sub_518FC0 (indices unk_66D2C0, type 3) + sub_518F90 (draw).
+    // Port: direct RwIm2DRenderIndexedPrimitive (rwPRIMTYPETRILIST).
+    // The batch quad starts at 0 on every flush → the first quadCount
+    // block of the table is used.
     void FlushQuadBatch(RwInt32 quadCount) {
         if (quadCount <= 0) {
             return;
@@ -1230,7 +1230,7 @@ namespace
         s_lastBatchVerts = quadCount * 4;
     }
 
-    // fistp + or ah,0Ch (yön sıfıra) karşılığı; port 0..255 kırpar.
+    // equivalent of fistp + or ah,0Ch (round toward zero); the port clamps 0..255.
     RwUInt8 ChopColorByte(RwReal value) {
         int v = static_cast<int>(value);
         if (v < 0) {
@@ -1247,15 +1247,15 @@ namespace
         RwIm2DVertexSetScreenX(pV, x);
         RwIm2DVertexSetScreenY(pV, y);
         RwIm2DVertexSetScreenZ(
-            pV, 1.0f); // dword_66D7A0 — sub_4CC1F0 başlangıç değeri
-        RwIm2DVertexSetRecipCameraZ(pV, 1.0f); // rhw — TODO Faz 4.4b
+            pV, 1.0f); // dword_66D7A0 — sub_4CC1F0 initial value
+        RwIm2DVertexSetRecipCameraZ(pV, 1.0f); // rhw - TODO Phase 4.4b
         pV->u = u;
         pV->v = v;
     }
 
-    // Aydınlatma yolu (+0x64&1): renk = ambient + ışık × degrade (binary
+    // Lighting path (+0x64&1): color = ambient + light x gradient (binary
     // sub_4CCC40 V0/V2 taban +0x30/+0x48, V1/V3 tepe +0x00/+0x18).
-    // Düz yolda renk materyal baytları (+0x60..63); materyal NULL → beyaz.
+    // Solid path: color is the material bytes (+0x60..63); material NULL → white.
     void GetVertexColor(const CCFontMaterial *pMat, RwBool lit, RwBool bottom,
                         RwReal gradient, RwUInt8 *pR, RwUInt8 *pG,
                         RwUInt8 *pB, RwUInt8 *pA) {
@@ -1275,22 +1275,22 @@ namespace
     }
 
     // ---------------------------------------------------------------------------
-    // Vektör kontur raster (sub_4D54C0 / thunk sub_4D54B0) — stroke quad
-    // şeritleri. Binary her kontur kaydını (0x18: taban x/y + birim normal
-    // + birikimli uzunluk — parse'da sub_4CFE80/4CFF40/4D0040 üretir) ızgaraya
-    // base ∓ normal×w çifti olarak yazar; w = materyal strokeWidth (+0x70) +
-    // kontur[+0x10] (portta her zaman 0). Şerit = TRIANGLEFAN tip 4; port
-    // TRIALIST'e çevirir. degrade grad = birikimli/toplam yol uzunluğu
-    // (var_64 = 1/son kayıt uzunluğu).
-    // Sapmalar (belgeli): miter eklem yerine segment normali (sub_4CFF40
-    // bir sonraki segment geldiğinde önceki normali harmanlıyor — port
-    // yapmıyor); bezier parse'da düzleşmek yerine render'da sabit 8 alt
-    // segmentle düzleştirilir; matris yığını yerine ekran uzayında ölçek
-    // (T(pos+pen)×S(scale)); z=0/rhw=1; doku format durumları (1/9/2)
-    // atlanır.
+    // Vector contour raster (sub_4D54C0 / thunk sub_4D54B0) — stroke quad
+    // strips. The binary writes each contour record (0x18: base x/y + unit normal
+    // + accumulated length — produced in parse by sub_4CFE80/4CFF40/4D0040) into the grid
+    // as base ∓ normal×w pairs; w = material strokeWidth (+0x70) +
+    // contour[+0x10] (always 0 in the port). Strip = TRIANGLEFAN type 4; the port
+    // converts it to TRIANGLELIST. gradient grad = accumulated/total path length
+    // (var_64 = 1/last record length).
+    // Deviations (documented): instead of miter joints, segment normals (sub_4CFF40
+    // blends the previous normal when the next segment arrives — the port
+    // does not); instead of flattening during parse, bezier is flattened at render with a fixed 8 sub-
+    // segments; scaled in screen space instead of the matrix stack
+    // (T(pos+pen)×S(scale)); z=0/rhw=1; texture format states (1/9/2)
+    // are skipped.
     // ---------------------------------------------------------------------------
     const RwInt32 kStrokeMaxVerts = 254; // binary: cmp eax,0FEh
-    const RwInt32 kStrokeCurveSegs = 8;  // bezier alt segment (port sabiti)
+    const RwInt32 kStrokeCurveSegs = 8;  // bezier sub-segment (port constant)
 
     struct StrokeSeg {
         RwReal x0, y0, x1, y1;
@@ -1306,12 +1306,12 @@ namespace
         RwReal   scale;
         RwReal   posX;
         RwReal   posY;
-        RwReal   w;                       // var_84 — strokeWidth + kontur[+0x10]
+        RwReal   w;                       // var_84 — strokeWidth + contour[+0x10]
         const CCFontMaterial *pMaterial;
     };
 
-    // sub_518EC0 + sub_518FC0 + sub_518F90 — şerit flush (tip 4 → port
-    // indeksli TRIANGLELIST).
+    // sub_518EC0 + sub_518FC0 + sub_518F90 — strip flush (type 4 → port
+    // indexed TRIANGLELIST).
     void FlushStrokeStrip(StrokeBatch *pBatch) {
         if (pBatch->pairCount <= 1) {
             pBatch->vertCount = 0;
@@ -1337,8 +1337,8 @@ namespace
         pBatch->pairCount = 0;
     }
 
-    // bir stroke çifti: A = base − n×w (tepe), B = base + n×w (taban);
-    // transform T(pos)×S(scale) (binary matris yığını karşılığı).
+    // one stroke pair: A = base − n×w (top), B = base + n×w (bottom);
+    // transform T(pos)×S(scale) (counterpart of the binary matrix stack).
     void EmitStrokePair(StrokeBatch *pBatch, RwReal bx, RwReal by, RwReal nx,
                         RwReal ny, RwReal w, RwReal grad,
                         const CCFontMaterial *pMat) {
@@ -1365,7 +1365,7 @@ namespace
         RwIm2DVertexSetIntRGBA(pB, r, g, b, a);
 
         if (pMat && (pMat->flags & 2)) {
-            // dokulu stroke: u = uStart + uDelta×grad (sub_4D54C0)
+            // textured stroke: u = uStart + uDelta×grad (sub_4D54C0)
             pA->u = pMat->uTop + pMat->uTopDelta * grad;
             pA->v = pMat->vTop + pMat->vTopDelta * grad;
             pB->u = pMat->uBottom + pMat->uBottomDelta * grad;
@@ -1380,7 +1380,7 @@ namespace
                       RwReal y1) {
         if (*pCount >= static_cast<RwInt32>(sizeof(s_SegScratch) /
                                             sizeof(s_SegScratch[0]))) {
-            return; // taşma — sabit tampon (belgeli sınır)
+            return; // overflow — fixed buffer (documented limit)
         }
         StrokeSeg &seg = s_SegScratch[(*pCount)++];
         seg.x0 = x0;
@@ -1389,7 +1389,7 @@ namespace
         seg.y1 = y1;
     }
 
-    // tek kontur (alt yol) — şerit üretimi + flush; w/materyal batch'te
+    // single contour (subpath) — strip generation + flush; w/material in the batch
     void RenderContourStrip(const CCFontContour *pContour,
                             StrokeBatch *pBatch) {
         if (pContour->pointCount <= 0) {
@@ -1397,8 +1397,8 @@ namespace
         }
         const RwReal w = pBatch->w;
         const CCFontMaterial *pMat = pBatch->pMaterial;
-        // başlangıç — binary her alt yol dizisi type-0 moveto kaydı ile
-        // başlar (sub_4CFE80)
+        // start — each subpath array in the binary begins with a type-0 moveto record
+        // (sub_4CFE80)
         const RwReal movetoX = pContour->points[0].x;
         const RwReal movetoY = pContour->points[0].y;
         RwReal penX = movetoX;
@@ -1411,7 +1411,7 @@ namespace
                 AddStrokeSeg(&segCount, penX, penY, pt.x, pt.y);
                 penX = pt.x;
                 penY = pt.y;
-            } else if (pt.type == 2) { // curveto — sabit K alt segment
+            } else if (pt.type == 2) { // curveto — fixed K sub-segment
                 const RwReal p0x = penX, p0y = penY;
                 const RwReal c1x = pt.x, c1y = pt.y;
                 const RwReal c2x = pt.cx1, c2y = pt.cy1;
@@ -1434,14 +1434,14 @@ namespace
             }
         }
         if (pContour->closed && segCount > 0) {
-            // closepath — sub_4D0220 kapanış segmenti ekler
+            // closepath — sub_4D0220 appends a closing segment
             AddStrokeSeg(&segCount, penX, penY, movetoX, movetoY);
         }
         if (segCount <= 0) {
             return;
         }
 
-        // uzunluklar + toplam (var_64 = 1/son kayıt uzunluğu)
+        // lengths + total (var_64 = 1/last record length)
         RwReal total = 0.0f;
         for (RwInt32 i = 0; i < segCount; ++i) {
             const StrokeSeg &seg = s_SegScratch[i];
@@ -1451,7 +1451,7 @@ namespace
         }
         const RwReal invTotal = (total > 0.0f) ? (1.0f / total) : 0.0f;
 
-        // moveto kaydı — normal 0, birikim 0 (sub_4CFE80 ilk kayıt)
+        // moveto record — normal 0, accumulation 0 (sub_4CFE80 first record)
         EmitStrokePair(pBatch, movetoX, movetoY, 0.0f, 0.0f, w, 0.0f, pMat);
         RwReal acc = 0.0f;
         for (RwInt32 i = 0; i < segCount; ++i) {
@@ -1471,7 +1471,7 @@ namespace
         FlushStrokeStrip(pBatch);
     }
 
-    // zincir — sub_4D54C0 [contour+0x14] recursiyonu
+    // chain - sub_4D54C0 [contour+0x14] recursion
     void RenderContourChain(const CCFontContour *pContour,
                             StrokeBatch *pBatch) {
         for (const CCFontContour *pC = pContour; pC; pC = pC->pNext) {
@@ -1479,9 +1479,9 @@ namespace
         }
     }
 
-    // glif girişi — sub_4D54B0 (thunk) + sub_4D54C0 giriş: materyal w,
-    // doku durumu, vertex tamponu; zincir recursion. DrawText çağırır,
-    // ilerleme DrawText'te (penX += aspect + spacing) uygulanır.
+    // glyph entry — sub_4D54B0 (thunk) + sub_4D54C0 entry: material w,
+    // texture state, vertex buffer; chained recursion. Called by DrawText,
+    // advance applied in DrawText (penX += aspect + spacing).
     void RenderContourGlyph(const CCFontGlyph *pGlyph, RwReal scale,
                             RwReal posX, RwReal posY,
                             const CCFontMaterial *pMaterial) {
@@ -1501,7 +1501,7 @@ namespace
         batch.scale = scale;
         batch.posX = posX;
         batch.posY = posY;
-        // w = mat[+0x70] + kontur[+0x10] (sub_4D54C0 var_88 — portta 0)
+        // w = mat[+0x70] + contour[+0x10] (sub_4D54C0 var_88 — 0 in the port)
         batch.w = pMaterial ? pMaterial->strokeWidth : 0.0f;
         batch.pMaterial = pMaterial;
         RenderContourChain(pContour, &batch);
@@ -1510,10 +1510,10 @@ namespace
 
 // ============================================================================
 // FontSystem_MeasureText (FUN_004CD7E0)
-// Binary: glif arama (ASCII +0x24 / ext +0x124..); bulunamayan kod js ile
-// atlanır; bulunanlarda toplam += glif.aspect + [font+0x0C] (spacing);
-// dönüş = toplam × arg_8 (ölçek). glyphFlags&2 ise metin UTF-16LE — ünite
-// 2 bayt ((p[1]&mask)<<8|p[0], mask=0xFF), imleç signed <=0 ile durur.
+// Binary: glyph lookup (ASCII +0x24 / ext +0x124..); missing code skipped via js
+// skipped; for found glyphs total += glyph.aspect + [font+0x0C] (spacing);
+// return = total × arg_8 (scale). If glyphFlags&2 the text is UTF-16LE — unit
+// 2 bytes ((p[1]&mask)<<8|p[0], mask=0xFF), cursor stops on signed <=0.
 // ============================================================================
 RwReal FontSystem_MeasureText(const CCFont *pFont, const char *pText,
                               RwReal scale) {
@@ -1534,11 +1534,11 @@ RwReal FontSystem_MeasureText(const CCFont *pFont, const char *pText,
             code = static_cast<RwUInt32>(static_cast<unsigned char>(p[0]));
         }
         if (static_cast<RwInt32>(code) <= 0) {
-            break; // binary: or ecx,eax / jle — NUL ünitesi (signed)
+            break; // binary: or ecx,eax / jle — NUL unit (signed)
         }
         const CCFontGlyph *pGlyph = FontSystemGetGlyph(pFont, code);
         if (!pGlyph) {
-            continue; // binary: or ecx,ecx / jl — ilerleme yok
+            continue; // binary: or ecx,ecx / jl — no advance
         }
         total += pGlyph->aspect + pFont->spacing;
     }
@@ -1547,13 +1547,13 @@ RwReal FontSystem_MeasureText(const CCFont *pFont, const char *pText,
 
 // ============================================================================
 // FontSystem_DrawText (FUN_004CCC40 — font->drawHandler)
-// Binary akışı: measure → invW; döngüde glif lookup, doku değişimi/63 quad
-// flush, birim uzay quad (y ∈ {0,1}), UV (u0,v1)(u0,v0)(u1,v1)(u1,v0),
-// ilerleme pen += aspect + spacing; son *pPos[0] += pen × scale.
-// Sapma: matris yığını (sub_4CC2F0/4CC4D0/4CC480) yerine ekran uzayında
-// doğrudan ölçek; z/rhw sabit (Faz 4.4b TODO). glyphFlags&2 → UTF-16LE
-// üniteleri (MeasureText ile aynı). Doku'suz (M3 vektör) gliflerde quad
-// yerine kontur stroke şeridi çizilir (sub_4D54C0 portu — RenderContourGlyph).
+// Binary flow: measure → invW; per-unit glyph lookup, texture change/63 quad
+// flush, unit-space quad (y ∈ {0,1}), UV (u0,v1)(u0,v0)(u1,v1)(u1,v0),
+// advance pen += aspect + spacing; final *pPos[0] += pen × scale.
+// Deviation: scaled directly in screen space instead of the matrix stack (sub_4CC2F0/4CC4D0/4CC480)
+// ; z/rhw fixed (Phase 4.4b TODO). glyphFlags&2 → UTF-16LE
+// units (same as MeasureText). Textureless (M3 vector) glyphs draw a contour
+// stroke strip instead of a quad (sub_4D54C0 port — RenderContourGlyph).
 // ============================================================================
 RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
                            RwReal scale, RwReal *pPosX, RwReal *pPosY,
@@ -1562,14 +1562,14 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
         return 0.0f;
     }
     if (!s_pVertexBuffer || !pFont->glyphs) {
-        return 0.0f; // AllocBuffers çağrısız çizim yok
+        return 0.0f; // no drawing without AllocBuffers
     }
 
     RwIm2DVertex *pVerts = static_cast<RwIm2DVertex *>(s_pVertexBuffer);
-    const RwInt32 kFlushQuads = 63; // binary: cmp ebx,17Ah (378 indeks)
+    const RwInt32 kFlushQuads = 63; // binary: cmp ebx,17Ah (378 indices)
     const RwBool lit = (pMaterial != 0 && (pMaterial->flags & 1)) ? TRUE : FALSE;
 
-    // invW = 1 / measure(font, text, 1.0f) — degrade normalizasyonu
+    // invW = 1 / measure(font, text, 1.0f) - degrade normalization
     const RwReal textWidth = FontSystem_MeasureText(pFont, pText, 1.0f);
     const RwReal invW = (textWidth != 0.0f) ? (1.0f / textWidth) : 0.0f;
 
@@ -1592,7 +1592,7 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
             code = static_cast<RwUInt32>(static_cast<unsigned char>(p[0]));
         }
         if (static_cast<RwInt32>(code) <= 0) {
-            break; // binary: or eax,edx / jg — NUL ünitesi (signed)
+            break; // binary: or eax,edx / jg — NUL unit (signed)
         }
         const CCFontGlyph *pGlyph = FontSystemGetGlyph(pFont, code);
         if (!pGlyph) {
@@ -1600,9 +1600,9 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
         }
 
         if (!pGlyph->texture) {
-            // vektör glif (METRICS3, sub_4CCAF0 → sub_4D54C0) — kontur
-            // stroke şeridi; quad batch bu yazıma ait değil (M3 fontlarında
-            // doku yok) — emniyet için flush, sonra raster + ilerleme.
+            // vector glyph (METRICS3, sub_4CCAF0 → sub_4D54C0) — contour
+            // stroke strip; the quad batch does not belong to this pass (M3 fonts
+            // have no textures) — flush for safety, then raster + advance.
             FlushQuadBatch(quadCount);
             quadCount = 0;
             RenderContourGlyph(pGlyph, scale, *pPosX + penX * scale,
@@ -1612,7 +1612,7 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
         }
 
         if (pCurTexture != pGlyph->texture) {
-            FlushQuadBatch(quadCount); // binary: doku değişimi → flush
+            FlushQuadBatch(quadCount); // binary: texture change → flush
             quadCount = 0;
             pCurTexture = pGlyph->texture;
             RwRenderStateSet(rwRENDERSTATETEXTURERASTER,
@@ -1624,15 +1624,15 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
 
         const RwReal x0 = *pPosX + penX * scale;
         const RwReal x1 = *pPosX + (penX + pGlyph->aspect) * scale;
-        const RwReal y0 = *pPosY;          // birim y = 0
-        const RwReal y1 = *pPosY + scale;  // birim y = 1 × ölçek
+        const RwReal y0 = *pPosY;          // unit y = 0
+        const RwReal y1 = *pPosY + scale;  // unit y = 1 × scale
 
         RwIm2DVertex *pV0 = &pVerts[quadCount * 4 + 0];
         RwIm2DVertex *pV1 = &pVerts[quadCount * 4 + 1];
         RwIm2DVertex *pV2 = &pVerts[quadCount * 4 + 2];
         RwIm2DVertex *pV3 = &pVerts[quadCount * 4 + 3];
 
-        // UV sırası binary sub_4CCC40 ile birebir:
+        // UV order matches the binary sub_4CCC40 exactly:
         // V0(u0,v1) V1(u0,v0) V2(u1,v1) V3(u1,v0)
         RwUInt8 r, g, b, a;
         const RwReal gradL = penX * invW;
@@ -1666,9 +1666,9 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
 }
 
 // ============================================================================
-// FontSystem_GetDrawVertices — test erişimi (sub_4CCC40 portu batch vertex'leri)
-// Son flush'ın vertex sayısı s_lastBatchVerts; tampon AllocBuffers'ın 0x2400
-// alanı (birden fazla batch'te son batch geçerli — vertex'ler yeniden yazılır).
+// FontSystem_GetDrawVertices — test access (sub_4CCC40 port batch vertices)
+// Last flush's vertex count is s_lastBatchVerts; buffer is AllocBuffers' 0x2400
+// area (with multiple batches only the last is valid — vertices are rewritten).
 // ============================================================================
 const RwIm2DVertex *FontSystem_GetDrawVertices(RwInt32 *pVertexCount) {
     if (pVertexCount) {
@@ -1678,8 +1678,8 @@ const RwIm2DVertex *FontSystem_GetDrawVertices(RwInt32 *pVertexCount) {
                            : 0;
 }
 
-// Birim testler için yerleşim denetimi — binary 32-bit (Win32) düzeninde;
-// 64-bit işaretçi genişliğinde alan boyutları doğal olarak değişir.
+// Layout check for unit tests — in binary 32-bit (Win32) layout;
+// field sizes naturally change with 64-bit pointer width.
 #if UINTPTR_MAX == 0xFFFFFFFFu
 static_assert(sizeof(CCFontGlyph) == 0x20, "CCFontGlyph must be 0x20 bytes");
 static_assert(sizeof(CCFont) == 0x144, "CCFont must be 0x144 bytes");

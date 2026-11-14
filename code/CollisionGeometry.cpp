@@ -93,7 +93,7 @@ void* CCollisionGeometry::CreateShapeFromClump(RpClump* pClump, RwBool bConvex)
     RpClumpForAllAtomics(pClump, CollectAtomic, &acc);
     if (acc.indices.empty() || acc.verts.empty())
     {
-        return 0; // veri yok (RW stub durumu)
+        return 0; // no data (RW stub case)
     }
 
     if (bConvex)

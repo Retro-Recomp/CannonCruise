@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Show Text Manager (ShowTextManager.h)
 // Original path: D:\Projects\CannonCruisePC\code\ShowTextManager.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Singleton.h"

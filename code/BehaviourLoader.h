@@ -39,7 +39,7 @@ struct BehaviourClassEntry {
 
 /**
  * @class BehaviourLoader
- * @brief 0x0704 OBJECTRECORD → class name → factory → apply dispatch'i.
+ * @brief 0x0704 OBJECTRECORD → class name → factory → apply dispatch.
  *
  * Binary flow (CEventHandler::Process + class applies):
  * - each behaviour: class name (0x20/0x80000000 segment) -> CClassFactory

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cclassfactory.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\cclassfactory.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00412870 — CClassFactory::Instance()
 //   FUN_00412970 — CClassFactory::Delete() / Shutdown()
 //   FUN_004129a0 — CClassFactory::~CClassFactory()
@@ -67,7 +67,7 @@ namespace RWS
 
     // ========================================================================
     // CClassFactory::Instance (FUN_00412870)
-    // ASM: 00412870 — Singleton al / yoksa oluştur (DAT_00635660)
+    // ASM: 00412870 — Get singleton / create it if missing (DAT_00635660)
     // ========================================================================
     CClassFactory* CClassFactory::Instance()
     {
@@ -80,7 +80,7 @@ namespace RWS
 
     // ========================================================================
     // CClassFactory::Delete / Shutdown (FUN_00412970)
-    // ASM: 00412970 — Singleton'ı temizle ve sil
+    // ASM: 00412970 — Clear and delete the singleton
     // ========================================================================
     void CClassFactory::Delete()
     {
@@ -98,7 +98,7 @@ namespace RWS
 
     // ========================================================================
     // CClassFactory::ClassIsRegistered (FUN_00412cd0)
-    // ASM: 00412cd0 — Sınıf kayıtlı mı kontrol et
+    // ASM: 00412cd0 — Check whether the class is registered
     // ========================================================================
 RwBool CClassFactory::ClassIsRegistered(const char* pClassName)
 {
@@ -122,7 +122,7 @@ RwBool CClassFactory::ClassIsRegistered(const char* pClassName)
 
     // ========================================================================
     // CClassFactory::Create (FUN_00412a60)
-    // ASM: 00412a60 — Sınıf adından yeni nesne üret
+    // ASM: 00412a60 — Create a new object from the class name
     // ========================================================================
 void* CClassFactory::Create(const char* pClassName)
 {
@@ -151,7 +151,7 @@ void* CClassFactory::Create(const char* pClassName)
 
     // ========================================================================
     // CClassFactory::Register (FUN_00412f10, FUN_00413700, FUN_00413ab0)
-    // ASM: 00413700 / 00413ab0 — Sınıfı fabrikaya kaydet
+    // ASM: 00413700 / 00413ab0 — Register the class with the factory
     // ========================================================================
     void* CClassFactory::Register(const char* pClassName, ClassCreationFunc pCreateFunc, RwUInt32 size, RwUInt32 flags)
     {
@@ -165,7 +165,7 @@ void* CClassFactory::Create(const char* pClassName)
         if (flags != 0)
         {
             pData->m_Size = size;
-            // 64-byte hizalama (m_AlignmentSize)
+            // 64-byte alignment (m_AlignmentSize)
             if ((size & (m_AlignmentSize - 1)) != 0)
             {
                 pData->m_Size = (size - (size & (m_AlignmentSize - 1))) + m_AlignmentSize;
@@ -182,7 +182,7 @@ void* CClassFactory::Create(const char* pClassName)
 
     // ========================================================================
     // CClassFactory::UnRegister (FUN_00413da0)
-    // ASM: 00413da0 — Belirli bir sınıfın kaydını sil
+    // ASM: 00413da0 — Remove a specific class's registration
     // ========================================================================
 void CClassFactory::UnRegister(const char* pClassName)
 {
@@ -206,7 +206,7 @@ void CClassFactory::UnRegister(const char* pClassName)
 
     // ========================================================================
     // CClassFactory::UnRegisterAll (FUN_004139b0)
-    // ASM: 004139b0 — Tüm kayıtlı sınıfları sil
+    // ASM: 004139b0 — Delete all registered classes
     // ========================================================================
     void CClassFactory::UnRegisterAll()
     {

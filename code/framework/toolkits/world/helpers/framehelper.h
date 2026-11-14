@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (framehelper.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\framehelper.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00408900 - FUN_00408b40 (RWS::FrameHelper)
 // ============================================================================
 
@@ -14,13 +14,13 @@ namespace RWS
 {
     /**
      * @class FrameHelper
-     * @brief RwFrame hiyerarşisi üzerinde işlem yapmak için yardımcı sınıf.
+     * @brief Helper class for working with RwFrame hierarchies.
      *
-     * CannonCruise'daki her 3D nesnenin dönüşümü `RwFrame` hiyerarşisi
-     * aracılığıyla yönetilir. `FrameHelper`, ad ile frame arama, konum ayarlama
-     * ve döndürme gibi sık kullanılan işlemleri kapsüller.
+     * In CannonCruise, every 3D object's transform is managed through a
+     * `RwFrame` hierarchy. `FrameHelper` encapsulates common operations like
+     * finding a frame by name, setting position and rotation.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - FindFrameByName: `FUN_00408900`
      * - SetPosition: `FUN_004089a0`
      * - Rotate: `FUN_00408a10`
@@ -29,50 +29,50 @@ namespace RWS
     {
     public:
         /**
-         * @brief Frame hiyerarşisinde belirtilen adda bir frame arar.
-         * @param pRootFrame Kök frame.
-         * @param pName      Aranan frame adı.
+         * @brief Searches the frame hierarchy for a frame with the given name.
+         * @param pRootFrame Root frame.
+         * @param pName      Name of the frame to find.
          * @return RwFrame* — Bulunan frame; bulunamazsa nullptr.
          */
         static RwFrame* FindFrameByName(RwFrame* pRootFrame, const char* pName);
 
         /**
-         * @brief Hiyerarşideki hedef frame'i arar.
-         * @param pRootFrame Kök frame.
-         * @param pTarget    Hedef frame.
+         * @brief Finds the target frame within the hierarchy.
+         * @param pRootFrame Root frame.
+         * @param pTarget    Target frame.
          * @return RwFrame* — Bulunan frame; bulunamazsa nullptr.
          */
         static RwFrame* FindChildFrame(RwFrame* pRootFrame, RwFrame* pTarget);
 
         /**
-         * @brief Frame'in dünya konumunu ayarlar.
-         * @param pFrame Hedef frame.
-         * @param pPos   Yeni dünya konumu.
+         * @brief Sets the frame's world position.
+         * @param pFrame Target frame.
+         * @param pPos   New world position.
          */
         static void SetPosition(RwFrame* pFrame, const RwV3d* pPos);
 
         /**
-         * @brief Frame'in dünya konumunu alır.
-         * @param pFrame Kaynak frame.
-         * @param pPos   [out] Konum değerinin yazılacağı çıkış.
+         * @brief Gets the frame's world position.
+         * @param pFrame Source frame.
+         * @param pPos   [out] Output where the position value will be written.
          */
         static void GetPosition(const RwFrame* pFrame, RwV3d* pPos);
 
         /**
-         * @brief Frame'i belirtilen eksen etrafında döndürür.
-         * @param pFrame     Hedef frame.
-         * @param pAxis      Dönüş ekseni (normalize edilmiş).
-         * @param angle      Dönüş açısı (radyan).
-         * @param combineOp  Matris birleştirme yöntemi (varsayılan: POST_CONCAT).
+         * @brief Rotates the frame around the given axis.
+         * @param pFrame     Target frame.
+         * @param pAxis      Rotation axis (normalized).
+         * @param angle      Rotation angle (radians).
+         * @param combineOp  Matrix combine method (default: POST_CONCAT).
          */
         static void Rotate(RwFrame* pFrame, const RwV3d* pAxis, RwReal angle,
                            RwOpCombineType combineOp = rwCOMBINEPOSTCONCAT);
 
         /**
-         * @brief Frame'i belirtilen vektör kadar taşır.
-         * @param pFrame       Hedef frame.
-         * @param pTranslation Taşıma vektörü.
-         * @param combineOp    Matris birleştirme yöntemi (varsayılan: POST_CONCAT).
+         * @brief Translates the frame by the given vector.
+         * @param pFrame       Target frame.
+         * @param pTranslation Translation vector.
+         * @param combineOp    Matrix combine method (default: POST_CONCAT).
          */
         static void Translate(RwFrame* pFrame, const RwV3d* pTranslation,
                               RwOpCombineType combineOp = rwCOMBINEPOSTCONCAT);

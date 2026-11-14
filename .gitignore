@@ -1,4 +1,4 @@
-# ---- Build çıktıları ----
+# ---- Build outputs ----
 build/
 code/build/
 code/build-gl3/
@@ -36,7 +36,7 @@ code/build_win32_v180/
 *.VC.db
 *.VC.opendb
 
-# ---- Derleyici / IDE ----
+# ---- Compiler / IDE ----
 *.gcda
 *.gcno
 *.gcov
@@ -51,13 +51,13 @@ DerivedData/
 .DS_Store
 ._*
 
-# ---- Yedek / geçici dosyalar ----
+# ---- Backup / temp files ----
 *.bak
 *.tmp
 *~
 *.orig
 
-# ---- Doxygen çıktıları (kaynak değil) ----
+# ---- Doxygen outputs (not source) ----
 docs/html/
 docs/latex/
 docs/xml/

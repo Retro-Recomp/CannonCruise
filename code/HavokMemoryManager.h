@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Havok Physics Memory Manager (HavokMemoryManager.h)
 // Original path: D:\Projects\CannonCruisePC\code\HavokMemoryManager.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // Binary ref: FUN_004b3000 - FUN_004b3200 (CHavokMemoryManager)
 // ============================================================================
 
@@ -22,8 +22,8 @@
 class CHavokMemoryManager {
 public:
     /**
-     * @brief Hizalanmış bellek bloğu tahsis eder.
-     * @param size      Tahsis edilecek bayt sayısı.
+     * @brief Allocates an aligned memory block.
+     * @param size      Number of bytes to allocate.
      * @param alignment Supported alignment: 16 bytes only (also the default).
      * @return Aligned pointer, or null on size overflow/unsupported alignment/allocation failure.
      * Invalid alignment and allocation failure also assert in debug builds.
@@ -31,8 +31,8 @@ public:
     static void *Allocate(RwUInt32 size, RwUInt32 alignment = 16);
 
     /**
-     * @brief `Allocate()` ile tahsis edilmiş belleği serbest bırakır.
-     * @param pMem Serbest bırakılacak bellek bloğuna işaretçi.
+     * @brief Frees memory allocated with `Allocate()`.
+     * @param pMem Pointer to the memory block to release.
      */
     static void Free(void *pMem);
 

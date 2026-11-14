@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - GUI Minimap (GUIMap.h)
 // Original path: D:\Projects\CannonCruisePC\code\GUIMap.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"

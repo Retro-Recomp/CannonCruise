@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Menu Set Time Delegate (MenuSetTimeDelegate.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\MenuSetTimeDelegate.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00446220 — CMenuSetTimeDelegate constructor
 //   FUN_004465d0 — CMenuSetTimeDelegate::SetTime
 // ============================================================================

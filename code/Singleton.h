@@ -4,42 +4,42 @@
 // ============================================================================
 // CannonCruise - Engine Singleton Template (Singleton.h)
 // Original path: D:\Projects\CannonCruisePC\code\Singleton.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include <cassert>
 
 /**
  * @class CSingleton
- * @brief Tek örnek (singleton) tasarım deseni uygulayan CRTP şablon sınıfı.
+ * @brief CRTP template class implementing the singleton design pattern.
  *
- * RenderWare Studio altyapısının standart Singleton implementasyonudur.
- * CAudioManager, CSceneManager, CSpeakManager gibi yönetici sınıfları
- * bu şablondan türeyerek tekil örnek garantisi sağlar.
+ * It is the standard Singleton implementation of the RenderWare Studio framework.
+ * Manager classes such as CAudioManager, CSceneManager, CSpeakManager
+ * derive from this template to guarantee a single instance.
  *
- * **Kullanım örneği:**
+ * **Usage example:**
  * ```cpp
  * class CAudioManager : public CSingleton<CAudioManager> { ... };
  *
- * // Erişim:
+ * // Access:
  * CAudioManager::GetSingleton()->PlaySound("hit.wav");
  * ```
  *
  * **Garantiler:**
- * - Ctor: İkinci bir örnek oluşturulursa assert tetiklenir.
- * - Dtor: Henüz yok edilmemiş bir örnek yok edilmeye çalışılırsa assert tetiklenir.
- * - `GetSingleton()`: Örnek yoksa assert tetiklenir.
- * - `GetSingletonPtr()`: Örnek yoksa nullptr döndürür (assert yok).
+ * - Ctor: If a second instance is created, an assert is triggered.
+ * - Dtor: If destruction is attempted on an instance that was already destroyed, an assert is triggered.
+ * - `GetSingleton()`: If no instance exists, an assert is triggered.
+ * - `GetSingletonPtr()`: Returns nullptr if no instance exists (no assert).
  *
- * @tparam T Singleton yapılacak sınıf türü (CRTP deseni).
+ * @tparam T The class type to be made a singleton (CRTP pattern).
  */
 template <typename T>
 class CSingleton
 {
 public:
     /**
-     * @brief Yapıcı — statik örnek işaretçisini `this` olarak ayarlar.
-     * @pre Henüz bu türde bir örnek oluşturulmamış olmalıdır.
+     * @brief Constructor — sets the static instance pointer to `this`.
+     * @pre No instance of this type must have been created yet.
      */
     CSingleton()
     {
@@ -48,8 +48,8 @@ public:
     }
 
     /**
-     * @brief Yıkıcı — statik örnek işaretçisini sıfırlar.
-     * @pre ms_pSingleton geçerli olmalıdır.
+     * @brief Destructor — resets the static instance pointer.
+     * @pre ms_pSingleton must be valid.
      */
     virtual ~CSingleton()
     {
@@ -58,9 +58,9 @@ public:
     }
 
     /**
-     * @brief Mevcut singleton örneğine referans döndürür.
-     * @return T* — Singleton örneğine işaretçi.
-     * @pre Örnek daha önce oluşturulmuş olmalıdır.
+     * @brief Returns a reference to the current singleton instance.
+     * @return T* — Pointer to the singleton instance.
+     * @pre The instance must have been created previously.
      */
     static T* GetSingleton()
     {
@@ -69,8 +69,8 @@ public:
     }
 
     /**
-     * @brief Mevcut singleton örneğine işaretçi döndürür; assert yapmaz.
-     * @return T* — Singleton örneğine işaretçi veya nullptr (örnek yoksa).
+     * @brief Returns a pointer to the current singleton instance; does not assert.
+     * @return T* — Pointer to the singleton instance, or nullptr (if no instance).
      */
     static T* GetSingletonPtr()
     {
@@ -78,7 +78,7 @@ public:
     }
 
 protected:
-    static T* ms_pSingleton; ///< Tekil örneğe işaretçi (sınıf başına bir adet)
+    static T* ms_pSingleton; ///< Pointer to the singleton instance (one per class)
 
 private:
     CSingleton(const CSingleton&);

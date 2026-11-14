@@ -1,6 +1,6 @@
 // ============================================================================
-// CannonCruise - Statik Dünya Çarpışma Verisi (StaticCollisionData.cpp)
-// Binary düzeni: FUN_0043bfa0 ctor + sub_58BEF0 section (bkz. başlık).
+// CannonCruise - Static World Collision Data (StaticCollisionData.cpp)
+// Binary layout: FUN_0043bfa0 ctor + sub_58BEF0 section (see header).
 // ============================================================================
 
 #include "StaticCollisionData.h"
@@ -32,7 +32,7 @@ RwBool StaticCollisionData_Decode(const RwUInt8 *pPayload, RwUInt32 len,
     }
     std::memset(pOut, 0, sizeof(*pOut));
 
-    // ctor 48B başlık + section başlığı 5×f32 (en az 0x3C bayt gerekli)
+    // ctor 48B header + section header 5×f32 (at least 0x3C bytes required)
     if (len < 0x3C) {
         return FALSE;
     }
@@ -43,15 +43,15 @@ RwBool StaticCollisionData_Decode(const RwUInt8 *pPayload, RwUInt32 len,
     const RwUInt32 midTwelve = ReadU32(pPayload + 0x0C);
     const RwUInt32 triangleCount = ReadU32(pPayload + 0x10);
 
-    // boş dünya yolu: countA/count2 == 0 → ctor arraysiz skip
+    // empty world path: countA/count2 == 0 → ctor skips without arrays
     if (vertexCount == 0 || triangleCount == 0) {
         return FALSE;
     }
-    // flag==2 yolu: u32 index + f32 vert (üç gerçek dünyada doğrulandı)
+    // flag==2 path: u32 index + f32 vert (verified on three real worlds)
     if (flag != 2 || midTwelve != 12) {
         return FALSE;
     }
-    // sayısal taşma koruması (count*12 32-bit aralıkta)
+    // numeric overflow protection (count*12 in 32-bit range)
     if (vertexCount > 0x14000000u / 12u || triangleCount > 0x14000000u / 12u) {
         return FALSE;
     }
@@ -72,7 +72,7 @@ RwBool StaticCollisionData_Decode(const RwUInt8 *pPayload, RwUInt32 len,
         return FALSE;
     }
     const RwUInt32 totalBytes = vertOff + vertBytes;
-    // kuyruk 0–4 bayt hizalama dolgusu (gerçek verilerde slack 0/1/2)
+    // tail 0–4 byte alignment padding (slack 0/1/2 in real data)
     if (len - totalBytes > 4) {
         return FALSE;
     }
@@ -89,7 +89,7 @@ RwBool StaticCollisionData_Decode(const RwUInt8 *pPayload, RwUInt32 len,
     pOut->pVertices = reinterpret_cast<const RwReal *>(pPayload + vertOff);
     pOut->totalBytes = totalBytes;
 
-    // index sınırları (ctor veriye güvener; decode doğrular)
+    // index bounds (ctor trusts the data; decode validates)
     for (RwUInt32 i = 0; i < triangleCount * 3u; ++i) {
         if (pOut->pIndices[i] < 0 ||
             static_cast<RwUInt32>(pOut->pIndices[i]) >= vertexCount) {

@@ -1,16 +1,16 @@
 // ============================================================================
-// CannonCruise - Render Platformu (RenderPlatform.cpp)
-// Faz 4.6n: librw sahne kurulumu + kare döngüsü + Im2D test karesi.
-// Binary karşılıkları (belgeli): sub_4189E0 MainLoop, FUN_0041C380 Idle,
+// CannonCruise - Render Platform (RenderPlatform.cpp)
+// Phase 4.6n: librw scene setup + frame loop + Im2D test quad.
+// Binary counterparts (documented): sub_4189E0 MainLoop, FUN_0041C380 Idle,
 // sub_41CEB0 Render (Begin/EndUpdate), FUN_004cc1f0 RenderPipeline_Reset,
 // FUN_004cc020 SetViewWindowFromCamera.
 //
-// NULL platform: device no-op → headless smoke; GL3: gerçek çizim
-// (ShowRaster frameBuffer nil ise atlanır — engine.cpp:360 null-safety).
+// NULL platform: device no-op -> headless smoke; GL3: real drawing
+// (skipped if ShowRaster frameBuffer is nil -- engine.cpp:360 null-safety).
 // ============================================================================
 
 #if defined(RW_D3D9) && !defined(WITH_D3D)
-// librw d3d başlıklarını d3d9.h ile birlikte aç (d3ddevice extern'i için).
+// Open the librw d3d headers together with d3d9.h (for the d3ddevice extern).
 #define WITH_D3D 1
 #endif
 #include "RenderPlatform.h"
@@ -20,8 +20,8 @@
 #include <rw.h>
 
 #ifdef RW_GL3
-// Ham GL (mipmap tamamlama için) — librw glad'i bu TU'da yok; framework
-// linkli (GL3 build). NULL build'de derlenmez.
+// Raw GL (for mipmap completion) -- librw glad is not in this TU; framework
+// linked (GL3 build). Not compiled in the NULL build.
 #include <OpenGL/gl3.h>
 #endif
 
@@ -38,15 +38,15 @@ rw::Light *s_pAmbient = nullptr;
 rw::Light *s_pDirectional = nullptr;
 rw::Frame *s_pCameraFrame = nullptr;
 rw::Frame *s_pLightFrame = nullptr;
-RwBool s_lightsAdded = FALSE; // addLight yapıldı mı (removeLight guard'ı)
+RwBool s_lightsAdded = FALSE; // whether addLight was done (removeLight guard)
 RwInt32 s_width = 0;
 RwInt32 s_height = 0;
-char s_screenshotPath[512] = {0}; // EndFrame swap öncesi PNG yakalama
+char s_screenshotPath[512] = {0}; // PNG capture before EndFrame swap
 
-/// RCCCameraView + RenderPipeline_SetViewWindowFromCamera bağlantısı.
-/// Kamera viewWindow (yarı boyut) ×2 + frame LTM (CCMatrix yerleşimi —
-/// librw Matrix birebir aynı 64B) + raster boyutu (frameBuffer yoksa
-/// platform width/height — bilgi amaçlı).
+/// RCCCameraView + RenderPipeline_SetViewWindowFromCamera connection.
+/// Camera viewWindow (half size) x2 + frame LTM (CCMatrix layout --
+/// librw Matrix is exactly the same 64B) + raster size (if no frameBuffer,
+/// platform width/height -- informational).
 void ApplyCameraToPipeline(void) {
     RCCCameraView view;
     view.projFlag = s_pCamera->projection;
@@ -70,8 +70,8 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
         return TRUE; // idempotent
     }
 
-    // Dünya — binary physics AABB ±500 (gravity/floor plane ile aynı
-    // sınır; Faz 4.1 reverse notu).
+    // World -- binary physics AABB ±500 (same bound as the
+    // gravity/floor plane; Phase 4.1 reverse note).
     rw::BBox bbox;
     bbox.inf = rw::makeV3d(-500.0f, -500.0f, -500.0f);
     bbox.sup = rw::makeV3d(500.0f, 500.0f, 500.0f);
@@ -81,8 +81,8 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
         return FALSE;
     }
 
-    // Kamera — perspektif; librw default near/far (0.05/10) oyun için
-    // çok dar → oyun değerleri (near 0.1, far 5000).
+    // Camera -- perspective; librw default near/far (0.05/10) is too narrow
+    // for the game -> game values (near 0.1, far 5000).
     s_pCamera = rw::Camera::create();
     s_pCameraFrame = rw::Frame::create();
     if (s_pCamera == nullptr || s_pCameraFrame == nullptr) {
@@ -93,21 +93,21 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
     s_pCamera->setFrame(s_pCameraFrame);
     s_pCamera->setNearPlane(0.1f);
     s_pCamera->setFarPlane(5000.0f);
-    // viewWindow (yarı boyut) 1.0 — 0.6 denerken GL3 frustum culling
-    // tüm atomics'i eledi (boş kare); culling çözülene kadar 1.0.
+    // viewWindow (half size) 1.0 -- while trying 0.6, GL3 frustum culling
+    // culled all atomics (empty frame); 1.0 until culling is resolved.
     const rw::V2d kViewWindow = rw::makeV2d(1.0f, 1.0f);
     s_pCamera->setViewWindow(&kViewWindow);
     s_pCamera->setProjection(rw::Camera::PERSPECTIVE);
 #if defined(RW_GL3) || defined(RW_D3D9)
-    // GL3/D3D9: gerçek framebuffer (librw skeleton CameraCreate deseni —
-    // skeleton/skeleton.cpp:90 Raster::CAMERA/ZBUFFER) — ShowRaster bu
-    // raster'ı pencereye kopyalar. NULL platformda raster yok (no-op).
-    // D3D9 NOTU: bu raster'lar yoksa clear()/beginUpdate() null çerçeve
-    // çözümler → 0xC0000005 (2026-10-15).
+    // GL3/D3D9: real framebuffer (librw skeleton CameraCreate pattern --
+    // skeleton/skeleton.cpp:90 Raster::CAMERA/ZBUFFER) -- ShowRaster copies
+    // this raster to the window. NULL platform has no raster (no-op).
+    // D3D9 NOTE: without these rasters, clear()/beginUpdate() resolve a null
+    // frame -> 0xC0000005 (2026-10-15).
 #if defined(RW_D3D9)
-        // D3D9: CAMERATEXTURE raster (CAMERA texture'ı nil kalır — D3D9'da
-        // RT-bind edge case'i; bkz. EndFrame screenshot path). GL3/NULL:
-        // CAMERA kalır.
+        // D3D9: CAMERATEXTURE raster (CAMERA texture stays nil -- D3D9's
+        // RT-bind edge case; see EndFrame screenshot path). GL3/NULL:
+        // stays CAMERA.
         s_pCamera->frameBuffer =
             rw::Raster::create(width, height, 0, rw::Raster::CAMERATEXTURE);
 #else
@@ -125,9 +125,9 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
 #endif
     s_pWorld->addCamera(s_pCamera);
 
-    // Işıklar — ambient + directional (GL3'te gölgeleme için; NULL
-    // platformda no-op). Yön: identity frame → -Z (RW directional
-    // at vektörü).
+    // Lights -- ambient + directional (for shading in GL3; no-op on NULL
+    // platform). Direction: identity frame -> -Z (RW directional
+    // at vector).
     s_pAmbient = rw::Light::create(rw::Light::AMBIENT);
     s_pDirectional = rw::Light::create(rw::Light::DIRECTIONAL);
     if (s_pAmbient != nullptr && s_pDirectional != nullptr) {
@@ -160,8 +160,8 @@ RwBool RenderPlatform_BeginFrame(const RwRGBA *pClearCol) {
         return FALSE;
     }
 
-    // Clear — IMAGE|Z (binary render geçişi; NULL platform no-op).
-    static rw::RGBA s_defaultClear = {32, 48, 64, 255}; // açık deniz mavisi
+    // Clear -- IMAGE|Z (binary render pass; NULL platform no-op).
+    static rw::RGBA s_defaultClear = {32, 48, 64, 255}; // light sea blue
     rw::RGBA *pCol = pClearCol
                          ? reinterpret_cast<rw::RGBA *>(const_cast<RwRGBA *>(pClearCol))
                          : &s_defaultClear;
@@ -170,11 +170,11 @@ RwBool RenderPlatform_BeginFrame(const RwRGBA *pClearCol) {
     // BeginUpdate — world sync + viewMatrix (cameraSync; NULL no-op).
     s_pCamera->beginUpdate();
 
-    // RenderPipeline bağlamı — binary render geçişi FUN_004cc1f0 +
-    // FUN_004cc020 sırası.
+    // RenderPipeline context -- binary render pass FUN_004cc1f0 +
+    // FUN_004cc020 order.
     RenderPipeline_Reset();
     ApplyCameraToPipeline();
-    // Sis kapalı (uzak arazi kararıyor şüphesi — teşhis).
+    // Fog off (suspicion that distant terrain darkens -- diagnosis).
     rw::SetRenderState(rw::FOGENABLE, 0);
     return TRUE;
 }
@@ -211,10 +211,10 @@ void RenderPlatform_EndFrame(void) {
         }
     }
 #endif
-    // D3D9'da backbuffer → systemmem surface → RGBA → PNG.
+    // D3D9: backbuffer -> systemmem surface -> RGBA -> PNG.
     if (s_screenshotPath[0] != '\0' && s_pCamera->frameBuffer != nullptr) {
 #ifdef RW_GL3
-        // Ekran görüntüsü — GL3 framebuffer → PNG.
+        // Screenshot -- GL3 framebuffer -> PNG.
         rw::Image *pShot = s_pCamera->frameBuffer->toImage();
         if (pShot != nullptr) {
             rw::writePNG(pShot, s_screenshotPath);
@@ -222,8 +222,8 @@ void RenderPlatform_EndFrame(void) {
             std::printf("Screenshot: %s\n", s_screenshotPath);
         }
 #elif defined(RW_D3D9)
-        // CAMERA raster'ı CAMERATEXTURE olduğu için surface'i var; RT'den
-        // systemmem yüzeyine kopyala ve PNG yap (backbuffer DISCARD güvenilmez).
+        // The CAMERA raster is a CAMERATEXTURE so it has a surface; copy RT
+        // to a systemmem surface and make a PNG (backbuffer DISCARD is unreliable).
         IDirect3DDevice9 *pDev = rw::d3d::d3ddevice;
         rw::d3d::D3dRaster *pNat = pDev ? GETD3DRASTEREXT(s_pCamera->frameBuffer) : nullptr;
         if (pDev == nullptr || pNat == nullptr || pNat->texture == nullptr) {
@@ -283,12 +283,12 @@ void RenderPlatform_EndFrame(void) {
             }
         }
 #endif
-        s_screenshotPath[0] = '\0'; // tek seferlik
+        s_screenshotPath[0] = '\0'; // one-time
     }
     if (s_pCamera->frameBuffer != nullptr) {
         s_pCamera->showRaster(0);
     }
-    // GL3: GLFW olayları (ESC/kapat) — main loop ShouldClose ile biter.
+    // GL3: GLFW events (ESC/close) -- main loop ends with ShouldClose.
     RwPlatformPollEvents();
 }
 
@@ -307,10 +307,10 @@ RwBool RenderPlatform_RenderTestQuad(RwReal cx, RwReal cy,
         return FALSE;
     }
 
-    // Üst matris — ScaleXY + TranslateXY (RenderPipeline yığını; FUN_
-    // 004cc480 / FUN_004cc4d0). Köşe pozisyonları bu matrisle 2B afin
-    // çarpılır (view-window uzayı → ekran uzayı köprüsü; GL3 pass'ında
-    // tam yol BuildViewMatrix).
+    // Top matrix -- ScaleXY + TranslateXY (RenderPipeline stack; FUN_
+    // 004cc480 / FUN_004cc4d0). Corner positions are 2D-affine multiplied
+    // with this matrix (view-window space -> screen space bridge; in the GL3
+    // pass, the full BuildViewMatrix path).
     RenderPipeline_MatrixIdentity();
     RenderPipeline_MatrixScaleXY(halfW * 2.0f, halfH * 2.0f);
     RenderPipeline_MatrixTranslateXY(cx, cy);
@@ -327,8 +327,8 @@ RwBool RenderPlatform_RenderTestQuad(RwReal cx, RwReal cy,
     const RwUInt8 b = static_cast<RwUInt8>(argb & 0xFF);
     const RwUInt8 a = static_cast<RwUInt8>((argb >> 24) & 0xFF);
 
-    // Birim kare (-0.5..+0.5) — scale (halfW×2) + translate (cx,cy)
-    // ile top matriste; transform: x' = right·x + up·y + pos.
+    // Unit square (-0.5..+0.5) -- with scale (halfW×2) + translate (cx,cy)
+    // on the top matrix; transform: x' = right·x + up·y + pos.
     const RwReal kCorners[4][2] = {{-0.5f, -0.5f},
                                    {0.5f, -0.5f},
                                    {-0.5f, 0.5f},
@@ -341,16 +341,22 @@ RwBool RenderPlatform_RenderTestQuad(RwReal cx, RwReal cy,
         verts[i].y = pTop->right[1] * lx + pTop->up[1] * ly + pTop->pos[1];
         verts[i].z = z;
         verts[i].rhw = rhw;
+#if defined(RW_D3D9)
+        verts[i].color.red = b;
+        verts[i].color.green = g;
+        verts[i].color.blue = r;
+#else
         verts[i].color.red = r;
         verts[i].color.green = g;
         verts[i].color.blue = b;
+#endif
         verts[i].color.alpha = a;
         verts[i].u = (lx + 0.5f);
         verts[i].v = (ly + 0.5f);
     }
 
-    // İki üçgen (TRILIST + indeks) — NULL platform no-op driver;
-    // doğrudan rw::im2d (stub C API rwstubs no-op'una düşmez).
+    // Two triangles (TRILIST + index) -- NULL platform no-op driver;
+    // direct rw::im2d (does not fall into the rwstubs stub C API no-ops).
     RwUInt16 indices[6] = {0, 1, 2, 2, 1, 3};
     rw::im2d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, verts, 4,
                                      indices, 6);
@@ -362,7 +368,7 @@ void RenderPlatform_Terminate(void) {
         if (s_pCamera != nullptr) {
             s_pWorld->removeCamera(s_pCamera);
 #if defined(RW_GL3) || defined(RW_D3D9)
-            // Raster'lar kameradan önce serbest (skeleton CameraDestroy).
+            // Rasters are freed before the camera (skeleton CameraDestroy).
             if (s_pCamera->frameBuffer != nullptr) {
                 s_pCamera->frameBuffer->destroy();
                 s_pCamera->frameBuffer = nullptr;
@@ -376,8 +382,8 @@ void RenderPlatform_Terminate(void) {
             s_pCamera = nullptr;
         }
         if (s_pAmbient != nullptr) {
-            // Yalnızca eklenmiş ışık kaldırılır (eklenmemiş LLLink
-            // removeLight'ta SEGV yapar — NOLIGHTS crash dersi).
+            // Only an added light is removed (an LLLink that was not added
+            // SEGVs in removeLight -- NOLIGHTS crash lesson).
             if (s_lightsAdded == TRUE) {
                 s_pWorld->removeLight(s_pAmbient);
             }
@@ -425,9 +431,9 @@ void RenderPlatform_RenderScene(void) {
 }
 
 // ---------------------------------------------------------------------------
-// Im2D overlay — piksel koordinatlı2D (CShowText::Render deseni).
-// 3D sahne derinlik yazdığı için ZTEST kapalı yoksa Im2D elenir.
-// librw C++ API (rw::SetRenderState) — C stub RwRenderStateSet GL3'te yok.
+// Im2D overlay -- pixel-coordinate 2D (CShowText::Render pattern).
+// The 3D scene writes depth, so ZTEST must be off or Im2D gets culled.
+// librw C++ API (rw::SetRenderState) -- the C stub RwRenderStateSet does not exist in GL3.
 // ---------------------------------------------------------------------------
 void RenderPlatform_BeginOverlay2D(void) {
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
@@ -436,8 +442,8 @@ void RenderPlatform_BeginOverlay2D(void) {
     rw::SetRenderState(rw::VERTEXALPHA, 1);
     rw::SetRenderState(rw::SRCBLEND, rw::BLENDSRCALPHA);
     rw::SetRenderState(rw::DESTBLEND, rw::BLENDINVSRCALPHA);
-    // 3D sahneden kalan mipmap'li filtre dokulu Im2D'yi karartır
-    // ("incomplete texture"); overlay'de mipmapsiz linear + clamp.
+    // Darkens the mipmap-filtered textured Im2D left from the 3D scene
+    // ("incomplete texture"); mipmap-less linear + clamp in the overlay.
     rw::SetRenderState(rw::TEXTUREFILTER, rw::Texture::LINEAR);
     rw::SetRenderState(rw::TEXTUREADDRESS, rw::Texture::CLAMP);
 }
@@ -460,8 +466,8 @@ void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
     const RwUInt8 b = static_cast<RwUInt8>(argb & 0xFF);
     const RwUInt8 a = static_cast<RwUInt8>((argb >> 24) & 0xFF);
 
-    // Piksel koordinatlı dörtgen (CShowText bg deseni): sol-üst, sol-alt,
-    // sağ-üst, sağ-alt — TRILIST + indeks.
+    // Pixel-coordinate quad (CShowText bg pattern): top-left, bottom-left,
+    // top-right, bottom-right -- TRILIST + index.
     const RwReal vx[4] = {x, x, x + w, x + w};
     const RwReal vy[4] = {y, y + h, y, y + h};
     RwIm2DVertex verts[4];
@@ -470,9 +476,17 @@ void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
         verts[i].y = vy[i];
         verts[i].z = z;
         verts[i].rhw = rhw;
+#if defined(RW_D3D9)
+        // D3D9: the RwRGBA byte array (R,G,B,A) is reinterpreted
+        // as D3DCOLOR; GL3 reads the bytes directly as R,G,B,A.
+        verts[i].color.red = b;
+        verts[i].color.green = g;
+        verts[i].color.blue = r;
+#else
         verts[i].color.red = r;
         verts[i].color.green = g;
         verts[i].color.blue = b;
+#endif
         verts[i].color.alpha = a;
         verts[i].u = 0.0f;
         verts[i].v = 0.0f;
@@ -483,8 +497,8 @@ void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
 }
 
 // ---------------------------------------------------------------------------
-// Gömülü menü dokuları (MAINMENU.RWS TexDictionary → librw Texture).
-// TxdDecode pikseli zaten RGBA verir (TxdDecode.h) — swizzle YOK.
+// Embedded menu textures (MAINMENU.RWS TexDictionary -> librw Texture).
+// TxdDecode pixels already come out RGBA (TxdDecode.h) -- no swizzle.
 // ---------------------------------------------------------------------------
 static std::vector<rw::Texture *> s_menuTextures;
 
@@ -501,7 +515,7 @@ static rw::Texture *FindMenuTexture(const char *name)
     return nullptr;
 }
 
-// RGBA piksellerden librw dokusu (Image→Raster→Texture). NULL başarısızlık.
+// librw texture from RGBA pixels (Image->Raster->Texture). NULL on failure.
 static rw::Texture *CreateTextureFromRGBA(const char *name, RwInt32 width,
                                           RwInt32 height,
                                           const RwUInt8 *rgbaPixels,
@@ -530,7 +544,7 @@ static rw::Texture *CreateTextureFromRGBA(const char *name, RwInt32 width,
             dst[x * 4 + 3] = src[x * 4 + 3]; // A
         }
     }
-    // Teşhis: CANNONCRUISE_REDTEX=1 → tüm dokular kırmızı (örnekleme testi).
+    // Diagnosis: CANNONCRUISE_REDTEX=1 -> all textures red (sampling test).
     if (std::getenv("CANNONCRUISE_REDTEX") != nullptr) {
         for (RwInt32 y = 0; y < height; ++y) {
             RwUInt8 *dst = img->pixels + (size_t)y * (size_t)img->stride;
@@ -554,14 +568,14 @@ static rw::Texture *CreateTextureFromRGBA(const char *name, RwInt32 width,
     }
     std::snprintf(tex->name, sizeof(tex->name), "%s", name);
 #ifdef RW_GL3
-    // Mipmap tamamlama: librw Gl3Raster numLevels/autogenMipmap init
-    // etmez (çöp değer MIP filtresi → "incomplete texture" = siyah).
-    // Gerçek mip'ler üretilip MAX_LEVEL kısılırsa HER dal complete olur.
+    // Mipmap completion: librw Gl3Raster does not initialize numLevels/autogenMipmap
+    // (garbage MIP filter value -> "incomplete texture" = black).
+    // If real mips are generated and MAX_LEVEL is clamped, EVERY mip gets complete.
     {
         void *prevTex = rw::GetRenderStatePtr(rw::TEXTURERASTER);
         rw::SetRenderStatePtr(rw::TEXTURERASTER, raster);
-        // Mipmap üret + MAX_LEVEL kıs: HER dal complete olur (garbage
-        // numLevels/autogenMipmap → MIP filtresi siyah yapıyordu).
+        // Generate mipmaps + clamp MAX_LEVEL: EVERY mip gets complete (garbage
+        // numLevels/autogenMipmap -> the MIP filter made things black).
         int levels = 1;
         {
             int span = (width > height) ? width : height;
@@ -574,7 +588,7 @@ static rw::Texture *CreateTextureFromRGBA(const char *name, RwInt32 width,
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, levels - 1);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // Teşhis: CANNONCRUISE_NEAREST=1 → NEAREST örnekleme.
+        // Diagnosis: CANNONCRUISE_NEAREST=1 -> NEAREST sampling.
         if (std::getenv("CANNONCRUISE_NEAREST") != nullptr) {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
@@ -612,8 +626,8 @@ RwBool RenderPlatform_UploadTexture(const char *name, RwInt32 width,
     if (tex == nullptr) {
         return FALSE;
     }
-    // 2D UI: mipmap yok, linear + clamp (asset filterFlags göz ardı —
-    // sehpa üstü eksik mip seviyesi "incomplete texture" = siyah yapar).
+    // 2D UI: no mipmap, linear + clamp (asset filterFlags ignored --
+    // a missing mip level above the shelf makes "incomplete texture" = black).
     tex->setFilter(rw::Texture::LINEAR);
     tex->setAddressU(rw::Texture::CLAMP);
     tex->setAddressV(rw::Texture::CLAMP);
@@ -675,8 +689,8 @@ void RenderPlatform_ClearTextures(void)
 }
 
 // ---------------------------------------------------------------------------
-// Seviye TexDictionary (3D geometri malzemeleri stream anında isimle çözer).
-// Ömür: pipeline unload SONRASI değiştir/yoket (malzemeler ham tutar).
+// Level TexDictionary (3D geometry materials resolve by name at stream time).
+// Lifetime: modify/destroy AFTER pipeline unload (materials hold raw pointers).
 // ---------------------------------------------------------------------------
 static rw::TexDictionary *s_worldDict = nullptr;
 
@@ -698,13 +712,38 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
         RwUInt8 *buf = static_cast<RwUInt8 *>(std::malloc((size_t)size));
         if (buf != nullptr &&
             std::fread(buf, 1, (size_t)size, f) == (size_t)size) {
-            // Seviye doku paketi: ilk 0x716 chunk'u (özel kayıt formatı;
-            // menü d3d8-IMAGE'inden farklı).
+            // Level texture pack: the first 0x716 chunk (custom record format;
+            // different from the menu d3d8-IMAGE).
             RwUInt32 c0len = 0;
             std::memcpy(&c0len, buf + 4, 4);
             RwUInt32 scanLen = (RwUInt32)size;
             if (c0len > 12 && 12 + c0len <= (RwUInt32)size) {
                 scanLen = 12 + c0len;
+            }
+            // UI texture pack (GUI_/compass_/fishbasic -- nested d3d8-IMAGE):
+            // HUD textures are found in the tail of level chunk0; LevelPack
+            // cannot see them. Load as menu textures (HUD draws).
+            {
+                RwTxdImage *pGui = static_cast<RwTxdImage *>(
+                    std::malloc(sizeof(RwTxdImage)));
+                if (pGui != nullptr) {
+                    if (RwTxdDecodeGuiPack(buf, scanLen, pGui) == TRUE) {
+                        for (RwUInt32 i = 0; i < pGui->count; ++i) {
+                            const RwTxdTexture *t = &pGui->textures[i];
+                            if (t->pPixels == nullptr || t->width == 0 ||
+                                t->height == 0) {
+                                continue;
+                            }
+                            RenderPlatform_UploadTexture(
+                                t->name, (RwInt32)t->width,
+                                (RwInt32)t->height, t->pPixels,
+                                (RwInt32)t->pitch);
+                        }
+                        std::printf("WorldDict: %s: %u UI textures\n",
+                                    rwsPath, pGui->count);
+                    }
+                    std::free(pGui);
+                }
             }
             RwTxdImage *pImage = static_cast<RwTxdImage *>(
                 std::malloc(sizeof(RwTxdImage)));
@@ -728,7 +767,7 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
                             if (tex == nullptr) {
                                 continue;
                             }
-                            // Arazi döşemesi: wrap + linear (mipmapsiz).
+                            // Terrain tiling: wrap + linear (no mipmap).
                             tex->setFilter(rw::Texture::LINEAR);
                             tex->setAddressU(rw::Texture::WRAP);
                             tex->setAddressV(rw::Texture::WRAP);
@@ -755,7 +794,7 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
     s_worldDict = dict;
     rw::TexDictionary::setCurrent(s_worldDict);
 #ifdef RW_GL3
-    // Teşhis: CANNONCRUISE_DUMPTEX=ad → GL içeriğini PPM yazar.
+    // Diagnosis: CANNONCRUISE_DUMPTEX=name -> writes GL content as PPM.
     {
         const char *dumpName = std::getenv("CANNONCRUISE_DUMPTEX");
         if (dumpName != nullptr) {
@@ -795,7 +834,7 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
             }
         }
     }
-    // Filtre durumu geri okuma (MIN/MAG/MAX) — DUMPTEX'ten bağımsız.
+    // Filter state readback (MIN/MAG/MAX) -- independent of DUMPTEX.
     {
         const char *qName = std::getenv("CANNONCRUISE_TEXQUERY");
         if (qName != nullptr && s_worldDict != nullptr) {
@@ -835,7 +874,7 @@ void RenderPlatform_SetCameraPose(const RwReal position[3],
     rw::Matrix *pMat = &s_pCameraFrame->matrix;
 
     // at = normalize(lookAt - pos); right = normalize(cross(worldUp, at));
-    // up = cross(at, right) — orthonormal RW frame (CCMatrix yerleşimi).
+    // up = cross(at, right) -- orthonormal RW frame (CCMatrix layout).
     rw::V3d at = rw::makeV3d(lookAt[0] - position[0],
                              lookAt[1] - position[1],
                              lookAt[2] - position[2]);
@@ -851,7 +890,7 @@ void RenderPlatform_SetCameraPose(const RwReal position[3],
     if (lenRight > 1e-6f) {
         right = rw::normalize(right);
     } else {
-        // at ∥ worldUp — x ekseni baz alınır.
+        // at ∥ worldUp -- the x axis is taken as the basis.
         right = rw::makeV3d(1.0f, 0.0f, 0.0f);
     }
     const rw::V3d up = rw::cross(at, right);

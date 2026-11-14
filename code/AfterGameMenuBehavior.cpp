@@ -190,7 +190,7 @@ void CAfterGameMenuBehavior::Update(RwReal deltaTime)
 
 void CAfterGameMenuBehavior::Render()
 {
-    // ekran pikseli — RenderPlatform_Initialize(1280, 720)
+    // screen pixel - RenderPlatform_Initialize(1280, 720)
     const RwReal kScreenW = 1280.0f;
     const RwReal kScreenH = 720.0f;
     const RwUInt32 kInk = 0xFF4A2810;

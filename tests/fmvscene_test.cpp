@@ -1,26 +1,26 @@
 // ============================================================================
-// CannonCruise - FMV Sahne Tanımlayıcısı Test (fmvscene_test.cpp)
+// CannonCruise - FMV Scene Descriptor Test (fmvscene_test.cpp)
 //
-// Doğrulanan davranış (code/FmvScene.cpp):
-//   - FMV tanımlayıcısı (CFMVBehavior) ayrıştırması: GUID + FMV adı + HEDEF
-//     SAHNE — 8 dosyalık tam geçiş grafiği dosya verisinden çıkarılır:
-//       JINGLE  → Jingle  → MainMenu   (binary sub_4A2010 AÇILIŞI)
-//       INTRO1  → Intro   → Nordic01   (intro → nordic BAĞLANTISI)
+// Verified behavior (code/FmvScene.cpp):
+//   - FMV descriptor (CFMVBehavior) parsing: GUID + FMV name + TARGET
+//     SCENE — the full 8-file transition graph is extracted from file data:
+//       JINGLE  → Jingle  → MainMenu   (binary sub_4A2010 STARTUP)
+//       INTRO1  → Intro   → Nordic01   (intro → nordic LINK)
 //       INTRO2  → Intro2  → Nordic02
 //       INTRO3  → Intro3  → MAPMENU
 //       CREDITS → Credits → MainMenu
 //       OUTRO1  → Outro   → Iduna02
 //       OUTRO2  → Outro2  → Iduna03
 //       OUTRO3  → Outro3  → Credits
-//   - seviye/dünya dosyaları (>64 KB) tanımlayıcı SAYILMAZ → 0 (zincir sonu)
-//   - video yolu binary-exact: ".\Video\Win32\<ad>.bik" (sub_45F950 case0)
-//   - .bik dosyaları depoda MEVCUT (Video/Win32/*.bik, Faz 4.6y) →
-//     FmvScene_VideoExists = 1; olmayan bir ad → 0
-//   - hedef → sıra dosyası; hedef büyük/küçük harf FARKI için UPPERCASE
-//     ikinci denemesi ("Nordic01" → Streams/NORDIC01.RWS)
+//   - level/world files (>64 KB) do NOT count as descriptors → 0 (end of chain)
+//   - video path is binary-exact: ".\Video\Win32\<name>.bik" (sub_45F950 case0)
+//   - .bik files EXIST in the repo (Video/Win32/*.bik, Phase 4.6y) →
+//     FmvScene_VideoExists = 1; a missing name → 0
+//   - target → sequence file; for a target case DIFFERENCE an UPPERCASE
+//     retry ("Nordic01" → Streams/NORDIC01.RWS)
 //
-// Öncelik: önceki kod hedefi (target) yalnızca yazdırıp geçiyordu — nordic
-// bağlantısı yoktu; ayrıca giriş INTRO1→2→3 varsayımı yanlıştı.
+// Priority: the previous code only printed the target and moved on — the nordic
+// link was missing; also the intro INTRO1→2→3 assumption was wrong.
 // ============================================================================
 
 #include "FmvScene.h"
@@ -42,11 +42,11 @@ static void Check(bool cond, const char *pExpr, int line) {
 
 #define CHECK(expr) Check((expr), #expr, __LINE__)
 
-// Büyük/küçük harf duyarsız dize karşılaştırma — Windows'ta dosya sistemi
-// büyük/küçük harfe duyarsız olduğundan FmvScene_NextScenePath birebir denemede
-// "Streams/Nordic01.RWS" gibi karışık-harf yol döndürür; duyarsız FS'te ise
-// UPPERCASE denemesiyle "Streams/NORDIC01.RWS". İkisi de doğru davranış →
-// test hangi biçimin döndüğünü değil, AYNI dosyaya çözüldüğünü doğrular.
+// Case-insensitive string comparison — Windows file system
+// is case-insensitive so FmvScene_NextScenePath tries verbatim first and
+// returns a mixed-case path like "Streams/Nordic01.RWS"; on a case-insensitive FS
+// UPPERCASE retry yields "Streams/NORDIC01.RWS". Both are correct behavior →
+// the test verifies not which form is returned, but that it resolves to the SAME file.
 static bool EqualsNoCase(const char *pA, const char *pB) {
     if (pA == nullptr || pB == nullptr) {
         return false;
@@ -68,7 +68,7 @@ static bool EqualsNoCase(const char *pA, const char *pB) {
 }
 
 // ---------------------------------------------------------------------------
-// 1) Geçiş grafiği — 8 FMV tanımlayıcısının hepsi (FMV adı + hedef)
+// 1) Transition graph — all 8 FMV descriptors (FMV name + target)
 // ---------------------------------------------------------------------------
 static void TestTransitionGraph() {
     struct Case {
@@ -91,12 +91,12 @@ static void TestTransitionGraph() {
         std::memset(&d, 0xAA, sizeof(d));
         const int ok = FmvScene_Load(kCases[i].pFile, &d);
         if (ok != 1) {
-            std::printf("FAIL: %s tanımlayıcı değil\n", kCases[i].pFile);
+            std::printf("FAIL: %s not a descriptor\n", kCases[i].pFile);
         }
         CHECK(ok == 1);
         CHECK(std::strcmp(d.behaviour, kCases[i].pFmv) == 0);
         CHECK(std::strcmp(d.target, kCases[i].pTarget) == 0);
-        // GUID: harici {GUID} kimliği mevcut (içinde '{' ve '}' var)
+        // GUID: external {GUID} id present (contains '{' and '}')
         CHECK(d.guid[0] == '{');
         CHECK(std::strchr(d.guid, '}') != nullptr);
         if (ok == 1) {
@@ -107,24 +107,24 @@ static void TestTransitionGraph() {
 }
 
 // ---------------------------------------------------------------------------
-// 2) Seviye/dünya dosyaları tanımlayıcı DEĞİL → 0 (zincir sonu garantisi)
-//    eksik dosya → 0
+// 2) Level/world files are NOT descriptors → 0 (end-of-chain guarantee)
+//    missing file → 0
 // ---------------------------------------------------------------------------
 static void TestNonDescriptorAndMissing() {
     FmvSceneDescriptor d;
-    // 15.9 MB seviye — 64 KB sınırının çok üzerinde
+    // 15.9 MB level — far above the 64 KB limit
     CHECK(FmvScene_Load("Streams/VIKING01.RWS", &d) == 0);
-    // 1.8 MB menü — seviye/dünya sayılır (JINGLE hedefi burada biter)
+    // 1.8 MB menu — counts as level/world (the JINGLE target ends here)
     CHECK(FmvScene_Load("Streams/MAINMENU.RWS", &d) == 0);
-    // bulunmayan dosya
+    // nonexistent file
     CHECK(FmvScene_Load("Streams/NO_SUCH_SCENE.RWS", &d) == 0);
-    // boş/geçersiz girdi
+    // empty/invalid input
     CHECK(FmvScene_Load(nullptr, &d) == 0);
     CHECK(FmvScene_Load("Streams/JINGLE.RWS", nullptr) == 0);
 }
 
 // ---------------------------------------------------------------------------
-// 3) Video yolu — sub_45F950 case0: <base>"Video\Win32\"<ad>".bik", base ".\"
+// 3) Video path — sub_45F950 case0: <base>"Video\Win32\"<name>".bik", base ".\"
 // ---------------------------------------------------------------------------
 static void TestVideoPath() {
     char buf[512];
@@ -132,13 +132,13 @@ static void TestVideoPath() {
     CHECK(std::strcmp(buf, ".\\Video\\Win32\\Jingle.bik") == 0);
     CHECK(FmvScene_VideoPath("Intro2", buf, sizeof(buf)) == 1);
     CHECK(std::strcmp(buf, ".\\Video\\Win32\\Intro2.bik") == 0);
-    // geçersiz girdi
+    // invalid input
     CHECK(FmvScene_VideoPath(nullptr, buf, sizeof(buf)) == 0);
     CHECK(FmvScene_VideoPath("", buf, sizeof(buf)) == 0);
     CHECK(FmvScene_VideoPath("Jingle", nullptr, 0) == 0);
 
-    // Faz 4.6y: .bik dosyaları depoda mevcut (Video/Win32/*.bik) → 1.
-    // Oynatma Faz 4.6y'de BinkPlayer ile bağlandı; depoda olmayan ad → 0.
+    // Phase 4.6y: .bik files exist in the repo (Video/Win32/*.bik) → 1.
+    // Playback was linked with BinkPlayer in Phase 4.6y; a name not in the repo → 0.
     CHECK(FmvScene_VideoExists("Jingle") == 1);
     CHECK(FmvScene_VideoExists("Intro") == 1);
     CHECK(FmvScene_VideoExists("NoSuchFmvXYZ") == 0);
@@ -146,9 +146,9 @@ static void TestVideoPath() {
 }
 
 // ---------------------------------------------------------------------------
-// 4) Hedef → sıradaki tanımlayıcı yolu. Kritik: dosyalar BÜYÜK HARF
-//    (NORDIC01.RWS, MAINMENU.RWS) ama hedef "Nordic01"/"MainMenu" →
-//    UPPERCASE ikinci denemesi şart (yoksa nordic bağlantısı KAYIP olur).
+// 4) Target → next descriptor path. Critical: the files are UPPERCASE
+//    (NORDIC01.RWS, MAINMENU.RWS) but the target is "Nordic01"/"MainMenu" →
+//    an UPPERCASE retry is required (otherwise the nordic link is LOST).
 // ---------------------------------------------------------------------------
 static void TestNextScenePath() {
     char rel[512];
@@ -168,56 +168,56 @@ static void TestNextScenePath() {
     CHECK(FmvScene_NextScenePath("Iduna02", rel, sizeof(rel)) == 1);
     CHECK(EqualsNoCase(rel, "Streams/IDUNA02.RWS"));
 
-    // birebir eşleşen büyük harf hedef (CREDITS)
+    // verbatim match uppercase target (CREDITS)
     CHECK(FmvScene_NextScenePath("CREDITS", rel, sizeof(rel)) == 1);
     CHECK(EqualsNoCase(rel, "Streams/CREDITS.RWS"));
 
-    // var olmayan hedef → 0
+    // nonexistent target → 0
     CHECK(FmvScene_NextScenePath("NoSuchLevel", rel, sizeof(rel)) == 0);
-    // geçersiz girdi
+    // invalid input
     CHECK(FmvScene_NextScenePath(nullptr, rel, sizeof(rel)) == 0);
     CHECK(FmvScene_NextScenePath("", rel, sizeof(rel)) == 0);
 }
 
 // ---------------------------------------------------------------------------
-// 5) Zincir kurulumu: JINGLE → (MAINMENU) → tanımlayıcı değil → SON.
-//    INTRO1 → (NORDIC01) → tanımlayıcı değil → SON + hedef kayıtlı.
+// 5) Chain setup: JINGLE → (MAINMENU) → not a descriptor → END.
+//    INTRO1 → (NORDIC01) → not a descriptor → END + target registered.
 // ---------------------------------------------------------------------------
 static void TestChainTermination() {
     char rel[512] = {0};
     char terminal[64] = {0};
 
-    // a) binary açılışı: JINGLE
+    // a) binary startup: JINGLE
     FmvSceneDescriptor d;
     CHECK(FmvScene_Load("Streams/JINGLE.RWS", &d) == 1);
     std::snprintf(terminal, sizeof(terminal), "%s", d.target);
     CHECK(FmvScene_NextScenePath(d.target, rel, sizeof(rel)) == 1);
     CHECK(EqualsNoCase(rel, "Streams/MAINMENU.RWS"));
-    // zincir sonraki adımda tanımlayıcı değil (1.8 MB) → SON
+    // the chain is not a descriptor at the next step (1.8 MB) → END
     CHECK(FmvScene_Load(rel, &d) == 0);
     CHECK(std::strcmp(terminal, "MainMenu") == 0);
 
-    // b) INTRO1 → nordic bağlantısı
+    // b) INTRO1 → nordic link
     CHECK(FmvScene_Load("Streams/INTRO1.RWS", &d) == 1);
     std::snprintf(terminal, sizeof(terminal), "%s", d.target);
     CHECK(FmvScene_NextScenePath(d.target, rel, sizeof(rel)) == 1);
     CHECK(EqualsNoCase(rel, "Streams/NORDIC01.RWS"));
-    // NORDIC01 tanımlayıcı değil (14 MB seviye) → zincir sonu, hedef korunur
+    // NORDIC01 not a descriptor (14 MB level) → end of chain, target preserved
     CHECK(FmvScene_Load(rel, &d) == 0);
     CHECK(std::strcmp(terminal, "Nordic01") == 0);
 
-    // c) OUTRO zinciri: OUTRO3 → Credits (TANIMLAYICI → zincir devam eder)
+    // c) OUTRO chain: OUTRO3 → Credits (DESCRIPTOR → chain continues)
     CHECK(FmvScene_Load("Streams/OUTRO3.RWS", &d) == 1);
     CHECK(FmvScene_NextScenePath(d.target, rel, sizeof(rel)) == 1);
     CHECK(FmvScene_Load(rel, &d) == 1);
     CHECK(std::strcmp(d.behaviour, "Credits") == 0);
-    // Credits → MainMenu → tanımlayıcı değil → SON
+    // Credits → MainMenu → not a descriptor → END
     CHECK(FmvScene_NextScenePath(d.target, rel, sizeof(rel)) == 1);
     CHECK(FmvScene_Load(rel, &d) == 0);
 }
 
 int main() {
-    // Sentinel taraması test CWD'sinden kök bulur (rwsassets_test ile aynı).
+    // Sentinel scan finds the root from the test CWD (same as rwsassets_test).
     RwsAssets_Reset();
 
     TestTransitionGraph();

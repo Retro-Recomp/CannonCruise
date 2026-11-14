@@ -1,14 +1,14 @@
 // ============================================================================
 // CannonCruise - Render Pipeline state (RenderPipeline.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\RenderPipeline.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with CC_ida.asm analysis.
 //
-// Binary Fonksiyonları (gövde karşılıkları — başlık bloğuna bkz.):
+// Binary Functions (body counterparts -- see the header block):
 //   FUN_004cc1f0 / FUN_004cbd20 / FUN_004cc2f0 / FUN_004cc350 /
-//   FUN_004cc480 / FUN_004cc4d0 / FUN_004cc020 (çekirdek)
+//   FUN_004cc480 / FUN_004cc4d0 / FUN_004cc020 (core)
 //
-// Matris yığını slot[32] sabit dizide modellenir (binary'de işaretçi
-// havuzu + lazy sub_510600 tahsisi; port statik — tek iş parçacığı).
+// The matrix stack slot[32] is modeled as a fixed array (in the binary: pointer
+// pool + lazy sub_510600 allocation; the port is static -- single thread).
 // ============================================================================
 
 #include "RenderPipeline.h"
@@ -19,48 +19,48 @@ namespace
 {
     const RwInt32 kStackSlots = 32; // binary: cmp eax,1Fh (0..31)
 
-    // dword_66D644[0..31] — yığın slot matrisleri; dword_66D6C4 derinlik
+    // dword_66D644[0..31] -- stack slot matrices; dword_66D6C4 depth
     CCMatrix s_MatrixStack[kStackSlots];
     RwInt32  s_StackDepth = 0; // dword_66D6C4
 
-    // dword_66D604 — kök/global matris (sub_4cc1f0 kimlik; sub_4cc520
-    // sub_50f760 ile üst matrisle çarpar — portlanmadı, kayıt için)
+    // dword_66D604 -- root/global matrix (sub_4cc1f0 identity; sub_4cc520
+    // multiplies with the top matrix via sub_50f760 -- not ported, for the record)
     CCMatrix s_RootMatrix;
 
-    // dword_66D7C0 / dword_66D7C4 — en-boy çifti (sub_4cc020)
+    // dword_66D7C0 / dword_66D7C4 -- aspect ratio pair (sub_4cc020)
     RwReal s_AspectX = 1.0f;
     RwReal s_AspectY = 1.0f;
 
-    // dword_66D6D0/D4 — raster genişlik/yükseklik; flt_66D6C8/CC — görüş
-    // penceresi ×2 (sub_4cc020)
+    // dword_66D6D0/D4 -- raster width/height; flt_66D6C8/CC -- view
+    // window x2 (sub_4cc020)
     RwReal s_RasterWidth = 0.0f;
     RwReal s_RasterHeight = 0.0f;
     RwReal s_ViewWinX2 = 0.0f;
     RwReal s_ViewWinY2 = 0.0f;
 
-    // dword_66D7A0 z / dword_66D7A4 half-pixel (sub_4cc1f0 başlatır)
+    // dword_66D7A0 z / dword_66D7A4 half-pixel (initialized by sub_4cc1f0)
     RwReal s_DepthZ = 1.0f;
     RwReal s_HalfPixel = 0.5f;
 
-    // dword_66D798 / dword_66D7AC — önbellek geçerlilik bayrakları
-    // (sub_4cc480/4cc4d0/4cbd20 sıfırlar)
+    // dword_66D798 / dword_66D7AC -- cache validity flags
+    // (cleared by sub_4cc480/4cc4d0/4cbd20)
     RwInt32 s_ParamsValid = 0;
     RwInt32 s_CacheFlag2 = 0;
 
-    // kamera bağlamı (sub_4cc020/4cc120/4cc130/4cc520)
+    // camera context (sub_4cc020/4cc120/4cc130/4cc520)
     const RCCCameraView *s_pCameraView = 0; // dword_66D7CC
     RwReal s_OffX = 0.0f;                   // dword_66D7B8
     RwReal s_OffY = 0.0f;                   // dword_66D7BC
     void *s_pContext = 0;                   // dword_66D79C
-    RwInt32 s_FlagsB0 = 7;                  // dword_66D7B0 (Reset değeri)
+    RwInt32 s_FlagsB0 = 7;                  // dword_66D7B0 (reset value)
 
-    // sub_4cc520 param bloğu — unk_66D6D8 (ölçek), unk_66D718 (ters),
-    // unk_66D758 (ölçek × frame — her çağrıda)
+    // sub_4cc520 param block -- unk_66D6D8 (scale), unk_66D718 (inverse),
+    // unk_66D758 (scale x frame -- on every call)
     CCMatrix s_ViewScale;
     CCMatrix s_ViewInverse;
     CCMatrix s_ViewResult;
 
-    // 0x20003 — birimlik işaret maskesi (sub_4cc1f0/sub_4cbd20: flags |=)
+    // 0x20003 -- unit-flag mask (sub_4cc1f0/sub_4cbd20: flags |=)
     const RwInt32 kMatrixFlags = 0x20003;
 
     void MatrixIdentityInto(CCMatrix *pM) {
@@ -71,8 +71,8 @@ namespace
         pM->flags |= kMatrixFlags;
     }
 
-    // sub_50f760 (RwMatrixMultiply) — out = a × b: b önce uygulanır
-    // (v' = v·b·a); 3x3 sütun çarpımı + pos = a.3x3×b.pos + a.pos.
+    // sub_50f760 (RwMatrixMultiply) -- out = a x b: b is applied first
+    // (v' = v·b·a); 3x3 column multiply + pos = a.3x3 x b.pos + a.pos.
     void MatrixMultiplyInto(CCMatrix *pOut, const CCMatrix *pA,
                             const CCMatrix *pB) {
         CCMatrix r;
@@ -98,10 +98,10 @@ namespace
         *pOut = r;
     }
 
-    // sub_510170 kombinasyon tip 2 (sub_4cc520 kullanır) — tam ölçek:
-    // sütunlar × (v.x, v.y, v.z) + pos × (v.x, v.y, v.z); flags
-    // &= 0xFFFDFFFC (birimlik/ölçek bayrakları temiz). Tip 1 (sub_4cc480)
-    // yalnız sütun ölçekler — mevcut MatrixScaleXY doğru.
+    // sub_510170 combination type 2 (used by sub_4cc520) -- full scale:
+    // columns x (v.x, v.y, v.z) + pos x (v.x, v.y, v.z); flags
+    // &= 0xFFFDFFFC (identity/scale flags cleared). Type 1 (sub_4cc480)
+    // scales columns only -- the current MatrixScaleXY is correct.
     void MatrixScaleXYZInto(CCMatrix *pM, RwReal x, RwReal y, RwReal z) {
         pM->right[0] *= x;
         pM->right[1] *= x;
@@ -118,8 +118,8 @@ namespace
         pM->flags &= static_cast<RwInt32>(0xFFFDFFFCu);
     }
 
-    // sub_510300 kombinasyon tip 2 (sub_4cc520 kullanır) — ham öteleme:
-    // pos += v (sütunlara dokunmaz); flags &= 0xFFFDFFFF.
+    // sub_510300 combination type 2 (used by sub_4cc520) -- raw translation:
+    // pos += v (does not touch the columns); flags &= 0xFFFDFFFF.
     void MatrixTranslateRawInto(CCMatrix *pM, RwReal x, RwReal y, RwReal z) {
         pM->pos[0] += x;
         pM->pos[1] += y;
@@ -127,16 +127,16 @@ namespace
         pM->flags &= static_cast<RwInt32>(0xFFFDFFFFu);
     }
 
-    // sub_50ff20 (RwMatrixInvert) — kimlik kopyala (flags&0x20000),
-    // orthonormal hızlı (flags&3==3: transpoze + neg-poz), genel yol
-    // sub_510010 (adjugate/det; det==0 → katsayı 1.0 — flt_5EF2E0).
+    // sub_50ff20 (RwMatrixInvert) -- identity copy (flags&0x20000),
+    // orthonormal fast path (flags&3==3: transpose + neg-pos), general path
+    // sub_510010 (adjugate/det; det==0 -> coefficient 1.0 -- flt_5EF2E0).
     void MatrixInvertInto(CCMatrix *pOut, const CCMatrix *pM) {
         if (pM->flags & 0x20000) {
-            *pOut = *pM; // kimlik önbellek kopyası (rep movsd 10h)
+            *pOut = *pM; // identity cache copy (rep movsd 10h)
             return;
         }
         if ((pM->flags & 3) == 3) {
-            // orthonormal: out.sütun = in.sütun satırları (transpoze);
+            // orthonormal: out.column = in.column rows (transpose);
             // out.pos = -(pos·right, pos·up, pos·at); flags = 3
             CCMatrix r;
             for (int row = 0; row < 3; ++row) {
@@ -156,7 +156,7 @@ namespace
             *pOut = r;
             return;
         }
-        // genel afin ters — 3x3 adjugate/det + pos = -out.3x3 × in.pos
+        // general affine inverse -- 3x3 adjugate/det + pos = -out.3x3 x in.pos
         const RwReal *b[3] = {pM->right, pM->up, pM->at};
         const RwReal det =
             b[0][0] * (b[2][1] * b[1][2] - b[1][1] * b[2][2]) -
@@ -191,8 +191,8 @@ namespace
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_Reset(void) {
     s_StackDepth = 0;                    // dword_66D6C4 = 0
-    MatrixIdentityInto(&s_MatrixStack[0]); // dword_66D644[0] = birim
-    MatrixIdentityInto(&s_RootMatrix);   // dword_66D604 kimlik
+    MatrixIdentityInto(&s_MatrixStack[0]); // dword_66D644[0] = identity
+    MatrixIdentityInto(&s_RootMatrix);   // dword_66D604 identity
     s_RootMatrix.flags |= kMatrixFlags;  // dword_66D610 |= 0x20003
     s_DepthZ = 1.0f;                     // dword_66D7A0
     s_HalfPixel = 0.5f;                  // dword_66D7A4
@@ -229,7 +229,7 @@ RwBool RenderPipeline_MatrixIdentity(void) {
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_MatrixPush(void) {
     if (s_StackDepth >= kStackSlots - 1) {
-        return FALSE; // binary: cmp 1Fh / setl — taşma
+        return FALSE; // binary: cmp 1Fh / setl -- overflow
     }
     ++s_StackDepth;
     s_MatrixStack[s_StackDepth] = s_MatrixStack[s_StackDepth - 1];
@@ -245,10 +245,10 @@ RwBool RenderPipeline_MatrixPushCopy(const CCMatrix *pSrc) {
     }
     ++s_StackDepth;
     if (!pSrc) {
-        // ebeveyn kopyası (sub_4cc350 arg_0==0 dalı)
+        // parent copy (sub_4cc350 arg_0==0 branch)
         s_MatrixStack[s_StackDepth] = s_MatrixStack[s_StackDepth - 1];
     } else {
-        // sub_50f760(dest=üst, arg_0, ebeveyn) — ebeveyn önce uygulanır
+        // sub_50f760(dest=top, arg_0, parent) -- parent is applied first
         MatrixMultiplyInto(&s_MatrixStack[s_StackDepth], pSrc,
                            &s_MatrixStack[s_StackDepth - 1]);
     }
@@ -267,7 +267,7 @@ RwBool RenderPipeline_MatrixScaleXY(RwReal x, RwReal y) {
     pTop->up[0] *= y;
     pTop->up[1] *= y;
     pTop->up[2] *= y;
-    // at sütunu ×1 (binary var_4 = 3F800000h)
+    // at column x1 (binary var_4 = 3F800000h)
     s_ParamsValid = 0; // dword_66D798 = 0
     s_CacheFlag2 = 0;  // dword_66D7AC = 0
     return TRUE;
@@ -275,7 +275,7 @@ RwBool RenderPipeline_MatrixScaleXY(RwReal x, RwReal y) {
 
 // ---------------------------------------------------------------------------
 // RenderPipeline_MatrixTranslateXY — sub_4CC4D0 (sub_510300 → RwMatrixTranslate)
-// pos += right×x + up×y (var_4 = 0 — Z bileşeni yok)
+// pos += right x x + up x y (var_4 = 0 -- no Z component)
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_MatrixTranslateXY(RwReal x, RwReal y) {
     CCMatrix *pTop = &s_MatrixStack[s_StackDepth];
@@ -288,14 +288,14 @@ RwBool RenderPipeline_MatrixTranslateXY(RwReal x, RwReal y) {
 }
 
 // ---------------------------------------------------------------------------
-// RenderPipeline_SetViewWindow — sub_4CC020 taşınabilir çekirdeği
+// RenderPipeline_SetViewWindow -- portable core of sub_4CC020
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_SetViewWindow(RwReal width, RwReal height,
                                     RwReal winX2, RwReal winY2) {
     s_RasterWidth = width;   // flt_66D6D0
     s_RasterHeight = height; // flt_66D6D4
-    s_ViewWinX2 = winX2;     // flt_66D6C8 = [kamera+0x68]×2
-    s_ViewWinY2 = winY2;     // flt_66D6CC = [kamera+0x6C]×2
+    s_ViewWinX2 = winX2;     // flt_66D6C8 = [camera+0x68]x2
+    s_ViewWinY2 = winY2;     // flt_66D6CC = [camera+0x6C]x2
     if (winX2 >= winY2) {
         s_AspectY = 1.0f;                    // dword_66D7C4 = 1.0
         s_AspectX = (winY2 != 0.0f) ? winX2 / winY2 : 1.0f;
@@ -308,7 +308,7 @@ RwBool RenderPipeline_SetViewWindow(RwReal width, RwReal height,
 }
 
 // ---------------------------------------------------------------------------
-// test erişimi
+// test access
 // ---------------------------------------------------------------------------
 const CCMatrix *RenderPipeline_GetTopMatrix(void) {
     return &s_MatrixStack[s_StackDepth];
@@ -352,27 +352,27 @@ const CCMatrix *RenderPipeline_GetViewInverseMatrix(void) {
 }
 
 // ---------------------------------------------------------------------------
-// RenderPipeline_SetViewWindowFromCamera — sub_4CC020 tam yolu
+// RenderPipeline_SetViewWindowFromCamera -- sub_4CC020 full path
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_SetViewWindowFromCamera(const RCCCameraView *pCam) {
     if (!pCam) {
         s_pCameraView = 0; // dword_66D7CC = NULL (loc_4CC103)
         return FALSE;
     }
-    // raster == NULL → FALSE; dword_66D7CC DEĞİŞMEZ (loc_4CC109 — binary
-    // kamera önbelleğini korur)
+    // raster == NULL -> FALSE; dword_66D7CC IS NOT CHANGED (loc_4CC109 -- binary
+    // preserves the camera cache)
     if (pCam->rasterWidth <= 0 || pCam->rasterHeight <= 0) {
         return FALSE;
     }
-    // vtable kancası atlantır (motor tarafı — başlık bloğu)
+    // vtable hook is skipped (engine side -- header block)
     RenderPipeline_SetViewWindow(static_cast<RwReal>(pCam->rasterWidth),
                                  static_cast<RwReal>(pCam->rasterHeight),
                                  pCam->viewWindowX * 2.0f,
                                  pCam->viewWindowY * 2.0f);
-    s_pCameraView = pCam; // dword_66D7CC = kamera (loc_4CC08A)
+    s_pCameraView = pCam; // dword_66D7CC = camera (loc_4CC08A)
     s_OffX = 0.0f;        // dword_66D7B8 = 0
     s_OffY = 0.0f;        // dword_66D7BC = 0
-    // dword_66D798 = 0 — SetViewWindow çekirdeği zaten sıfırlar
+    // dword_66D798 = 0 -- the SetViewWindow core already clears it
     return TRUE;
 }
 
@@ -382,7 +382,7 @@ const RCCCameraView *RenderPipeline_GetCamera(void) {
 
 // ---------------------------------------------------------------------------
 // RenderPipeline_SetContext / ClearContext / GetContext — sub_4CC130
-// (dword_66D79C — oyunun geçerli çizim bağlamı)
+// (dword_66D79C -- the game's current draw context)
 // ---------------------------------------------------------------------------
 RwBool RenderPipeline_SetContext(void *pContext) {
     s_pContext = pContext; // sub_4cc130: dword_66D79C = arg_0
@@ -390,7 +390,7 @@ RwBool RenderPipeline_SetContext(void *pContext) {
 }
 
 void RenderPipeline_ClearContext(void) {
-    s_pContext = 0; // sub_4cc140 ilk adım: dword_66D79C = 0
+    s_pContext = 0; // sub_4cc140 first step: dword_66D79C = 0
 }
 
 void *RenderPipeline_GetContext(void) {
@@ -416,16 +416,16 @@ void RenderPipeline_GetViewParams(RwReal *pOffX, RwReal *pOffY,
 // ---------------------------------------------------------------------------
 const CCMatrix *RenderPipeline_BuildViewMatrix(void) {
     if (!s_ParamsValid) {
-        // zScale: kamera projection tipi 2 → 1.0, değilse dword_66D7A0
+        // zScale: camera projection type 2 -> 1.0, otherwise dword_66D7A0
         const RwReal zScale = (s_pCameraView && s_pCameraView->projFlag == 2)
                                   ? 1.0f
                                   : s_DepthZ;
-        // m = üst × kök (sub_50f760 — kök önce uygulanır)
+        // m = top x root (sub_50f760 -- root is applied first)
         CCMatrix m;
         MatrixMultiplyInto(&m, &s_MatrixStack[s_StackDepth], &s_RootMatrix);
-        // ölçek(zScale, zScale, 1) — sub_510170 tip 2
+        // scale(zScale, zScale, 1) -- sub_510170 type 2
         MatrixScaleXYZInto(&m, zScale, zScale, 1.0f);
-        // w = min(winX2, winY2); ölçek(-w, w, 1) — sub_510170 tip 2
+        // w = min(winX2, winY2); scale(-w, w, 1) -- sub_510170 type 2
         const RwReal w = (s_ViewWinX2 >= s_ViewWinY2) ? s_ViewWinY2
                                                        : s_ViewWinX2;
         MatrixScaleXYZInto(&m, -w, w, 1.0f);
@@ -437,14 +437,14 @@ const CCMatrix *RenderPipeline_BuildViewMatrix(void) {
         MatrixInvertInto(&s_ViewInverse, &m);     // unk_66D718 (sub_50ff20)
         s_ParamsValid = 1;                        // dword_66D798 = 1
     }
-    // sonuç = ölçek × kamera frame — HER ÇAĞRIDA (kamera hareketi
-    // önbelleği tazelemez; sub_50e990 frame LTM)
+    // result = scale x camera frame -- EVERY CALL (camera movement
+    // does not refresh the cache; sub_50e990 frame LTM)
     if (s_pCameraView && s_pCameraView->pFrameMatrix) {
         MatrixMultiplyInto(&s_ViewResult, &s_ViewScale,
                            s_pCameraView->pFrameMatrix);
         return &s_ViewResult; // unk_66D758
     }
-    // port kılavuzu: kamera/kare yoksa ölçek matrisi döner (binary
-    // dword_66D7CC'e kilitlenirdi — [eax+4] doğrudan)
+    // port guide: if there is no camera/frame, returns the scale matrix (in the binary
+    // it was locked to dword_66D7CC -- [eax+4] directly)
     return &s_ViewScale;
 }

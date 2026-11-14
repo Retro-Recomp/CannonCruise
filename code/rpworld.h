@@ -47,7 +47,7 @@ RpClump*    RpClumpForAllAtomics(RpClump *clump, RpAtomicCallBack callback, void
 RwFrame*    RpClumpGetFrame(RpClump *clump);
 RpClump*    RpClumpSetFrame(RpClump *clump, RwFrame *frame);
 RpClump*    RpClumpStreamRead(RwStream *stream);
-// CollisionTrigger (phantom AABB) için eklendi — librw'de gerçek veri döner
+// Added for CollisionTrigger (phantom AABB) -- real data is returned in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump *clump);
 
 // Atomic API
@@ -69,8 +69,8 @@ RpAtomic*         RpSkinAtomicSetHAnimHierarchy(RpAtomic *atomic, RpHAnimHierarc
 RpGeometry*     RpGeometryCreate(RwInt32 numVerts, RwInt32 numTriangles, RwUInt32 format);
 RwBool          RpGeometryDestroy(RpGeometry *geometry);
 const RwSphere* RpGeometryGetBoundingSphere(const RpGeometry *geometry);
-// vertex/tükenme erişimi — CollisionGeometry (Clump→şekil) için eklendi;
-// librw entegrasyonunda gerçek veri döner (stub: 0/0/NULL)
+// vertex/triangle access -- added for CollisionGeometry (Clump->shape);
+// real data is returned in the librw integration (stub: 0/0/NULL)
 RwInt32         RpGeometryGetNumVertices(const RpGeometry *geometry);
 RwInt32         RpGeometryGetNumTriangles(const RpGeometry *geometry);
 RwV3d*          RpGeometryGetVertices(RpGeometry *geometry);

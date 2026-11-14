@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Havok Physics Memory Manager (HavokMemoryManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\HavokMemoryManager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00435adf — CHavokMemoryManager::Allocate
 //   FUN_00435eaf — CHavokMemoryManager::Free
 // ============================================================================

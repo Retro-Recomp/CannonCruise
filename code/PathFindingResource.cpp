@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Pathfinding Resource Loader (PathFindingResource.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PathFindingResource.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0044c2f0 — CPathFindingResource::Load
 //   FUN_0044c970 — CPathFindingResource::Unload
 // ============================================================================

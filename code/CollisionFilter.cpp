@@ -37,7 +37,7 @@ void CCollisionFilter::Initialize()
     sm_CollisionMatrix[CFE_CANNONBALL][CFE_PLAYER_SHIP] = TRUE;
     sm_CollisionMatrix[CFE_CANNONBALL][CFE_ENEMY_SHIP] = TRUE;
 
-    // Simetrik matrisi doldur
+    // Fill the symmetric matrix
     for (int i = 0; i < CFE_TYPE_COUNT; ++i)
     {
         for (int j = 0; j < CFE_TYPE_COUNT; ++j)

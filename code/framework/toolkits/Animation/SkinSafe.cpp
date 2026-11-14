@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (SkinSafe.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Animation\SkinSafe.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include "SkinSafe.h"
@@ -29,7 +29,7 @@ namespace RWS
         if (!pHierarchy) return;
         assert(HierarchyCanAcceptDefaultPose(pHierarchy) && "Failed PRE-condition: HierarchyCanAcceptDefaultPose( hierarchy )");
 
-        // Hiyerarşi matrislerini varsayılan (kimlik) poza sıfırla
+        // Reset the hierarchy matrices to the default (identity) pose
         RpHAnimHierarchyUpdateMatrices(pHierarchy);
     }
 }

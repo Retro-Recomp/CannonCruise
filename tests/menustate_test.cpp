@@ -1,9 +1,9 @@
 // ============================================================================
-// CannonCruise - Menü/harita durum makinesi birim testi (menustate_test.cpp)
+// CannonCruise - Menu/map state machine unit test (menustate_test.cpp)
 //
-// CMenuBehavior (Menu.anm hiyerarşisi) + CAfterGameMenuBehavior (CAG level
-// parse/seçim) — Render YOK (headless), engine YOK (saf mantık).
-// Çalıştırma: menustate_test <MAINMENU.RWS> <MAPMENU.RWS>
+// CMenuBehavior (Menu.anm hierarchy) + CAfterGameMenuBehavior (CAG level
+// parse/selection) — no Render (headless), no engine (pure logic).
+// Usage: menustate_test <MAINMENU.RWS> <MAPMENU.RWS>
 // ============================================================================
 
 #include "MenuBehavior.h"
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    // ---- MAINMENU: yükleme + ekran hiyerarşisi ----
+    // ---- MAINMENU: load + screen hierarchy ----
     {
         Rt2dMaestro *m = Rt2dMaestro_LoadFromRwsFile(argv[1]);
         CHECK(m != 0);
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
         CHECK(menu.TakePendingAction() ==
               CMenuBehavior::MENUACTION_NONE);
 
-        // MAIN[0]=NEW GAME → CONFIRMNEW (terminal değil)
+        // MAIN[0]=NEW GAME → CONFIRMNEW (not terminal)
         CHECK(menu.Confirm() == FALSE);
         CHECK(menu.GetScreen() == CMenuBehavior::MENUSCREEN_CONFIRMNEW);
         // SAVE GAME → NEWGAME terminal
@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
         CHECK(menu.TakePendingAction() ==
               CMenuBehavior::MENUACTION_NEWGAME);
         CHECK(menu.TakePendingAction() ==
-              CMenuBehavior::MENUACTION_NONE); // tüketildi
+              CMenuBehavior::MENUACTION_NONE); // consumed
 
-        // MAIN[2]=OPTIONS → OPTIONS ekranı
+        // MAIN[2]=OPTIONS → OPTIONS screen
         CMenuBehavior menu2;
         menu2.AttachMaestro(Rt2dMaestro_LoadFromRwsFile(argv[1]));
         CHECK(menu2.GetMaestro() != 0);
@@ -65,17 +65,17 @@ int main(int argc, char **argv) {
         menu2.MoveNext();
         CHECK(menu2.Confirm() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_OPTIONS);
-        // OPTIONS[0]=SOUND → SOUND ekranı
+        // OPTIONS[0]=SOUND → SOUND screen
         CHECK(menu2.Confirm() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_SOUND);
-        // bar ayarı (VOICES 7 → 8 → 7)
+        // bar adjustment (VOICES 7 → 8 → 7)
         CHECK(menu2.AdjustRight() == TRUE);
         CHECK(menu2.AdjustLeft() == TRUE);
         CHECK(menu2.AdjustLeft() == TRUE);
-        // SOUND onayı → OPTIONS'a dönüş
+        // SOUND confirm → back to OPTIONS
         CHECK(menu2.Confirm() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_OPTIONS);
-        // OPTIONS[1]=DIFFICULTY ekranı → HARD seç → geri
+        // OPTIONS[1]=DIFFICULTY screen → select HARD → back
         menu2.MoveNext();
         CHECK(menu2.Confirm() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_DIFFICULTY);
@@ -83,11 +83,11 @@ int main(int argc, char **argv) {
         menu2.MoveNext(); // HARD
         CHECK(menu2.Confirm() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_OPTIONS);
-        // Esc zinciri: OPTIONS→MAIN→çıkış
+        // Esc chain: OPTIONS→MAIN→exit
         CHECK(menu2.Back() == FALSE);
         CHECK(menu2.GetScreen() == CMenuBehavior::MENUSCREEN_MAIN);
         CHECK(menu2.Back() == TRUE);
-        // QUIT + CREDITS + LOAD terminalleri (doğrudan seçimle)
+        // QUIT + CREDITS + LOAD terminals (direct selection)
         CMenuBehavior menu3;
         menu3.AttachMaestro(Rt2dMaestro_LoadFromRwsFile(argv[1]));
         for (int i = 0; i < 4; ++i) {
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
               CMenuBehavior::MENUACTION_QUITGAME);
     }
 
-    // ---- MAPMENU: 12 seviye parse + seçim ----
+    // ---- MAPMENU: 12 levels parse + selection ----
     {
         Rt2dMaestro *m = Rt2dMaestro_LoadFromRwsFile(argv[2]);
         CHECK(m != 0);
@@ -115,20 +115,20 @@ int main(int argc, char **argv) {
         CHECK(std::strcmp(map.GetLevelFile(11), "IDUNA01") == 0);
         CHECK(map.GetLevelDisplay(-1) == 0);
         CHECK(map.GetLevelFile(12) == 0);
-        CHECK(map.TakeSelectedLevel() == -1); // onay yok
+        CHECK(map.TakeSelectedLevel() == -1); // no confirmation
         map.MoveNext();
         CHECK(map.Confirm() == TRUE);
         CHECK(map.TakeSelectedLevel() == 1); // NORDIC 1
         CHECK(map.TakeSelectedLevel() == -1);
-        CHECK(map.Back() == TRUE); // haritadan çıkış
-        // özet modu: aç/kapa
+        CHECK(map.Back() == TRUE); // exit from map
+        // summary mode: toggle
         map.ShowSummary(1234, 56, 2);
-        CHECK(map.Confirm() == FALSE); // özetten haritaya
+        CHECK(map.Confirm() == FALSE); // from summary back to map
         map.ShowSummary(10, 20, 1);
         CHECK(map.Back() == FALSE);
     }
 
-    // ---- geçersiz girdiler ----
+    // ---- invalid inputs ----
     CHECK(Rt2dMaestro_LoadFromRwsFile(0) == 0);
     CHECK(Rt2dMaestro_LoadFromRwsFile("/yok/boyle/bir/dosya.rws") == 0);
 

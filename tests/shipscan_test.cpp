@@ -1,9 +1,9 @@
 // ============================================================================
-// CannonCruise - Ship/asset envanteri tarayıcısı (shipscan_test.cpp)
+// CannonCruise - Ship/asset inventory scanner (shipscan_test.cpp)
 //
-// Keşif testi: Streams/*.RWS içindeki 0x071C manifest sınıf listesini ve
-// 0x0704 objectRecord behaviour'larını (className + isim) stdout'a yazar.
-// İlgili sınıflar (örn. CShip/CShipPlayer/CShipEnemy) ve GUID'ler aranır.
+// Discovery test: writes the 0x071C manifest class list inside Streams/*.RWS
+// and the 0x0704 objectRecord behaviours (className + name) to stdout.
+// Looks up relevant classes (e.g. CShip/CShipPlayer/CShipEnemy) and GUIDs.
 //
 //   usage: shipscan_test <file.RWS> [<file2.RWS>] ...
 // ============================================================================
@@ -20,13 +20,13 @@ static void DumpFile(const char *pPath) {
     std::printf("\n=== %s ===\n", pPath);
     RwStudioFile *pFile = RwStudioFileOpen(pPath);
     if (pFile == nullptr) {
-        std::printf("  (açılamadı)\n");
+        std::printf("  (could not be opened)\n");
         return;
     }
-    // manifest sınıf listesi
+    // manifest class list
     const RwUInt32 classCount = RwStudioFileGetClassCount(pFile);
     if (classCount > 0) {
-        std::printf("manifest (%u sınıf):\n", (unsigned)classCount);
+        std::printf("manifest (%u classes):\n", (unsigned)classCount);
         for (RwUInt32 i = 0; i < classCount; ++i) {
             std::printf("  [%u] %s\n", (unsigned)i,
                         RwStudioFileGetClassName(pFile, i));
@@ -38,7 +38,7 @@ static void DumpFile(const char *pPath) {
         if (asset.chunkType == rwstudioID_OBJECTRECORD) {
             const RwStudioObject *obj = RwStudioFileGetObject(pFile);
             if (obj == nullptr) {
-                std::printf("[%u] OBJECTRECORD (sekil okunamadi)\n",
+                std::printf("[%u] OBJECTRECORD (shape could not be read)\n",
                             (unsigned)idx);
                 continue;
             }

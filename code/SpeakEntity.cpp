@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Speech Audio Entity (SpeakEntity.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\SpeakEntity.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0045a6d0 — CSpeakEntity constructor & registration
 //   FUN_0045ab00 — CSpeakEntity::TriggerSpeak ("CSpeakManager::GetSingleton()->IsSpeakValid(m_iCategory, m_iCategoryIndex) Failed")
 // ============================================================================

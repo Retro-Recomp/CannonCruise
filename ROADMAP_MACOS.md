@@ -1,127 +1,127 @@
-# CannonCruise — macOS Yol Haritası
+# CannonCruise — macOS Roadmap
 
-> **Son güncelleme:** 9 Ekim 2026  
-> **Durum:** Plan hazır; yerel macOS uygulaması henüz derlenip çalıştırılmadı.  
-> **İlgili belgeler:** [Ana yol haritası](ROADMAP.md) · [Derleme temeli](BUILDING.md) · [SDK arayüz incelemesi](SDK_INTERFACE_AUDIT.md)
+> **Last updated:** 9 October 2026  
+> **Status:** Plan ready; the local macOS application has not been built or run yet.  
+> **Related documents:** [Main roadmap](ROADMAP.md) · [Build foundation](BUILDING.md) · [SDK interface review](SDK_INTERFACE_AUDIT.md)
 
-## 1. Amaç ve kapsam
+## 1. Goal and scope
 
-Bu belge Windows/MSVC yeniden inşa planından ayrı **yerel macOS portu** yolunu tanımlar. İlk hedef temiz bir macOS statik kütüphanesi ve SDK bağımsız testler; nihai hedef pencere açan, asset yükleyen ve tek sahneyi render/fizik ile çalıştıran bir macOS uygulamasıdır.
+This document defines a **native macOS port** path, separate from the Windows/MSVC rebuild plan. The first goal is a clean macOS static library and SDK-independent tests; the ultimate goal is a macOS application that opens a window, loads assets, and runs a single scene with render/physics.
 
-- Orijinal PE32/x86 `CannonCruise.exe` dosyasını macOS'ta doğrudan çalıştırmak bu planın hedefi değildir. Wine/CrossOver veya sanal makine ile çalıştırma ayrı bir uyumluluk çalışmasıdır.
-- Windows x86 binary ABI'sini korumak yerine kaynak seviyesinde taşınabilirlik hedeflenir. Asset/dosya biçimlerinin sabit genişlikli düzenleri ayrıca korunmalıdır.
-- **Önerilen sıra:** mevcut x86_64 kanıtını temiz derlemeyle yenile → arm64 derle ve gerçek Apple Silicon makinede test et → tüm bağımlılıklar uygunsa Universal 2 paketle. Bu sıra destek garantisi değildir.
-- Minimum macOS sürümü ve dağıtım mimarileri grafik/fizik backend kararından sonra sabitlenecek. Universal 2, yalnızca her iki mimari de doğrulanırsa hedeflenecek.
-- Aşağıdaki backend seçenekleri öneridir; bu belge bir SDK seçimi, kurulum izni veya tamamlanmış uygulama iddiası değildir.
+- Running the original PE32/x86 `CannonCruise.exe` directly on macOS is not the goal of this plan. Running it via Wine/CrossOver or a virtual machine is a separate compatibility effort.
+- Instead of preserving the Windows x86 binary ABI, source-level portability is targeted. The fixed-width layouts of asset/file formats must also be preserved.
+- **Recommended order:** refresh the existing x86_64 evidence with a clean build → build arm64 and test on a real Apple Silicon machine → package Universal 2 if all dependencies are suitable. This order is not a support guarantee.
+- The minimum macOS version and distribution architectures will be fixed after the graphics/physics backend decision. Universal 2 will only be targeted if both architectures are verified.
+- The backend options below are suggestions; this document is not an SDK selection, installation permission, or a claim of a finished application.
 
-## 2. Başlangıç durumu ve kanıt sınırları
+## 2. Starting state and evidence limits
 
-9 Ekim SDK incelemesinin kayıtları temel alınmıştır; bu belge hazırlanırken yeni derleme/test yapılmadı.
+The records of the 9 October SDK review are the basis; no new build/test was performed while preparing this document.
 
-- `code/CMakeLists.txt`: C++14, yalnızca `CannonCruiseLib` statik hedefi. macOS yürütülebilir hedefi, `.app` paketi ve gerçek SDK bağlantıları yok.
-- Non-Windows dalı `framework/startup/win32/*`, `framework/startup/startup.cpp` ve `Ocean_W32.cpp` dosyalarını dışlıyor. Derlemeden dışlamak bu işlevlerin macOS'a taşındığı anlamına gelmez.
-- Önceki `code/build/` cache'i/arşivi mevcut; güncel kaynaklarla temiz derleme kanıtı değil. Mevcut çıktılar korunmalı.
-- Kayıtlı Clang syntax önkontrolünde **87/87 non-Windows kaynak geçti**. Nesne üretimi, arşivleme, link ve çalışma zamanı doğrulanmış değil.
-- `AnimController.cpp` tamsayı → pointer dönüşümü ve `SceneManager.cpp` format argümanı uyarıları sürüyor.
-- Ek Ocean kontrolü başarısız; izole startup kontrollerinin 2/3'ü geçti. Genel SDK önkontrolü hâlâ başarısız; kalan açıklar Im3D, Open/Init sözleşmeleri.
-- Havok yerel allocator Debug/Release ASan+UBSan testleri x86_64'te geçti. arm64, SDK entegrasyonu ve gerçek fizik simülasyonu doğrulanmadı.
-- Önceki worker incelemesinde Clang/Python kullanılabildi, CMake/Ninja bulunamadı. Bu tarihsel bulgudur; uygulamaya geçerken araç kullanılabilirliği yeniden kontrol edilmeli.
+- `code/CMakeLists.txt`: C++14, only the `CannonCruiseLib` static target. No macOS executable target, `.app` bundle, or real SDK links.
+- The non-Windows branch excludes `framework/startup/win32/*`, `framework/startup/startup.cpp` and `Ocean_W32.cpp`. Excluding them from the build does not mean these functions have been ported to macOS.
+- The previous `code/build/` cache/archive exists; it is not a clean-build proof against current sources. Existing outputs must be preserved.
+- In the recorded Clang syntax pre-check, **87/87 non-Windows sources passed**. Object generation, archiving, linking and runtime are not verified.
+- The `AnimController.cpp` integer → pointer conversion and the `SceneManager.cpp` format argument warnings remain.
+- The extra Ocean check failed; 2/3 of the isolated startup checks passed. The general SDK pre-check still fails; the remaining gaps are Im3D, Open/Init contracts.
+- The Havok local allocator Debug/Release ASan+UBSan tests passed on x86_64. arm64, SDK integration and real physics simulation are not verified.
+- In the previous worker review, Clang/Python were usable, CMake/Ninja were not found. This is a historical finding; tool availability should be re-checked when moving to implementation.
 
-**Durum dili:** kaynakta mevcut ≠ syntax geçti ≠ derlendi ≠ linklendi ≠ çalışırken doğrulandı. Aşağıdaki uygulama adımlarının tamamı, aksi belirtilmedikçe bekliyor.
+**Status language:** present in source ≠ syntax passed ≠ compiled ≠ linked ≠ verified at runtime. All of the implementation steps below are pending unless stated otherwise.
 
-## 3. M0 — Araç zinciri ve temiz derleme tabanı (P0)
+## 3. M0 — Toolchain and clean build baseline (P0)
 
-**Amaç:** eski cache'e dayanmadan tekrarlanabilir macOS derlemesi elde etmek.
+**Goal:** obtain a repeatable macOS build independent of the old cache.
 
-- [ ] Worker'da AppleClang/clang++, CMake ve seçilecek build aracını keşfet; Xcode/Command Line Tools ve macOS SDK erişimini doğrula. Eksik kurulum veya PATH değişikliği için önce kullanıcı onayı al.
-- [ ] Başlangıç tabanı olarak C++14 ve CMake 3.25+ kullanmayı değerlendir; kesin araç sürümlerini kaydet. Projenin mevcut CMake sözdizimi minimumu 3.16'dır.
-- [ ] Kaynak revizyonu/yerel değişiklikler, macOS sürümü, SDK, derleyici, generator, mimari ve deployment target değerlerini kayıt altına al.
-- [ ] `code/` dışında, depo içindeki yeni `build/macos-x86_64-<run>/debug` ve `release` dizinlerinde yapılandır; eski `code/build/` cache'ini kullanma veya silme.
-- [ ] Mimariyi `CMAKE_OSX_ARCHITECTURES=x86_64` ile açık seç; tekli yapılandırma generator'ünde Debug/Release için ayrı dizin ve `CMAKE_BUILD_TYPE` kullan.
-- [ ] Gerçek CMake kaynak listesini önkontrol scriptiyle karşılaştır; üretilmiş CompilerId kaynaklarının hedefe girmediğini ve platform dışlamalarını kaydet.
-- [ ] `CannonCruiseLib` Debug/Release derlemelerini çalıştır; configure/build loglarını, çıkış kodlarını ve arşiv mimarisini doğrula.
+- [ ] Discover AppleClang/clang++, CMake and the build tool to be selected in the worker; verify Xcode/Command Line Tools and macOS SDK access. Get user approval before any missing installation or PATH change.
+- [ ] Consider C++14 and CMake 3.25+ as the starting baseline; record exact tool versions. The project's current CMake syntax minimum is 3.16.
+- [ ] Record source revision/local changes, macOS version, SDK, compiler, generator, architecture and deployment target values.
+- [ ] Configure outside `code/`, in new `build/macos-x86_64-<run>/debug` and `release` directories inside the repo; do not use or delete the old `code/build/` cache.
+- [ ] Explicitly select the architecture with `CMAKE_OSX_ARCHITECTURES=x86_64`; use separate directories and `CMAKE_BUILD_TYPE` for Debug/Release with the single-configuration generator.
+- [ ] Compare the real CMake source list against the pre-check script; record that generated CompilerId sources do not enter the target and the platform exclusions.
+- [ ] Run `CannonCruiseLib` Debug/Release builds; verify configure/build logs, exit codes and archive architecture.
 
-**Kabul kapısı:** iki temiz yapılandırma ve derleme başarılı, arşivler x86_64, kaynak kapsamı ve araç sürümleri kayıtlı. Bu kapı dış sembollerin çözülmesini veya oyunun çalışmasını gerektirmez; onları kanıtlamaz.
+**Acceptance gate:** two clean configurations and builds succeed, archives are x86_64, source scope and tool versions are recorded. This gate does not require resolving external symbols or the game running; it does not prove them.
 
-## 4. M1 — 64-bit taşınabilirlik ve test tabanı (P0)
+## 4. M1 — 64-bit portability and test baseline (P0)
 
-**Bağımlılık:** M0; kaynak incelemesi ve bağımsız testler M0 ile paralel yürütülebilir.
+**Dependency:** M0; source review and independent tests can run in parallel with M0.
 
-- [ ] `AnimController.cpp` dönüşümünde animasyon kimliğinin pointer mı handle mı olduğunu kanıtla; yalnızca cast ekleyerek uyarıyı gizleme. `SceneManager.cpp` format sorununu beklenen dosya yolu testiyle düzelt.
-- [ ] Pointer/handle dönüşümleri, `int`/`long` varsayımları, struct packing, alignment ve dosya okuma/yazmalarını tara. Bellek adresleri için pointer genişliğini; disk biçimleri için doğrulanmış sabit genişlikleri kullan.
-- [ ] Büyük/küçük harfe duyarlı dosya sistemi, Windows ters eğik çizgileri, çalışma dizini, kullanıcı veri yolları ve Unicode dosya adlarını test et.
-- [ ] Allocator testini CTest'e bağla; Debug/Release ve desteklenen ASan+UBSan koşularını x86_64'te yeniden çalıştır. SDK bağımsız testleri oyun linkinden ayrı tut.
-- [ ] arm64 için ayrı temiz build dizinleri oluştur; derleme ve testleri Apple Silicon makinede doğrula. Çapraz derleme veya Rosetta altında x86_64 çalıştırmayı yerel arm64 testi sayma.
-- [ ] 32-bit'e özgü taşma testinin 64-bit hedefte çalışmadığını açık raporla; macOS için karşılık gelen sınır/boyut testlerini ekle.
+- [ ] Prove whether the animation ID in the `AnimController.cpp` conversion is a pointer or a handle; do not hide the warning by only adding a cast. Fix the `SceneManager.cpp` format issue with the expected file path test.
+- [ ] Scan pointer/handle conversions, `int`/`long` assumptions, struct packing, alignment and file read/writes. Use pointer width for memory addresses; verified fixed widths for disk formats.
+- [ ] Test case-sensitive file systems, Windows backslashes, working directory, user data paths and Unicode file names.
+- [ ] Wire the allocator test into CTest; re-run Debug/Release and supported ASan+UBSan runs on x86_64. Keep SDK-independent tests separate from the game link.
+- [ ] Create separate clean build directories for arm64; verify builds and tests on an Apple Silicon machine. Do not count cross-compiling or running x86_64 under Rosetta as a native arm64 test.
+- [ ] Report explicitly that the 32-bit overflow test does not run on the 64-bit target; add the corresponding limit/size tests for macOS.
 
-**Kabul kapısı:** hedeflenen her mimaride Debug/Release derlemesi ve bağımsız testler başarılı; ele alınan kodda sanitizer hatası yok; kalan uyarılar gerekçeli bir listede. arm64 kanıtı yoksa yalnızca x86_64 doğrulandı olarak işaretle.
+**Acceptance gate:** Debug/Release builds and independent tests succeed on each targeted architecture; no sanitizer errors in the handled code; remaining warnings in a justified list. If there is no arm64 evidence, mark only x86_64 as verified.
 
-## 5. M2 — SDK/backend kararı ve platform sınırı (P0, kritik yol)
+## 5. M2 — SDK/backend decision and platform boundary (P0, critical path)
 
-**Amaç:** başlık stub'larından gerçek uygulamaya geçiş yolunu seçmek. Envanter M0/M1 ile paralel yürütülebilir.
+**Goal:** choose the path from header stubs to a real implementation. Inventory can run in parallel with M0/M1.
 
-- [ ] RenderWare ve Havok için lisanslı, hedef macOS/mimariyi destekleyen kaynak/SDK erişimi var mı doğrula; eski Windows `.lib`/DLL dosyalarını macOS bağlantı çözümü sayma.
-- [ ] Native SDK uygun değilse, kullanılan API alt kümesini uygulayan bir uyumluluk katmanının kapsamını çıkar. SDK başlıkları, derleme stub'ları ve backend uygulamalarını ayrı hedef/include yollarında tut.
-- [ ] Render için Metal tabanlı uygulama ile macOS destekleyen bir soyutlama kütüphanesini karşılaştır; Im2D/Im3D, kamera, dünya/geometri, texture, animasyon, plugin ve stream kapsamlarını listele. OpenGL'in macOS'taki deprecated durumunu uzun vadeli seçimde hesaba kat.
-- [ ] Fizik için kullanılabilir lisanslı Havok ile alternatif backend seçeneklerini davranış, collision, constraint, ownership ve asset uyumu açısından karşılaştır. Alternatif backend'in orijinal oyunla eşdeğer olduğunu varsayma.
-- [ ] Pencere/girdi için Cocoa veya SDL benzeri katmanı değerlendir; zaman, dosya sistemi, ayar saklama ve ses/video arayüzlerinin platformdan bağımsız sınırını tanımla.
-- [ ] Im3D veri düzeni/sabitleri, global bellek işlevleri, `RwEngineOpen` parametresi ve `RwEngineInit` linkage/sözleşmesini netleştir. Win32 HWND ayrıntılarını ortak macOS arayüzüne taşıma.
-- [ ] Seçilen backend, lisans/dağıtım koşulları, mimari/minimum OS desteği ve kabul edilen davranış farklarını kısa karar kaydına yaz; uygulama kapsamını kullanıcıyla netleştir.
+- [ ] Verify whether licensed RenderWare and Havok sources/SDKs supporting the target macOS/architecture exist; do not treat old Windows `.lib`/DLL files as a macOS link solution.
+- [ ] If no native SDK is suitable, scope a compatibility layer that implements the used API subset. Keep SDK headers, build stubs and backend implementations in separate targets/include paths.
+- [ ] Compare a Metal-based implementation for rendering with an abstraction library that supports macOS; list Im2D/Im3D, camera, world/geometry, texture, animation, plugin and stream coverage. Take OpenGL's deprecated status on macOS into account for the long-term choice.
+- [ ] For physics, compare locally available licensed Havok with alternative backend options in terms of behavior, collision, constraint, ownership and asset compatibility. Do not assume the alternative backend is equivalent to the original game.
+- [ ] Evaluate Cocoa or an SDL-like layer for window/input; define the platform-independent boundary of time, file system, settings storage and audio/video interfaces.
+- [ ] Clarify the Im3D data layout/constants, global memory functions, the `RwEngineOpen` parameter and the `RwEngineInit` linkage/contract. Do not carry Win32 HWND details into the common macOS interface.
+- [ ] Write the chosen backend, license/distribution conditions, architecture/minimum OS support and accepted behavior differences into a short decision record; clarify the implementation scope with the user.
 
-**Kabul kapısı:** render/fizik/platform yaklaşımı karara bağlanmış, gerekli kaynaklara yasal erişim ve hedef mimari desteği doğrulanmış, uygulanacak API listesi belli. Sadece bildirim veya no-op fonksiyon eklemek bu kapıyı kapatmaz.
+**Acceptance gate:** the render/physics/platform approach is decided, legal access to the required resources and target architecture support are verified, and the API list to be implemented is known. Merely adding declarations or no-op functions does not close this gate.
 
-## 6. M3 — macOS uygulama kabuğu ve gerçek link (P1)
+## 6. M3 — macOS application shell and real link (P1)
 
-**Bağımlılık:** M0/M1 ve M2 platform kararı.
+**Dependency:** M0/M1 and the M2 platform decision.
 
-- [ ] Ortak engine yaşam döngüsünü Win32 başlangıç kodundan ayır; macOS giriş noktası ve CMake yürütülebilir hedefi ekle. Windows yolunu bozma.
-- [ ] Pencere açma/kapatma, olay döngüsü, klavye/fare, zamanlama, resize, Retina piksel ölçeği ve odak değişimini uygula.
-- [ ] Registry yerine uygun ayar saklama, bundle kaynak yolu ve yazılabilir kullanıcı veri dizinlerini kullan; uygulama paketine çalışma zamanı yazısı yapma.
-- [ ] En küçük uygulamayı gerçek platform/backend uygulamalarıyla linkle; unresolved sembol envanterini link logundan çıkar. Test double'larını açıkça ayır ve oyun hedefinin eksik işlevlerini gizlemek için kullanma.
-- [ ] Başlatma hatası ve kısmi başlatma sonrası cleanup yollarını doğrula; küçük bir pencere/draw smoke testi ekle.
+- [ ] Separate the common engine lifecycle from the Win32 startup code; add a macOS entry point and a CMake executable target. Do not break the Windows path.
+- [ ] Implement window open/close, event loop, keyboard/mouse, timing, resize, Retina pixel scale and focus changes.
+- [ ] Use appropriate settings storage instead of the registry, bundle resource path and writable user data directories; do not write to the application bundle at runtime.
+- [ ] Link the smallest application with real platform/backend implementations; derive the unresolved symbol inventory from the link log. Clearly separate test doubles and do not use them to hide missing functions of the game target.
+- [ ] Verify startup failure and cleanup paths after partial initialization; add a small window/draw smoke test.
 
-**Kabul kapısı:** native Mach-O uygulaması linkleniyor; pencere ve temel çizim açılıyor, girdi/resize işleniyor, kontrollü kapanıyor. Bu sonuç tam oyun veya tam RenderWare kapsamı değildir.
+**Acceptance gate:** a native Mach-O application links; the window and basic drawing open, input/resize are handled, and it shuts down in a controlled way. This result is not the full game or full RenderWare coverage.
 
-## 7. M4 — Render, asset ve tek sahne (P1)
+## 7. M4 — Render, assets and single scene (P1)
 
-**Bağımlılık:** M2 render kararı ve M3.
+**Dependency:** M2 render decision and M3.
 
-- [ ] Render state, matrix/kamera, geometri, texture ve Im2D/Im3D işlevlerini küçük görsel testlerle doğrula; koordinat, winding, renk, UV ve alpha farklarını kaydet.
-- [ ] `Ocean_W32.cpp` içindeki taşınabilir mesh mantığını platform ayrıntısından ayır; Ocean'ı sonsuza kadar dışlamak yerine seçilen backend üzerinden çiz.
-- [ ] RWS stream/chunk/plugin ve texture/animasyon yollarını gerçek asset örnekleriyle doğrula; kaynak kullanım haklarını kontrol et. Basit bir mesh yüklenmesini tam asset uyumluluğu sayma.
-- [ ] Sahne yükleme, kamera, GUI katmanları ve gerçek metin çizimini tamamla; eksik performans paneli/metin işlevlerini açık takip et.
-- [ ] Ses/Bink video bağımlılıklarını incele; native ve lisansı uygun çözüm yoksa ilk tek-sahne testinde kapalı olan özellikleri açıkça belgeleyip kapsam dışında tut.
+- [ ] Verify render state, matrix/camera, geometry, texture and Im2D/Im3D functions with small visual tests; record coordinate, winding, color, UV and alpha differences.
+- [ ] Separate the portable mesh logic in `Ocean_W32.cpp` from platform details; draw Ocean through the selected backend instead of excluding it forever.
+- [ ] Verify the RWS stream/chunk/plugin and texture/animation paths with real asset samples; check asset usage rights. Do not count loading a simple mesh as full asset compatibility.
+- [ ] Complete scene loading, camera, GUI layers and real text drawing; track missing performance panel/text functions explicitly.
+- [ ] Review audio/Bink video dependencies; if there is no native and properly licensed solution, clearly document and exclude the features that are off in the first single-scene test.
 
-**Kabul kapısı:** hakları uygun bir sahne yükleniyor, kamera/GUI/Ocean için tanımlı görsel testler geçiyor, eksik özellikler listeli. Orijinal oyunla görsel karşılaştırma ancak referans görüntü ve aynı sahne koşullarıyla yapılır.
+**Acceptance gate:** a scene with proper rights loads, the defined visual tests for camera/GUI/Ocean pass, missing features are listed. Visual comparison with the original game is only possible with a reference image and the same scene conditions.
 
-## 8. M5 — Fizik, oyun döngüsü ve davranış doğrulaması (P1)
+## 8. M5 — Physics, game loop and behavior verification (P1)
 
-**Bağımlılık:** M2 fizik kararı ve M3; SDK bağımsız simülasyon testleri M4 ile paralel yapılabilir.
+**Dependency:** M2 physics decision and M3; SDK-independent simulation tests can run in parallel with M4.
 
-- [ ] Gerçek fizik dünyası oluşturma/yok etme, body/phantom ekleme/çıkarma ve sahiplik kurallarını uygula.
-- [ ] `CPhysicsEntity` konum/hız getter-setter'larını gerçek sonuç döndürecek biçimde tamamla; `void*` sınırını tipli adapter arkasında tut.
-- [ ] Fizik event aboneliğini ve mesaj filtresini doğrula; her mesajda koşulsuz update yerine belgelenmiş sabit zaman adımı ve render zamanlaması kullan.
-- [ ] Yerçekimi, çarpışma, hız/konum, nesne kaldırma ve farklı render hızlarında simülasyon testleri ekle.
-- [ ] Tek sahnede oyuncu kontrolü, fizik/render senkronu, pause/resume ve temiz kapanışı test et; referans davranışa ilişkin toleransları kaydet.
+- [ ] Implement real physics world creation/destruction, body/phantom add/remove and ownership rules.
+- [ ] Complete the `CPhysicsEntity` position/velocity getter-setters so they return real results; keep the `void*` boundary behind a typed adapter.
+- [ ] Verify physics event subscription and message filtering; use a documented fixed time step and render timing instead of an unconditional update on every message.
+- [ ] Add simulation tests for gravity, collision, velocity/position, object removal and different render rates.
+- [ ] Test player control, physics/render sync, pause/resume and clean shutdown in a single scene; record tolerances against reference behavior.
 
-**Kabul kapısı:** simülasyon gerçekten ilerliyor; yerel vektör kaydı/no-op değil. Tek sahne testi geçiyor, sonuçlar ve bilinen backend farkları raporlanıyor.
+**Acceptance gate:** the simulation actually advances; not a local vector record/no-op. The single-scene test passes, results and known backend differences are reported.
 
-## 9. M6 — Paketleme ve sürekli doğrulama (P2)
+## 9. M6 — Packaging and continuous validation (P2)
 
-**Bağımlılık:** M4/M5; temel build/test CI işi M1 sonrasında başlatılabilir.
+**Dependency:** M4/M5; the basic build/test CI job can start after M1.
 
-- [ ] macOS CI'da temiz Debug/Release derlemesi, CTest, uygun sanitizer koşuları ve mimari bazlı raporlar ekle. Lisanslı SDK ve asset'leri izinsiz runner/artifact içine koyma.
-- [ ] `.app` bundle, `Info.plist`, kaynak yolları, dinamik kütüphane rpath/install-name ve lisans bildirimlerini düzenle.
-- [ ] x86_64/arm64 ayrı çıktıları doğrula; Universal 2 isteniyorsa tüm yerel bağımlılıkların iki mimariyi içerdiğini kontrol et ve iki donanımda test et.
-- [ ] Seçilen minimum macOS sürümünde ve geliştirme makinesi dışında açılış testini yap; harici geliştirme SDK yollarına bağımlı olmadığını doğrula.
-- [ ] Harici dağıtım gerekiyorsa geliştirici hesabı/sertifika erişimi ve kullanıcı onayıyla code signing/notarization sürecini ayrıca yürüt. Yerel unsigned build ile dağıtıma hazır paketi ayrı raporla.
+- [ ] Add clean Debug/Release builds in macOS CI, CTest, appropriate sanitizer runs and per-architecture reports. Do not put licensed SDKs and assets into unauthorized runners/artifacts.
+- [ ] Arrange the `.app` bundle, `Info.plist`, resource paths, dynamic library rpath/install-name and license notices.
+- [ ] Verify separate x86_64/arm64 outputs; if Universal 2 is wanted, check that all native dependencies contain both architectures and test on two hardwares.
+- [ ] Do a launch test on the selected minimum macOS version and outside the development machine; verify it does not depend on external development SDK paths.
+- [ ] If external distribution is required, run the code signing/notarization process separately with developer account/certificate access and user approval. Report the local unsigned build and the distribution-ready package separately.
 
-**Kabul kapısı:** tekrar üretilebilir `.app`, desteklenen mimari/OS matrisi ve bilinen sınırlamalar belgeli; dağıtım hedefleniyorsa imza/notarization doğrulaması da tamam.
+**Acceptance gate:** a reproducible `.app`, supported architecture/OS matrix and documented known limitations; if distribution is targeted, signing/notarization verification is also complete.
 
-## 10. Sıradaki somut işler
+## 10. Next concrete work
 
-1. **M0:** araç kullanılabilirliğini yeniden kontrol et; eksikse onay iste ve temiz x86_64 Debug/Release statik derlemesini loglarıyla gerçekleştir.
-2. **M1:** iki mevcut uyarıyı kanıtlı düzeltmeler ve regresyon testleriyle ele al; allocator testini CTest'e bağla.
-3. **M2:** RenderWare/Havok macOS erişimini ve backend seçeneklerini karar kaydına dök; gerçek uygulama yolunu seçmeden stub kapsamını büyütme.
+1. **M0:** re-check tool availability; if missing, ask for approval and perform the clean x86_64 Debug/Release static build with logs.
+2. **M1:** address the two existing warnings with proven fixes and regression tests; wire the allocator test into CTest.
+3. **M2:** record the RenderWare/Havok macOS access and backend options in a decision record; do not grow stub scope before choosing the real implementation path.
 
-Windows derlemesinin bitmesini beklemek M0/M1 için şart değildir. M3–M5'in kapsamı ve süresi SDK/backend kararına bağlıdır; bugün çalışır oyun tarihi veya tamamlanma yüzdesi verilmez. Bu dosyanın oluşturulması yalnızca **planlama çıktısıdır**; derleme, kurulum veya kod portu yapılmış değildir.
+Waiting for the Windows build to finish is not a prerequisite for M0/M1. The scope and duration of M3–M5 depend on the SDK/backend decision; no working-game date or completion percentage is given today. The creation of this file is only **planning output**; no build, installation or code port has been performed.

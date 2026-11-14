@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - Faz 4.6p: dünya spawn zinciri testi
-// VIKING01 0x0704 kayıtları → CClassFactory create + apply dispatch;
-// bilinen sınıflar üretilir, bilinmeyenler binary'de olduğu gibi atlanır.
-// Çalıştırma: worldspawn_test <VIKING01.RWS> <MAINMENU.RWS>
+// CannonCruise - Phase 4.6p: world spawn chain test
+// VIKING01 0x0704 records → CClassFactory create + apply dispatch;
+// known classes are created, unknown ones are skipped as in the binary.
+// Usage: worldspawn_test <VIKING01.RWS> <MAINMENU.RWS>
 // ============================================================================
 
 #include "WorldSpawn.h"
@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
 
     CHECK(GameBehaviours_Register() == TRUE);
 
-    // RWS_REGISTER_CLASS statikleri: oyun sınıfları factory'de hazır
+    // RWS_REGISTER_CLASS statics: game classes ready in the factory
     CHECK(RWS::CClassFactory::ClassIsRegistered("CTowerCatapult") == TRUE);
     CHECK(RWS::CClassFactory::ClassIsRegistered("CCollisionTrigger") == TRUE);
 
-    // VIKING01: 497 kaydın tamamı walk edilir; bilinen sınıflar üretilir
+    // VIKING01: all 497 records are walked; known classes are created
     {
         WorldSpawnStats stats;
         const RwInt32 applied = WorldSpawn_FromFile(argv[1], &stats);
@@ -53,15 +53,15 @@ int main(int argc, char **argv) {
                     "applied=%d\n",
                     stats.objectRecords, stats.instancesCreated,
                     stats.instancesSkipped, (int)applied);
-        CHECK(stats.objectRecords == 497); // rwstudio_test envanteri
-        // bilinen: render(1) + camera(obj264: 2×) + audio(1) + physics(0)
+        CHECK(stats.objectRecords == 497); // rwstudio_test inventory
+        // known: render(1) + camera(obj264: 2×) + audio(1) + physics(0)
         CHECK(stats.instancesCreated >= 4);
-        CHECK(stats.instancesSkipped > 0); // CTowerCatapult vb. atlandı
+        CHECK(stats.instancesSkipped > 0); // CTowerCatapult etc. skipped
         CHECK(applied >= 4);
     }
 
-    // MAINMENU: render/camera/audio apply üçlüsü (behaviourloader_test
-    // fixture'larıyla aynı nesneler)
+    // MAINMENU: render/camera/audio apply trio (same objects as behaviourloader_test
+    // fixtures)
     {
         WorldSpawnStats stats;
         const RwInt32 applied = WorldSpawn_FromFile(argv[2], &stats);

@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Havok Physics World (PhysicsWorld.h)
 // Original path: D:\Projects\CannonCruisePC\code\PhysicsWorld.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Singleton.h"
@@ -36,13 +36,13 @@ public:
     virtual ~CPhysicsWorld();
 
     /**
-     * @brief Startup zinciri oluşturucusu — singleton yoksa new, varsa mevcut.
+     * @brief Startup chain allocator — new if no singleton, existing one otherwise.
      *
-     * Binary: sub_41A680 (startup init) HavokInit sonrası singleton'ı
-     * kendisi tahsis eder (alloc 0x440 → ctor → dword_635AF4'ye yazılır);
-     * CPhysicsWorldBehaviour ctor'ı ise singleton'ı KULLANIR. Bu yardımcı
-     * startup.cpp'deki o adımı karşılar; seviye yüklemesinde behaviour
-     * fallback olarak çağırır.
+     * Binary: sub_41A680 (startup init) — after HavokInit it allocates the
+     * singleton itself (alloc 0x440 → ctor → written to dword_635AF4);
+     * the CPhysicsWorldBehaviour ctor on the other hand USES the singleton. This helper
+     * covers that step in startup.cpp; during level load the behaviour calls it
+     * as a fallback.
      */
     static CPhysicsWorld* Create();
 
@@ -120,7 +120,7 @@ public:
 
 private:
     CPhysicsWorld* m_pPhysicsWorld; ///< singleton (ownership: m_bOwnsWorld)
-    RwBool m_bOwnsWorld;            ///< TRUE ise dtor'da delete edilir
+    RwBool m_bOwnsWorld;            ///< if TRUE, deleted in the dtor
 };
 
 #endif // PHYSICSWORLD_H

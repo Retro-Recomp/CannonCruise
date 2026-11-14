@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Mission Objective Indicator (MissionIndicator.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\MissionIndicator.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00484eb0 — CMissionIndicator constructor & registration
 //   FUN_00485320 — CMissionIndicator::Update
 // ============================================================================
@@ -74,7 +74,7 @@ void CMissionIndicator::Update(RwReal deltaTime)
 {
     if (!m_bActive) return;
 
-    // Hover salınımı ve dönüş güncellemesi
+    // Hover bobbing and rotation update
     m_fHoverAngle += deltaTime * 2.5f;
     if (m_fHoverAngle > 6.283185f)
     {

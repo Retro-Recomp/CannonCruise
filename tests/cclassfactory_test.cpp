@@ -51,18 +51,18 @@ int main()
     CHECK(CClassFactory::ClassIsRegistered("NoSuchClass") == FALSE);
 
     // -----------------------------------------------------------------
-    // Create: fabrika fonksiyonu çağrılır, nesne döner
+    // Create: factory function is called, object returned
     // -----------------------------------------------------------------
     FakeEntity* pEntity = static_cast<FakeEntity*>(CClassFactory::Create("FakeEntity"));
     CHECK(pEntity != 0);
     CHECK(pEntity->marker == 0x1234);
     delete pEntity;
 
-    // Kayıtsız sınıf → NULL
+    // Unregistered class → NULL
     CHECK(CClassFactory::Create("NoSuchClass") == 0);
 
     // -----------------------------------------------------------------
-    // Packet tabanlı kayıt (ClassPacketCreationFunc yolu)
+    // Packet-based registration (ClassPacketCreationFunc path)
     // -----------------------------------------------------------------
     CClassFactory::Register("FakePacketEntity",
                             (RWS::ClassCreationFunc)&CreateFakePacketEntity,
@@ -70,14 +70,14 @@ int main()
     CHECK(CClassFactory::ClassIsRegistered("FakePacketEntity") == TRUE);
 
     // -----------------------------------------------------------------
-    // UnRegister tek sınıfı kaldırır
+    // UnRegister removes a single class
     // -----------------------------------------------------------------
     CClassFactory::UnRegister("FakeEntity");
     CHECK(CClassFactory::ClassIsRegistered("FakeEntity") == FALSE);
     CHECK(CClassFactory::ClassIsRegistered("FakePacketEntity") == TRUE);
 
     // -----------------------------------------------------------------
-    // Shutdown: kalan tüm sınıfları temizler
+    // Shutdown: clears all remaining classes
     // -----------------------------------------------------------------
     CClassFactory::Shutdown();
     CHECK(CClassFactory::ClassIsRegistered("FakePacketEntity") == FALSE);

@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (streamhandler.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\streamhandler\streamhandler.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00404000 - FUN_004042e0 (RWS::CStreamHandler)
 // ============================================================================
 
@@ -15,33 +15,33 @@ namespace RWS
 {
     /**
      * @typedef ChunkHandlerFunc
-     * @brief RenderWare akış yığınını işleyen geri çağrı fonksiyon işaretçisi.
+     * @brief Callback function pointer that processes a RenderWare stream chunk.
      *
-     * `CStreamHandler::RegisterChunkHandler()` ile belirli bir yığın kimliğine
-     * (chunkId) bağlanır. Akış işlenirken ilgili yığınla karşılaşıldığında çağrılır.
+     * Bound to a specific chunk id via `CStreamHandler::RegisterChunkHandler()`.
+     * Called when the relevant chunk is encountered while the stream is processed.
      *
-     * @param pStream   İşlenecek RenderWare akışı.
-     * @param chunkId   Yığın kimliği.
-     * @param chunkSize Yığın boyutu (bayt).
-     * @return TRUE ise yığın başarıyla işlendi.
+     * @param pStream   RenderWare stream to process.
+     * @param chunkId   Chunk id.
+     * @param chunkSize Chunk size (bytes).
+     * @return TRUE if the chunk was processed successfully.
      */
     typedef RwBool (*ChunkHandlerFunc)(RwStream* pStream, RwUInt32 chunkId, RwUInt32 chunkSize);
 
     /**
      * @class CStreamHandler
-     * @brief RenderWare akış (stream) sistemi için yığın (chunk) yöneticisi.
+     * @brief Chunk manager for the RenderWare stream system.
      *
-     * RenderWare binary dosyaları (`.dff`, `.bsp`, `.txd` vb.) yığın tabanlı
-     * bir formata sahiptir. `CStreamHandler`, her yığın türü için kayıtlı
-     * bir işleyici çağırarak dosyaları ayrıştırır.
+     * RenderWare binary files (`.dff`, `.bsp`, `.txd` etc.) have a chunk-based
+     * format. `CStreamHandler` parses the files by calling a registered
+     * handler for each chunk type.
      *
-     * **Kullanım:**
+     * **Usage:**
      * ```cpp
      * CStreamHandler::RegisterChunkHandler(rwID_CLUMP, &OnClumpChunk);
      * CStreamHandler::ProcessFile("levels/level01.bsp");
      * ```
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Instance: `FUN_00404000`
      * - ProcessStream: `FUN_00404080`
      * - ProcessFile: `FUN_004040f0`
@@ -50,38 +50,38 @@ namespace RWS
     class CStreamHandler
     {
     public:
-        /// @return Tekil CStreamHandler örneğine işaretçi
+        /// @return Pointer to the singleton CStreamHandler instance
         static CStreamHandler* Instance();
-        /// @brief Akış sistemini başlatır
+        /// @brief Initializes the stream system
         static void Initialize();
-        /// @brief Akış sistemini kapatır, tüm yığın işleyicilerini kaldırır
+        /// @brief Shuts down the stream system, removing all chunk handlers
         static void Shutdown();
 
         /**
-         * @brief Belirtilen yığın kimliği için işleyici kaydeder.
-         * @param chunkId  Yığın kimliği (örn. `rwID_CLUMP`, `rwID_WORLD`).
-         * @param pHandler İşleyici fonksiyon işaretçisi.
-         * @return TRUE ise kayıt başarılı.
+         * @brief Registers a handler for the given chunk id.
+         * @param chunkId  Chunk id (e.g. `rwID_CLUMP`, `rwID_WORLD`).
+         * @param pHandler Handler function pointer.
+         * @return TRUE if registration succeeded.
          */
         static RwBool RegisterChunkHandler(RwUInt32 chunkId, ChunkHandlerFunc pHandler);
 
         /**
-         * @brief Belirtilen yığın kimliğinin işleyicisini kaldırır.
-         * @param chunkId Kaldırılacak yığın kimliği.
+         * @brief Removes the handler for the given chunk id.
+         * @param chunkId Chunk id whose handler should be removed.
          */
         static void UnRegisterChunkHandler(RwUInt32 chunkId);
 
         /**
-         * @brief Açık bir RenderWare akışını işler.
-         * @param pStream İşlenecek akış.
-         * @return TRUE ise akış başarıyla işlendi.
+         * @brief Processes an open RenderWare stream.
+         * @param pStream Stream to process.
+         * @return TRUE if the stream was processed successfully.
          */
         static RwBool ProcessStream(RwStream* pStream);
 
         /**
-         * @brief Disk dosyasını okuyarak içindeki yığınları işler.
-         * @param pFilename Okunacak dosyanın yolu.
-         * @return TRUE ise dosya başarıyla işlendi.
+         * @brief Reads a file from disk and processes its chunks.
+         * @param pFilename Path of the file to read.
+         * @return TRUE if the file was processed successfully.
          */
         static RwBool ProcessFile(const char* pFilename);
 
@@ -89,9 +89,9 @@ namespace RWS
         CStreamHandler();
         ~CStreamHandler();
 
-        static CStreamHandler* sm_pInstance; ///< Tekil örnek işaretçisi
+        static CStreamHandler* sm_pInstance; ///< Singleton instance pointer
 
-        std::map<RwUInt32, ChunkHandlerFunc> m_ChunkHandlers; ///< ChunkId → işleyici eşleştirme tablosu
+        std::map<RwUInt32, ChunkHandlerFunc> m_ChunkHandlers; ///< ChunkId → handler mapping table
     };
 }
 

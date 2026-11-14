@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - Statik dünya çarpışma (.col) decode + trimesh shape testi
-// Gerçek Streams/*.RWS wbID_STATICWORLDCOLLISION payload'ları FUN_0043bfa0
-// düzenine göre decode edilip sayı/bbox/shape doğrulanır.
-// Çalıştırma: coltrimesh_test <VIKING01.RWS> <IDUNA03.RWS> <BEAVER01.RWS>
+// CannonCruise - Static world collision (.col) decode + trimesh shape test
+// Real Streams/*.RWS wbID_STATICWORLDCOLLISION payloads are decoded per the FUN_0043bfa0
+// layout and count/bbox/shape are verified.
+// Usage: coltrimesh_test <VIKING01.RWS> <IDUNA03.RWS> <BEAVER01.RWS>
 // ============================================================================
 
 #include "StaticCollisionData.h"
@@ -34,7 +34,7 @@ static bool NearEq(float a, float b, float eps) {
     return d <= eps;
 }
 
-// Tek bir RWS'ten STATICWORLDCOLLISION payload'unu bulur; decode + shape.
+// Finds the STATICWORLDCOLLISION payload from a single RWS; decode + shape.
 static void CheckWorld(const char *pPath, RwUInt32 expectVc, RwUInt32 expectTc,
                        RwUInt32 expectSect, float expectMinX,
                        float expectMinY, float expectMinZ) {
@@ -79,7 +79,7 @@ static void CheckWorld(const char *pPath, RwUInt32 expectVc, RwUInt32 expectTc,
         CHECK(mesh.pIndices[0] == 0 && mesh.pIndices[1] == 1 &&
               mesh.pIndices[2] == 2);
 
-        // shape üretimi (Bullet btBvhTriangleMeshShape) + ilk vertex okunabilir
+        // shape creation (Bullet btBvhTriangleMeshShape) + first vertex readable
         void *pShape = StaticCollisionData_CreateShape(&mesh);
         CHECK(pShape != 0);
         if (pShape) {
@@ -116,13 +116,13 @@ int main(int argc, char **argv) {
     // BEAVER01: 55902 / 102833, section 1064352
     CheckWorld(argv[3], 55902, 102833, 1064352, -478.53f, -8.53f, -596.25f);
 
-    // bozuk girdi: truncation + flag bozulması FALSE vermeli
+    // corrupt input: truncation + flag corruption should return FALSE
     {
         StaticCollisionMesh mesh;
         RwUInt8 junk[64];
         std::memset(junk, 0, sizeof(junk));
         CHECK(StaticCollisionData_Decode(junk, sizeof(junk), &mesh) == FALSE);
-        junk[0] = 0x10; // vertexCount>0 ama gerisi sıfır
+        junk[0] = 0x10; // vertexCount>0 but the rest is zero
         CHECK(StaticCollisionData_Decode(junk, sizeof(junk), &mesh) == FALSE);
     }
 

@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Global Helper & Math Utilities (GlobalFunctions.h)
 // Original path: D:\Projects\CannonCruisePC\code\GlobalFunctions.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include <rwcore.h>
@@ -69,7 +69,7 @@ inline RwReal Vec3Distance(const RwV3d& a, const RwV3d& b)
  * @brief Computes 2D horizontal Euclidean distance (X-Z plane).
  * @param a First 3D vector.
  * @param b Second 3D vector.
- * @param组织 b Second 3D vector.
+ * @param b Second 3D vector.
  * @return Horizontal distance on X-Z plane.
  */
 inline RwReal Vec3Distance2D(const RwV3d& a, const RwV3d& b)

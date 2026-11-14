@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "RwsAssets.h" // <varlik-koku> adaylari — binkw32.dll konumu icin
+#include "RwsAssets.h" // <asset-root> candidates — location of binkw32.dll
 
 namespace {
 
@@ -124,7 +124,7 @@ int BinkPlayer_Initialize(void)
         h = ::LoadLibraryA("binkw32.dll");
         if (h != nullptr) {
             std::snprintf(g_lastError, sizeof(g_lastError),
-                          "binkw32: Windows arama yolu");
+                          "binkw32: Windows search path");
         }
     }
     // 3) asset root — binkw32.dll and DLLs\ subdir (CD install layout)
@@ -235,7 +235,7 @@ int BinkPlayer_CurrentFrame(const void *pBink)
 
 int BinkPlayer_IsFinished(const void *pBink)
 {
-    // sub_45F270: cmp [eax+0Ch], [eax+8] / jnz devam / xor al,al (bitis)
+    // sub_45F270: cmp [eax+0Ch], [eax+8] / jnz keep-going / xor al,al (end)
     if (pBink == nullptr) {
         return 1;
     }
@@ -300,7 +300,7 @@ int BinkPlayer_DecodeRGBA(void *pBink, unsigned char *pOut, int pitch)
             const unsigned char b = px[0];
             px[0] = px[2]; // R
             px[2] = b;     // B
-            px[3] = 255;   // alfa yok → opak
+            px[3] = 255;   // no alpha → opaque
         }
     }
     return 1;

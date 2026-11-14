@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Localization Manager (LocalizationManager.h)
 // Original path: D:\Projects\CannonCruisePC\code\LocalizationManager.h
-// Tersine muhendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazilmistir.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Singleton.h"

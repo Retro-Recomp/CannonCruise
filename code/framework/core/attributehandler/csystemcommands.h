@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (csystemcommands.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\csystemcommands.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00403400 - FUN_004035a0 (RWS::CSystemCommands)
 // ============================================================================
 
@@ -15,50 +15,50 @@ namespace RWS
 {
     /**
      * @enum SystemCommandId
-     * @brief Sistem düzeyindeki özellik komut kimlikleri.
+     * @brief System-level attribute command ids.
      *
-     * `CAttributeHandler::ProcessPacket()` tarafından üretilen sistem komutları
-     * `CSystemCommands` işleyicilerine yönlendirilmeden önce bu kimliklerle tanımlanır.
+     * System commands produced by `CAttributeHandler::ProcessPacket()`
+     * are identified by these ids before being routed to `CSystemCommands` handlers.
      */
     enum SystemCommandId
     {
-        CMD_LoadMatrix   = 0x01, ///< RwFrame dönüşüm matrisini yükle
-        CMD_SetParent    = 0x02, ///< Çocuk çerçeveyi üst çerçeveye bağla
-        CMD_SetFlags     = 0x03, ///< RpAtomic bayrağını ayarla
-        CMD_AttachAtomic = 0x04  ///< Atomiki belirtilen çerçeveye ekle
+        CMD_LoadMatrix   = 0x01, ///< Load the RwFrame transform matrix
+        CMD_SetParent    = 0x02, ///< Attach the child frame to the parent frame
+        CMD_SetFlags     = 0x03, ///< Set the RpAtomic flags
+        CMD_AttachAtomic = 0x04  ///< Attach the atomic to the given frame
     };
 
     /**
      * @struct CAttributeCommand
-     * @brief Bir özellik paketi komutunu temsil eden yapı.
+     * @brief Structure representing an attribute packet command.
      *
-     * `CSystemCommands` işleyicilerine geçirilen komut kaydıdır.
-     * Komut kimliği, veri boyutu ve veri işaretçisi içerir.
+     * It is the command record passed to `CSystemCommands` handlers.
+     * Contains a command id, a data size, and a data pointer.
      */
     struct CAttributeCommand
     {
-        RwUInt32    m_CommandId; ///< Komut kimliği (SystemCommandId değeri)
-        RwUInt32    m_DataSize;  ///< Komut verisi boyutu (bayt)
-        const void* m_pData;    ///< Komut verisi işaretçisi
+        RwUInt32    m_CommandId; ///< Command id (SystemCommandId value)
+        RwUInt32    m_DataSize;  ///< Command data size (bytes)
+        const void* m_pData;    ///< Command data pointer
 
-        /// @return Komut kimliği
+        /// @return Command id
         RwUInt32    GetCommandId() const { return m_CommandId; }
-        /// @return Komut verisi işaretçisi
+        /// @return Command data pointer
         const void* GetData()      const { return m_pData; }
-        /// @return Komut verisi boyutu
+        /// @return Command data size
         RwUInt32    GetDataSize()  const { return m_DataSize; }
     };
 
     /**
      * @class CSystemCommands
-     * @brief Temel RenderWare nesneleri için sistem düzeyi özellik komut işleyicileri.
+     * @brief System-level attribute command handlers for core RenderWare objects.
      *
-     * `CAttributeHandler::ProcessPacket()` bir `CMD_LoadMatrix`, `CMD_SetParent` vb.
-     * sistem komutu aldığında bu sınıfın statik metotları doğrudan çağrılır.
-     * Oyun mantığına özgü komutlar ise `CAttributeHandler::HandleAttributes()`
-     * sanal fonksiyonu aracılığıyla ilgili sınıfa iletilir.
+     * `CAttributeHandler::ProcessPacket()` a `CMD_LoadMatrix`, `CMD_SetParent` etc.
+     * receives a system command, this class's static methods are called directly.
+     * Commands specific to game logic are instead passed through `CAttributeHandler::HandleAttributes()`
+     * virtual function to the relevant class.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - HandleLoadMatrix: `FUN_00403400`
      * - HandleSetParent: `FUN_00403460`
      * - HandleAttachAtomic: `FUN_004034c0`
@@ -68,44 +68,44 @@ namespace RWS
     {
     public:
         /**
-         * @brief RwFrame üzerine dönüşüm matrisini uygular.
-         * @param pFrame   Hedef çerçeve.
-         * @param attrCmd  Matris verisini içeren komut.
+         * @brief Applies the transform matrix to the RwFrame.
+         * @param pFrame   Target frame.
+         * @param attrCmd  Command containing the matrix data.
          */
         static void HandleLoadMatrix(RwFrame* pFrame, const CAttributeCommand& attrCmd);
 
         /**
-         * @brief Çocuk çerçeveyi üst çerçeveye bağlar.
-         * @param pChildFrame  Bağlanacak çocuk çerçeve.
-         * @param pParentFrame Üst çerçeve.
+         * @brief Attaches the child frame to the parent frame.
+         * @param pChildFrame  Child frame to attach.
+         * @param pParentFrame Parent frame.
          */
         static void HandleSetParent(RwFrame* pChildFrame, RwFrame* pParentFrame);
 
         /**
-         * @brief Atomiki belirtilen çerçeveye ekler.
-         * @param pAtomic Eklenecek RpAtomic nesnesi.
-         * @param pFrame  Hedef RwFrame.
+         * @brief Attaches the atomic to the given frame.
+         * @param pAtomic RpAtomic object to add.
+         * @param pFrame  Target RwFrame.
          */
         static void HandleAttachAtomic(RpAtomic* pAtomic, RwFrame* pFrame);
 
         /**
-         * @brief RpAtomic bayrağını ayarlar.
-         * @param pAtomic Hedef RpAtomic nesnesi.
-         * @param flags   Ayarlanacak bayrak değeri.
+         * @brief Sets the RpAtomic flags.
+         * @param pAtomic Target RpAtomic object.
+         * @param flags   Flag value to set.
          */
         static void HandleSetFlags(RpAtomic* pAtomic, RwUInt32 flags);
 
         /**
-         * @brief Özellik paketinden RpClump işaretçisini çıkarır.
-         * @param packet Ayrıştırılacak özellik paketi.
-         * @return const void* — Clump verisi (CannonCruise'da stub, her zaman nullptr).
+         * @brief Extracts the RpClump pointer from the attribute packet.
+         * @param packet Attribute packet to parse.
+         * @return const void* — Clump data (stub in CannonCruise, always nullptr).
          */
         static const void* ExtractClump(const class CAttributePacket& packet) { return 0; }
 
         /**
-         * @brief Mesajdan RpClump işaretçisini çıkarır.
-         * @param msg Ayrıştırılacak mesaj.
-         * @return const void* — Clump verisi (CannonCruise'da stub, her zaman nullptr).
+         * @brief Extracts the RpClump pointer from the message.
+         * @param msg Message to parse.
+         * @return const void* — Clump data (stub in CannonCruise, always nullptr).
          */
         static const void* ExtractClump(const struct CMsg& msg) { return 0; }
     };

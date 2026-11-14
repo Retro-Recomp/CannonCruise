@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Show Text Box Entity (ShowText.h)
 // Original path: D:\Projects\CannonCruisePC\code\ShowText.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
@@ -57,11 +57,11 @@ public:
     void Render();
 
     /**
-     * @brief Sets the FontSystem font name used for rendering (Aşama 2).
+     * @brief Sets the FontSystem font name used for rendering (Phase 2).
      *
-     * Varsayılan "Arial"; font bulunamazsa (fonts/<ad>.met + doku yok)
-     * Render gömülü 5x7 bitmap fonta düşer.
-     * @param pFontName FontSystemGet'a verilecek ad (NULL → varsayılan).
+     * Default "Arial"; if the font cannot be found (no fonts/<name>.met + texture)
+     * Render falls back to the embedded 5x7 bitmap font.
+     * @param pFontName Name to pass to FontSystemGet (NULL → default).
      */
     void SetFontName(const char* pFontName);
 
@@ -70,17 +70,17 @@ private:
     RwReal      m_fDuration; ///< Total display visibility duration in seconds
     RwReal      m_fTimer;    ///< Elapsed display time in seconds
     RwBool      m_bVisible;  ///< Whether the text box is currently visible
-    RWS::CEventId m_RenderMsgId; ///< MSG_SHOWTEXT_RENDER event id (ctor'da kaydedilir)
-    char        m_FontName[32];  ///< FontSystem font adı (Aşama 2)
+    RWS::CEventId m_RenderMsgId; ///< MSG_SHOWTEXT_RENDER event id (registered in ctor)
+    char        m_FontName[32];  ///< FontSystem font name (Phase 2)
 };
 
 /**
- * @brief Gömülü 5x7 bitmap font ile ekran koordinatında metin çizer
- *        (menü etiketleri, durum satırı — CShowText kutusu olmadan).
- * @param pText Null-terminated metin (boşluk/atla).
- * @param x,y Sol-üst köşe (piksel, screen space).
- * @param scale Piksel ölçeği (2 veya 3 önerilir).
- * @param r,g,b,a Renk.
+ * @brief Draws text in screen coordinates with the embedded 5x7 bitmap font
+ *        (menu labels, status line — without a CShowText box).
+ * @param pText Null-terminated text (spaces/skipped).
+ * @param x,y Top-left corner (pixels, screen space).
+ * @param scale Pixel scale (2 or 3 recommended).
+ * @param r,g,b,a Color.
  */
 void ShowText_DrawBitmapText(const char *pText, RwReal x, RwReal y,
                              int scale, RwUInt8 r, RwUInt8 g, RwUInt8 b,

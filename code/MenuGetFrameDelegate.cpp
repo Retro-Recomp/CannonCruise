@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Menu Get Frame Delegate (MenuGetFrameDelegate.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\MenuGetFrameDelegate.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00445100 — CMenuGetFrameDelegate constructor
 //   FUN_00445270 — CMenuGetFrameDelegate::Execute
 // ============================================================================
@@ -36,7 +36,7 @@ CMenuGetFrameDelegate::~CMenuGetFrameDelegate()
  */
 void CMenuGetFrameDelegate::Execute()
 {
-    // m_pAnim != NULL Failed kontrolü
+    // m_pAnim != NULL Failure check
 }
 
 /**

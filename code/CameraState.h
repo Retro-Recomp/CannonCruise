@@ -33,7 +33,7 @@
  */
 struct CCameraState {
     RwUInt32 m_pad00;         ///< +0x00
-    float m_pos[3];           ///< +0x04 (id0 VEC3 — konum)
+    float m_pos[3];           ///< +0x04 (id0 VEC3 — position)
     RwUInt32 m_clip1;         ///< +0x10 (id1 raw; menu: 0.02f bits)
     RwUInt32 m_clip2;         ///< +0x14 (id2 raw; menu: 0.01f bits)
     float m_fovRad;           ///< +0x18 (id3 RAD)
@@ -85,13 +85,13 @@ struct CCameraState {
     float m_dParam37Dup;      ///< +0x108 (id37 RAD duplicate)
     RwUInt32 m_pad10c;        ///< +0x10c
     RwUInt32 m_param41;       ///< +0x110 (id41 raw)
-    float m_counter;          ///< +0x114 (id42: guard==0 ise += 1.0f)
+    float m_counter;          ///< +0x114 (id42: if guard==0 then += 1.0f)
     RwUInt32 m_param43;       ///< +0x118 (id43 raw)
     RwUInt32 m_param44;       ///< +0x11c (id44 raw)
     RwUInt32 m_param45;       ///< +0x120 (id45 raw)
     RwUInt32 m_param46;       ///< +0x124 (id46 raw)
     RwUInt32 m_param47;       ///< +0x128 (id47 raw)
-    float m_one;              ///< +0x12c (id48: guard==0 ise = 1.0f)
+    float m_one;              ///< +0x12c (id48: if guard==0 then = 1.0f)
     RwUInt32 m_pad130;        ///< +0x130
     RwUInt32 m_param49;       ///< +0x134 (id49 raw)
     RwUInt32 m_param50;       ///< +0x138 (id50 raw)
@@ -106,7 +106,7 @@ struct CCameraState {
     RwBool ApplyAttribute(RwUInt32 id, RwUInt32 value);
 };
 
-// Binary float sabitleri (exe .rdata)
+// Binary float constants (exe .rdata)
 //   flt_5F0AC0 = 0x40490FDB (π), flt_5EF7B8 = 0x3BB60B61 (1/180)
 
 /// Degree → radian multiplier (π/180 — binary uses two separate fmuls)
@@ -142,6 +142,6 @@ static_assert(offsetof(CCameraState, m_dDir) == 0xf8, "id40 → +0xf8");
 static_assert(offsetof(CCameraState, m_param41) == 0x110, "id41 → +0x110");
 static_assert(offsetof(CCameraState, m_one) == 0x12c, "id48 → +0x12c");
 static_assert(offsetof(CCameraState, m_guard) == 0x13c, "guard → +0x13c");
-static_assert(sizeof(CCameraState) == 0x140, "kamera durumu 0x140 bayt");
+static_assert(sizeof(CCameraState) == 0x140, "camera state 0x140 bytes");
 
 #endif // CANNONCRUISE_CAMERASTATE_H

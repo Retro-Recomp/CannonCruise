@@ -68,7 +68,7 @@ const char* RwsAssets_Dir(void)
         std::snprintf(probe, sizeof(probe), "%s%s", kPrefixes[i], kSentinel);
         if (FileExists(probe)) {
             std::size_t n = std::strlen(kPrefixes[i]);
-            std::memcpy(g_dir, kPrefixes[i], n + 1); // NUL dahil
+            std::memcpy(g_dir, kPrefixes[i], n + 1); // includes NUL
             return g_dir;
         }
     }

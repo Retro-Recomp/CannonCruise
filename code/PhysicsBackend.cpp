@@ -1,11 +1,11 @@
 // ============================================================================
 // CannonCruise - Bullet Physics Backend (PhysicsBackend.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PhysicsBackend.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yazılmıştır.
+// Reconstructed via reverse engineering with CC_ida.asm analysis.
 //
-// Gövde karşılıkları — başlık bloğuna bkz. (sub_55E6D0 parametreleri).
-// btTriangleMesh sahipliği: mesh gövdelerinde shape + mesh birlikte
-// tutulur (MeshBundle) — shape mesh'i kopyalamaz.
+// Body counterparts — see the header block (sub_55E6D0 parameters).
+// btTriangleMesh ownership: for mesh bodies, shape + mesh are kept
+// together (MeshBundle) — the shape does not copy the mesh.
 // ============================================================================
 
 #include "PhysicsBackend.h"
@@ -27,39 +27,39 @@
 
 #include <cstring>
 
-// Header'daki opaque tip — global kapsamda tanımlı olmalı (anon ns değil)
+// The opaque type from the header — must be defined at global scope (not in an anon ns)
 struct PhysicsWorldHandle {
     btDefaultCollisionConfiguration *pConfig;
     btCollisionDispatcher *pDispatcher;
     btDbvtBroadphase *pBroadphase;
     btSequentialImpulseConstraintSolver *pSolver;
     btDiscreteDynamicsWorld *pWorld;
-    // ghost (trigger) overlap listesi için gerekli — aksi halde
-    // getNumOverlappingObjects 0 döner (Bullet sözleşmesi)
+    // needed for the ghost (trigger) overlap list — otherwise
+    // getNumOverlappingObjects returns 0 (Bullet contract)
     btGhostPairCallback *pGhostCallback;
 };
 
 namespace
 {
-    // sub_55E6D0 varsayılanları
+    // sub_55E6D0 defaults
     const btScalar kGravityY = -9.8;    // [+0x04]
     const btScalar kFriction = 0.6;     // [+0x44]
     const btScalar kRestitution = 0.3;  // [+0x58]
     const int kSolverIterations = 20;   // [+0x80]
-    // AABB ±500 ([+0x20..38]) — Bullet geniş broadphase kullanır; oyun içi
-    // clamp henüz uygulanmadı (belgeli sapma)
+    // AABB ±500 ([+0x20..38]) — Bullet uses a large broadphase; in-game
+    // clamp not yet applied (documented deviation)
 
-    // statik mesh gövdeleri: shape + triangle mesh birlikte yaşar
+    // static mesh bodies: shape + triangle mesh live together
     struct MeshBundle {
         btTriangleMesh *pMesh;
         btBvhTriangleMeshShape *pShape;
         btRigidBody *pBody;
     };
 
-    // bağımsız mesh şekilleri (CCollisionGeometry CreateShapeFromClump):
-    // mesh, shape'in ömrünü taşır
+    // standalone mesh shapes (CCollisionGeometry CreateShapeFromClump):
+    // the mesh carries the shape's lifetime
     struct ShapeBundle {
-        btTriangleMesh *pMesh; // non-trimesh şekillerde null
+        btTriangleMesh *pMesh; // null for non-trimesh shapes
         btCollisionShape *pShape;
     };
     ShapeBundle **g_ppShapeReg = 0;
@@ -83,7 +83,7 @@ namespace
 
     ShapeBundle *FindShapeBundle(void *pOpaque) {
         for (int i = 0; i < g_shapeRegCount; ++i) {
-            // ShapeBundle* döndürülen işaretçidir (void* dönüşümü)
+            // the returned pointer is a ShapeBundle* (void* cast)
             if (static_cast<void *>(g_ppShapeReg[i]) == pOpaque) {
                 return g_ppShapeReg[i];
             }
@@ -101,7 +101,7 @@ namespace
         }
     }
 
-    // verilen desc'ten btTriangleMesh doldur (CreateTriMesh/Shape ortak yol)
+    // fill a btTriangleMesh from the given desc (shared path for CreateTriMesh/Shape)
     bool FillTriangleMesh(btTriangleMesh *pMesh,
                           const PhysicsTriMeshDesc *pDesc) {
         const char *pBase = reinterpret_cast<const char *>(pDesc->pVertices);
@@ -127,7 +127,7 @@ namespace
         t.setIdentity();
         t.setOrigin(btVector3(pPos[0], pPos[1], pPos[2]));
         if (pRot3x3) {
-            // sütun tabanlı 3x3 → btMatrix3x3 (satır tabanlı dolgu)
+            // column-major 3x3 → btMatrix3x3 (row-major fill)
             btMatrix3x3 rot;
             for (int row = 0; row < 3; ++row) {
                 for (int col = 0; col < 3; ++col) {
@@ -157,13 +157,13 @@ namespace
         return pBody;
     }
 
-    // void* gövde tipi ayrımı — MeshBundle işaretçisi btRigidBody* ile aynı
-    // adreste başlar; ayırmak için kayıt tablosu kullanılır.
-    // Sözleşme: PhysicsBody_CreateTriMesh döndürülen işaretçi MeshBundle*,
-    // diğerleri doğrudan btRigidBody*.
+    // void* body type discrimination — a MeshBundle pointer starts at the same
+    // address as a btRigidBody*; a registry table is used to tell them apart.
+    // Contract: the pointer returned by PhysicsBody_CreateTriMesh is a MeshBundle*,
+    // the others are a direct btRigidBody*.
     struct BodyRegEntry {
         void *pOpaque;
-        MeshBundle *pBundle; // statik mesh ise non-null
+        MeshBundle *pBundle; // non-null if static mesh
     };
     BodyRegEntry *g_pReg = 0;
     int g_regCount = 0;
@@ -218,7 +218,7 @@ namespace
 } // namespace
 
 // ---------------------------------------------------------------------------
-// dünya yaşam döngüsü
+// world life cycle
 // ---------------------------------------------------------------------------
 PhysicsWorldHandle *PhysicsWorld_Create(void) {
     PhysicsWorldHandle *p = new PhysicsWorldHandle();
@@ -230,7 +230,7 @@ PhysicsWorldHandle *PhysicsWorld_Create(void) {
         p->pDispatcher, p->pBroadphase, p->pSolver, p->pConfig);
     p->pWorld->setGravity(btVector3(0, kGravityY, 0)); // sub_55E6D0[+0x04]
     p->pWorld->getSolverInfo().m_numIterations = kSolverIterations;
-    // trigger (hkpPhantom → btGhostObject) overlap kaydı
+    // trigger (hkpPhantom → btGhostObject) overlap registration
     p->pGhostCallback = new btGhostPairCallback();
     p->pBroadphase->getOverlappingPairCache()->setInternalGhostPairCallback(
         p->pGhostCallback);
@@ -241,7 +241,7 @@ void PhysicsWorld_Destroy(PhysicsWorldHandle *pWorld) {
     if (!pWorld) {
         return;
     }
-    // gövde temizliği çağırının sorumluluğu (CPhysicsWorld dtor sözleşmesi)
+    // body cleanup is the caller's responsibility (CPhysicsWorld dtor contract)
     delete pWorld->pWorld;
     delete pWorld->pGhostCallback;
     delete pWorld->pSolver;
@@ -255,8 +255,8 @@ void PhysicsWorld_Step(PhysicsWorldHandle *pWorld, RwReal deltaTime) {
     if (!pWorld || !pWorld->pWorld) {
         return;
     }
-    // sabit adım: maxSubSteps=1 + fixedTimeStep=deltaTime → her çağrıda
-    // tam bir deltaTime ilerler (hkpWorld::stepDeltaTime taklidi)
+    // fixed step: maxSubSteps=1 + fixedTimeStep=deltaTime → advances a full
+    // deltaTime per call (mimics hkpWorld::stepDeltaTime)
     pWorld->pWorld->stepSimulation(deltaTime, 1, deltaTime);
 }
 
@@ -279,7 +279,7 @@ void PhysicsWorld_GetGravity(const PhysicsWorldHandle *pWorld, RwReal *pX,
 }
 
 // ---------------------------------------------------------------------------
-// gövdeler
+// bodies
 // ---------------------------------------------------------------------------
 void *PhysicsBody_CreateBox(const PhysicsBodyBoxDesc *pDesc) {
     if (!pDesc) {
@@ -311,13 +311,13 @@ void *PhysicsBody_CreateTriMesh(const PhysicsTriMeshDesc *pDesc) {
         new btBvhTriangleMeshShape(pBundle->pMesh, /*useQuantized=*/true);
     btTransform t = MakeTransform(pDesc->pos, 0);
     pBundle->pBody = MakeBody(0.0f, t, pBundle->pShape, kFriction,
-                              kRestitution); // statik mesh
-    RegisterBody(pBundle, pBundle); // void* → MeshBundle kaydı
+                              kRestitution); // static mesh
+    RegisterBody(pBundle, pBundle); // void* → MeshBundle registration
     return pBundle;
 }
 
 // ---------------------------------------------------------------------------
-// bağımsız çarpışma şekilleri — CCollisionGeometry karşılığı
+// standalone collision shapes — the CCollisionGeometry counterpart
 // ---------------------------------------------------------------------------
 void *PhysicsShape_CreateBox(const RwReal halfExtents[3]) {
     if (!halfExtents) {
@@ -392,8 +392,8 @@ void PhysicsShape_Destroy(void *pShape) {
         UnregisterShape(pShape);
         return;
     }
-    // kutu/spere kayıtsız da olabilir (kayıt her Create'de yapılır;
-    // defensive) — doğrudan shape olarak silme: bilinmeyen işaretçi → yok say
+    // box/sphere may be unregistered too (registration happens in every Create;
+    // defensive) — delete as a direct shape: unknown pointer → ignore
 }
 
 void *PhysicsBody_CreateWithShape(void *pShape, RwReal mass,
@@ -412,7 +412,7 @@ void *PhysicsBody_CreateWithShape(void *pShape, RwReal mass,
     btTransform t = MakeTransform(pos, pRot3x3ColMajor);
     btRigidBody *pBody =
         MakeBody(mass, t, pBtShape, kFriction, kRestitution);
-    // userIndex=1 → shape dışarıdan geldi; Destroy sahiplenmez
+    // userIndex=1 → shape came from outside; Destroy does not take ownership
     pBody->setUserIndex(1);
     return pBody;
 }
@@ -435,7 +435,7 @@ void PhysicsBody_Destroy(void *pBody) {
     btRigidBody *pRb = static_cast<btRigidBody *>(pBody);
     btMotionState *pMS = pRb->getMotionState();
     btCollisionShape *pShape = pRb->getCollisionShape();
-    // userIndex=1 → shape dışarıdan gelmiştir (CreateWithShape); sahiplenme
+    // userIndex=1 → shape came from outside (CreateWithShape); no ownership
     const bool ownsShape = (pRb->getUserIndex() != 1);
     delete pRb;
     delete pMS;
@@ -468,7 +468,7 @@ void PhysicsTrigger_Destroy(void *pTrigger) {
 }
 
 // ---------------------------------------------------------------------------
-// dünya kaydı
+// world registration
 // ---------------------------------------------------------------------------
 void PhysicsWorld_AddRigidBody(PhysicsWorldHandle *pWorld, void *pBody) {
     if (pWorld && pWorld->pWorld && pBody) {
@@ -499,7 +499,7 @@ void PhysicsWorld_RemoveTrigger(PhysicsWorldHandle *pWorld, void *pTrigger) {
 }
 
 // ---------------------------------------------------------------------------
-// durum erişimi
+// state access
 // ---------------------------------------------------------------------------
 void PhysicsBody_GetPosition(const void *pBody, RwReal *pX, RwReal *pY,
                              RwReal *pZ) {
@@ -604,7 +604,7 @@ RwInt32 PhysicsTrigger_GetOverlaps(const void *pTrigger, void **ppBodies,
 }
 
 // ---------------------------------------------------------------------------
-// opaque köprü
+// opaque bridge
 // ---------------------------------------------------------------------------
 PhysicsWorldHandle *PhysicsWorld_FromOpaque(void *pOpaque) {
     return static_cast<PhysicsWorldHandle *>(pOpaque);

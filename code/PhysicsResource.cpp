@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Physics World Collision Resource (PhysicsResource.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PhysicsResource.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00438f80 — CPhysicsResource::Load
 //   FUN_00439630 — CPhysicsResource::Unload
 // ============================================================================
@@ -20,7 +20,7 @@ void* CPhysicsResource::Load(const char* pFilename, const char* pType)
     assert(pType != 0 && "Failed PRE-condition: pacType");
     assert(sm_nLoadedResources < 16 && "m_nLoadedResources < 16 Failed");
 
-    // wbID_STATICWORLDCOLLISION akışından statik dünya çarpışma verisi oku
+    // read static world collision data from the wbID_STATICWORLDCOLLISION stream
     sm_nLoadedResources++;
     return 0;
 }

@@ -24,7 +24,7 @@ namespace
         return std::fabs(a - b) < 0.0005f;
     }
 
-    // v' = v·M (sütun tabanlı: v' = right*vx + up*vy + at*vz + pos)
+    // v' = v·M (column-major: v' = right*vx + up*vy + at*vz + pos)
     void ApplyPoint(const CCMatrix *pM, float vx, float vy,
                     float *pOutX, float *pOutY)
     {
@@ -36,7 +36,7 @@ namespace
 int main()
 {
     // ------------------------------------------------------------------
-    // Reset — sub_4cc1f0: derinlik 0, birim matris, en-boy 1/1
+    // Reset — sub_4cc1f0: depth 0, identity matrix, aspect 1/1
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_Reset());
     CHECK(RenderPipeline_GetStackDepth() == 0);
@@ -44,30 +44,30 @@ int main()
     CHECK(Near(pTop->right[0], 1.0f) && Near(pTop->up[1], 1.0f) &&
           Near(pTop->at[2], 1.0f));
     CHECK(Near(pTop->pos[0], 0.0f) && Near(pTop->pos[1], 0.0f));
-    CHECK((pTop->flags & 0x20003) == 0x20003); // dword_66d610 maskesi
+    CHECK((pTop->flags & 0x20003) == 0x20003); // dword_66d610 mask
     float ax = 0.0f, ay = 0.0f;
     RenderPipeline_GetAspect(&ax, &ay);
     CHECK(Near(ax, 1.0f) && Near(ay, 1.0f));
 
     // ------------------------------------------------------------------
-    // Push — sub_4cc2f0: ebeveyn kopyası; taşma 31'de durur
+    // Push — sub_4cc2f0: parent copy; overflow stops at 31
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_MatrixPush());
     CHECK(RenderPipeline_GetStackDepth() == 1);
     pTop = RenderPipeline_GetTopMatrix();
-    CHECK(Near(pTop->right[0], 1.0f)); // kopya birim
+    CHECK(Near(pTop->right[0], 1.0f)); // identity copy
     for (int i = 0; i < 30; ++i) {
-        CHECK(RenderPipeline_MatrixPush()); // toplam 31 push
+        CHECK(RenderPipeline_MatrixPush()); // 31 pushes total
     }
     CHECK(RenderPipeline_GetStackDepth() == 31);
-    CHECK(!RenderPipeline_MatrixPush()); // binary: cmp 1Fh → taşma
+    CHECK(!RenderPipeline_MatrixPush()); // binary: cmp 1Fh → overflow
     CHECK(RenderPipeline_GetStackDepth() == 31);
-    CHECK(!RenderPipeline_MatrixPushCopy(0)); // kopya da taşar
+    CHECK(!RenderPipeline_MatrixPushCopy(0)); // the copy overflows too
 
     // ------------------------------------------------------------------
-    // DrawText sırası — translate → scale (sub_4ccaf0):
-    // translate(10,20) birimde → pos=(10,20); scale(2,3) → tabanlar
-    // ölçeklenir, pos sabit; v(1,1) → (12,23)
+    // DrawText order — translate → scale (sub_4ccaf0):
+    // translate(10,20) identity → pos=(10,20); scale(2,3) → basis
+    // vectors scaled, pos unchanged; v(1,1) → (12,23)
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_Reset());
     CHECK(RenderPipeline_MatrixTranslateXY(10.0f, 20.0f));
@@ -79,8 +79,8 @@ int main()
     ApplyPoint(pTop, 1.0f, 1.0f, &px, &py);
     CHECK(Near(px, 12.0f) && Near(py, 23.0f));
 
-    // ters sıra — scale → translate: öteleme ölçekten geçirilir
-    // (RwMatrixTranslate semantiği): pos = (10×2, 20×3) = (20,60);
+    // reverse order — scale → translate: translation passes through scale
+    // (RwMatrixTranslate semantics): pos = (10×2, 20×3) = (20,60);
     // v(1,1) → (22,63)
     CHECK(RenderPipeline_Reset());
     CHECK(RenderPipeline_MatrixScaleXY(2.0f, 3.0f));
@@ -91,7 +91,7 @@ int main()
     CHECK(Near(px, 22.0f) && Near(py, 63.0f));
 
     // ------------------------------------------------------------------
-    // MatrixIdentity — sub_4cbd20: üst operasyonları sıfırla
+    // MatrixIdentity — sub_4cbd20: reset top operations
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_MatrixIdentity());
     pTop = RenderPipeline_GetTopMatrix();
@@ -100,11 +100,11 @@ int main()
     CHECK((pTop->flags & 0x20003) == 0x20003);
 
     // ------------------------------------------------------------------
-    // PushCopy — sub_4cc350: yeni üst = src × ebeveyn (ebeveyn önce)
-    // src = scale(4,5); ebeveyn = translate(10,20) → pos = (40,100)
+    // PushCopy — sub_4cc350: new top = src × parent (parent first)
+    // src = scale(4,5); parent = translate(10,20) → pos = (40,100)
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_Reset());
-    CHECK(RenderPipeline_MatrixTranslateXY(10.0f, 20.0f)); // ebeveyn
+    CHECK(RenderPipeline_MatrixTranslateXY(10.0f, 20.0f)); // parent
     CCMatrix src;
     src.right[0] = 4.0f; src.right[1] = 0.0f; src.right[2] = 0.0f;
     src.up[0] = 0.0f; src.up[1] = 5.0f; src.up[2] = 0.0f;
@@ -117,29 +117,29 @@ int main()
     pTop = RenderPipeline_GetTopMatrix();
     CHECK(Near(pTop->right[0], 4.0f) && Near(pTop->up[1], 5.0f));
     CHECK(Near(pTop->pos[0], 40.0f) && Near(pTop->pos[1], 100.0f));
-    // NULL src → ebeveyn kopyası (sub_4cc350 arg_0==0)
+    // NULL src → parent copy (sub_4cc350 arg_0==0)
     CHECK(RenderPipeline_MatrixPushCopy(0));
     pTop = RenderPipeline_GetTopMatrix();
     CHECK(Near(pTop->right[0], 4.0f) && Near(pTop->pos[0], 40.0f));
 
     // ------------------------------------------------------------------
-    // SetViewWindow — sub_4cc020: en-boy (büyük/küçük → diğeri 1.0)
+    // SetViewWindow — sub_4cc020: aspect (larger/smaller → the other 1.0)
     // 640×480, win (320,240): 320>=240 → x=4/3, y=1
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_SetViewWindow(640.0f, 480.0f, 320.0f, 240.0f));
     RenderPipeline_GetAspect(&ax, &ay);
     CHECK(Near(ax, 320.0f / 240.0f) && Near(ay, 1.0f));
-    // dikey baskınlık: win (100,200) → x=1, y=2
+    // vertical dominance: win (100,200) → x=1, y=2
     CHECK(RenderPipeline_SetViewWindow(640.0f, 480.0f, 100.0f, 200.0f));
     RenderPipeline_GetAspect(&ax, &ay);
     CHECK(Near(ax, 1.0f) && Near(ay, 200.0f / 100.0f));
-    // sıfır pencere → 1.0 (fdivs korumalı port)
+    // zero window → 1.0 (fdivs guarded port)
     CHECK(RenderPipeline_SetViewWindow(640.0f, 480.0f, 0.0f, 0.0f));
     RenderPipeline_GetAspect(&ax, &ay);
     CHECK(Near(ax, 1.0f) && Near(ay, 1.0f));
 
     // ------------------------------------------------------------------
-    // SetViewWindowFromCamera — sub_4cc020 tam yolu (kamera bağlamı)
+    // SetViewWindowFromCamera — sub_4cc020 full path (camera context)
     // ------------------------------------------------------------------
     float wid = 0.0f, hei = 0.0f, wx2 = 0.0f, wy2 = 0.0f;
     float offX = 0.0f, offY = 0.0f;
@@ -151,7 +151,7 @@ int main()
     frame.pos[2] = 30.0f;
 
     RCCCameraView cam;
-    cam.projFlag = 2; // ortografik → zScale 1.0
+    cam.projFlag = 2; // orthographic → zScale 1.0
     cam.rasterWidth = 640;
     cam.rasterHeight = 480;
     cam.viewWindowX = 1.0f; // ×2 → 2.0
@@ -167,19 +167,19 @@ int main()
     CHECK(Near(offX, 0.0f) && Near(offY, 0.0f));
     CHECK(Near(ax, 2.0f) && Near(ay, 1.0f)); // winX2 2>=1 → x=2/1
 
-    // NULL kamera → aktif önbellek temiz, FALSE
+    // NULL camera → active cache cleared, FALSE
     CHECK(!RenderPipeline_SetViewWindowFromCamera(0));
     CHECK(RenderPipeline_GetCamera() == 0);
     CHECK(RenderPipeline_SetViewWindowFromCamera(&cam));
-    // raster NULL → FALSE, aktif kamera KORUNUR (loc_4cc109)
+    // raster NULL → FALSE, active camera PRESERVED (loc_4cc109)
     RCCCameraView bad = cam;
     bad.rasterWidth = 0;
     CHECK(!RenderPipeline_SetViewWindowFromCamera(&bad));
     CHECK(RenderPipeline_GetCamera() == &cam);
 
     // ------------------------------------------------------------------
-    // BuildViewMatrix — sub_4cc520: ölçek matrisi + tersi + frame çarpımı
-    // temiz yığın (Reset + kamera); w=min(2,1)=1; ölçek(-1,1,1);
+    // BuildViewMatrix — sub_4cc520: scale matrix + inverse + frame multiply
+    // clean stack (Reset + camera); w=min(2,1)=1; scale(-1,1,1);
     // translate(1,-0.5,0)
     // ------------------------------------------------------------------
     CHECK(RenderPipeline_Reset());
@@ -191,27 +191,27 @@ int main()
     CHECK(Near(pScale->right[0], -1.0f));
     CHECK(Near(pScale->up[1], 1.0f) && Near(pScale->at[2], 1.0f));
     CHECK(Near(pScale->pos[0], 1.0f) && Near(pScale->pos[1], -0.5f));
-    // ters: diag(-1,1,1); pos' = -(inv×pos) = (1, 0.5, 0)
+    // inverse: diag(-1,1,1); pos' = -(inv×pos) = (1, 0.5, 0)
     CHECK(Near(pInv->right[0], -1.0f) && Near(pInv->up[1], 1.0f));
     CHECK(Near(pInv->pos[0], 1.0f) && Near(pInv->pos[1], 0.5f));
-    // sonuç = ölçek × frame: pos = ölçek.3×3×frame.pos + ölçek.pos
+    // result = scale × frame: pos = scale.3×3×frame.pos + scale.pos
     CHECK(Near(pVS->right[0], -1.0f));
     CHECK(Near(pVS->pos[0], -9.0f) && Near(pVS->pos[1], 19.5f) &&
           Near(pVS->pos[2], 30.0f));
 
-    // önbellek: geçerliyken ölçek yeniden kurulmaz (statik adres sabit);
-    // geçersizlik (MatrixTranslateXY) → yeniden kurulum
+    // cache: while valid, scale is not rebuilt (static address fixed);
+    // invalidation (MatrixTranslateXY) → rebuild
     CHECK(RenderPipeline_BuildViewMatrix() == pVS);
     CHECK(RenderPipeline_MatrixTranslateXY(3.0f, 4.0f));
     const CCMatrix *pVS2 = RenderPipeline_BuildViewMatrix();
-    CHECK(pVS2 == pVS); // sonuç tamponu aynı
-    // yığın üst'ü artık kaydırılmış — ölçek matrisi değişmiş olmalı
-    // (translate kök'te değil üst'te; derinlik 0 → üst = kök'ten bağımsız
-    //  yine de ölçek = üst×kök → pos kayar)
+    CHECK(pVS2 == pVS); // result buffer is the same
+    // stack top has now been shifted — the scale matrix must have changed
+    // (translate is not at the root but at the top; depth 0 → top independent of root
+    //  still scale = top×root → pos shifts)
     CHECK(!Near(pScale->pos[0], 1.0f) || !Near(pScale->pos[1], -0.5f));
 
-    // kamera/kare matrisi yoksa ölçek döner (port kılavuzu — binary
-    // kilitlenirdi)
+    // if no camera/frame matrix, scale is returned (port guide — binary
+    // would hang)
     RCCCameraView noFrame = cam;
     noFrame.pFrameMatrix = 0;
     CHECK(RenderPipeline_SetViewWindowFromCamera(&noFrame));
@@ -219,7 +219,7 @@ int main()
           RenderPipeline_GetViewScaleMatrix());
 
     // ------------------------------------------------------------------
-    // SetContext — sub_4cc130 (dword_66d79c bağlam ptr)
+    // SetContext — sub_4cc130 (dword_66d79c context ptr)
     // ------------------------------------------------------------------
     int ctxObj = 0;
     CHECK(RenderPipeline_SetContext(&ctxObj));

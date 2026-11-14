@@ -1,13 +1,13 @@
 ﻿// ============================================================================
 // CannonCruise - Localization Manager (LocalizationManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\LocalizationManager.cpp
-// Tersine muhendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazilmistir.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonlari:
+// Binary functions:
 //   FUN_004918c0 - CLocalizationManager constructor & initialization
 //   FUN_00491f20 - CLocalizationManager::SetLanguage
-//   sub_492D40   - Localiza\langmap.def okuma
-//   sub_493130   - Localiza\lang.def okuma
+//   sub_492D40   - reading Localiza\langmap.def
+//   sub_493130   - reading Localiza\lang.def
 //   sub_491120   - MENUTRIGGER_LangSelect1..12 handler
 // ============================================================================
 
@@ -111,7 +111,7 @@ RwBool CLocalizationManager::LoadDefinitions(const char *pBasePath)
 
     if (!fDef)
     {
-        // Fallback varsayilan diller
+        // Fallback default languages
         m_LanguageCodes = {"den", "eng", "fin", "nor", "swe"};
         m_LanguageNames = {"Danish", "English", "Finnish", "Norwegian", "Swedish"};
         m_DefaultLanguage = "eng";
@@ -137,7 +137,7 @@ RwBool CLocalizationManager::LoadDefinitions(const char *pBasePath)
 
         if (first)
         {
-            // HUGO_CC basligi
+            // HUGO_CC header line
             first = false;
             continue;
         }
@@ -194,7 +194,7 @@ void CLocalizationManager::HandleEvents(const RWS::CMsg& msg)
     {
         const char *pData = static_cast<const char *>(msg.m_pData);
 
-        // Sayi mi? -> trigger index olarak yorumla (1-12 -> s_langTriggerMap)
+        // A number? -> interpret as trigger index (1-12 -> s_langTriggerMap)
         if (pData[0] >= '1' && pData[0] <= '9' && pData[1] == 0)
         {
             const int idx = pData[0] - '1';
@@ -243,12 +243,12 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
 
     if (!pFile)
     {
-        std::printf("LocalizationManager: dil dosyasi bulunamadi: Localiza\\lang_%s.txt\n",
+        std::printf("LocalizationManager: language file not found: Localiza\\lang_%s.txt\n",
                     lowerCode.c_str());
         return FALSE;
     }
 
-    // Dosya boyutunu bul
+    // Find the file size
     fseek(pFile, 0, SEEK_END);
     long fileSize = ftell(pFile);
     fseek(pFile, 0, SEEK_SET);
@@ -259,12 +259,12 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
         return FALSE;
     }
 
-    // Unicode BOM kontrolu (0xFEFF / 0xFFFE)
+    // Unicode BOM check (0xFEFF / 0xFFFE)
     unsigned short bom = 0;
     fread(&bom, sizeof(unsigned short), 1, pFile);
     if (bom != 0xFEFF && bom != 0xFFFE)
     {
-        std::printf("LocalizationManager: dosya Unicode BOM eksik: %s\n", szTxtPath);
+        std::printf("LocalizationManager: file is missing the Unicode BOM: %s\n", szTxtPath);
         fclose(pFile);
         return FALSE;
     }
@@ -274,7 +274,7 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
     fread(&buffer[0], sizeof(wchar_t), numWchars, pFile);
     fclose(pFile);
 
-    // Byte swap gerekirse (0xFFFE ise)
+    // Byte swap if needed (0xFFFE)
     if (bom == 0xFFFE)
     {
         for (size_t i = 0; i < numWchars; ++i)
@@ -286,11 +286,11 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
 
     m_StringTable.clear();
 
-    // Satir satir ayristir: format "<KEY> <SCALE> <TEXT>"
+    // Parse line by line: format "<KEY> <SCALE> <TEXT>"
     size_t i = 0;
     while (i < numWchars)
     {
-        // Satir sonuna kadar ilerle
+        // Advance to end of line
         size_t lineStart = i;
         while (i < numWchars && buffer[i] != L'\r' && buffer[i] != L'\n')
         {
@@ -302,18 +302,18 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
             ++i;
         }
 
-        // Bos satir kontrolu
+        // Empty line check
         size_t cur = lineStart;
         while (cur < lineEnd && (buffer[cur] == L' ' || buffer[cur] == L'\t')) ++cur;
         if (cur >= lineEnd) continue;
 
-        // Yorum kontrolu ('#' veya '?#')
+        // Comment check ('#' or '?#')
         if (buffer[cur] == L'#' || (cur + 1 < lineEnd && buffer[cur] == 0xFEFF && buffer[cur + 1] == L'#'))
         {
             continue;
         }
 
-        // Ilk token: KEY
+        // First token: KEY
         size_t keyStart = cur;
         while (cur < lineEnd && buffer[cur] != L' ' && buffer[cur] != L'\t') ++cur;
         size_t keyEnd = cur;
@@ -324,11 +324,11 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
             keyStr += static_cast<char>(buffer[k]);
         }
 
-        // Ikinci token: SCALE (orn. 100)
+        // Second token: SCALE (e.g. 100)
         while (cur < lineEnd && (buffer[cur] == L' ' || buffer[cur] == L'\t')) ++cur;
         while (cur < lineEnd && buffer[cur] != L' ' && buffer[cur] != L'\t') ++cur;
 
-        // Kalan kisim: TEXT
+        // Remainder: TEXT
         while (cur < lineEnd && (buffer[cur] == L' ' || buffer[cur] == L'\t')) ++cur;
 
         std::wstring valStr;
@@ -344,10 +344,10 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
     }
 
     m_CurrentLanguage = lowerCode;
-    std::printf("LocalizationManager: '%s' dili yuklendi (%zu dizge)\n",
+    std::printf("LocalizationManager: language '%s' loaded (%zu strings)\n",
                 m_CurrentLanguage.c_str(), m_StringTable.size());
 
-    // Font doku sozlugunu yukle (sub_4923A0: "Localiza\Win\win_%s.txd")
+    // Load the font texture dictionary (sub_4923A0: "Localiza\Win\win_%s.txd")
     if (m_pFontTexDict)
     {
         RwTexDictionaryDestroy(m_pFontTexDict);
@@ -371,7 +371,7 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
         RwStreamClose(pTxdStream, nullptr);
         if (m_pFontTexDict)
         {
-            std::printf("LocalizationManager: font doku sozlugu yuklendi: win_%s.txd\n",
+            std::printf("LocalizationManager: font texture dictionary loaded: win_%s.txd\n",
                         lowerCode.c_str());
         }
     }

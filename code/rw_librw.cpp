@@ -2,34 +2,34 @@
 // CannonCruise - librw Engine/Stream Shim (rw_librw.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\rw_librw.cpp
 //
-// rwstubs.cpp'deki NO-OP engine/stream sembollerinin GERÇEK implementasyonu:
-// oyunun C API'si (Rw*/Rp* — RW SDK adlandırma) librw'nin C++ API'sine
-// (rw::/rp::) bağlanır. Kapı 4'ün ilk adımı: gerçek .RWS asset akışı.
+// REAL implementation of the NO-OP engine/stream symbols in rwstubs.cpp:
+// the game's C API (Rw*/Rp* — RW SDK naming) connects to librw's C++ API
+// (rw::/rp::). First step of Gate 4: real .RWS asset streaming.
 //
-// Binary kaynakları: FUN_0050b640 RwEngineInit, FUN_00422960 RwEngineOpen,
+// Binary sources: FUN_0050b640 RwEngineInit, FUN_00422960 RwEngineOpen,
 // FUN_0050b340 RwEngineStart, FUN_0050b2f0 RwEngineClose, FUN_0050b3d0
-// RwEngineStop, FUN_0050b600 RwEngineTerm; RwStream* ailesi + FindChunk;
+// RwEngineStop, FUN_0050b600 RwEngineTerm; RwStream* family + FindChunk;
 // RpClumpStreamRead; RwTexDictionaryStreamRead.
 //
-// SAPMALAR (belgeli):
-//   - NULL platform: cihaz yok (headless); Engine::open(nil) parametre
-//     kabul etmez (device DEVICEOPEN no-op).
-//   - D3D9: cihaz hedefi Win32 penceresidir; EngineOpenParams{ HWND }
-//     window = CCD3DCreateWindow() ile üretilir. NULL'daki Engine::open(nil)
-//     bu platformda 0xC0000005 (2026-10-15) → ayrıca RW_KEY_* (GLFW tuş
-//     kodları) Win32 VK'larına eşlenir (GLFWKeyToVK).
-//   - RpWorldStreamRead: librw'de World streamRead YOK (BSP) → stub 0.
-//   - RwMemoryFunctions eşlemesi: yalnız default memfuncs kullanılır
-//     (parametre non-null ise yok sayılır).
-//   - RwEngineSetConfig: librw karşılığı yok → TRUE (no-op).
+// DEVIATIONS (documented):
+//   - NULL platform: no device (headless); Engine::open(nil) does not accept parameters
+//     (device DEVICEOPEN no-op).
+//   - D3D9: the device target is a Win32 window; EngineOpenParams{ HWND }
+//     window = produced with CCD3DCreateWindow(). NULL's Engine::open(nil)
+//     leads to 0xC0000005 (2026-10-15) on this platform → also, RW_KEY_* (GLFW key
+//     codes) are mapped to Win32 VKs (GLFWKeyToVK).
+//   - RpWorldStreamRead: librw has NO World streamRead (BSP) → stub 0.
+//   - RwMemoryFunctions mapping: only default memfuncs are used
+//     (non-null parameter is ignored).
+//   - RwEngineSetConfig: no librw counterpart → TRUE (no-op).
 // ============================================================================
 
 #ifdef RW_D3D9
-// D3D9: librw'nin d3d/rwd3d.h EngineOpenParams{ HWND window; } tanımını
-// yalnız <windows.h> ÖNCESİ dahil edilmişse (_WINDOWS_ koruması) HWND
-// alanıyla verir; rw.h bunu src/d3d/rwd3d.h üzerinden dahil eder → bu
-// include rw.h'den ÖNCE gelmelidir. Aksi halde window alanı
-// "please_include_windows_h" (uint32) olur ve HWND olarak çözümlenemez.
+// D3D9: librw's d3d/rwd3d.h EngineOpenParams{ HWND window; } definition is only
+// given with the HWND field if <windows.h> was included BEFORE (_WINDOWS_ guard);
+// rw.h includes it through src/d3d/rwd3d.h → this include
+// must come BEFORE rw.h. Otherwise the window field becomes
+// "please_include_windows_h" (uint32) and cannot be resolved as HWND.
 #include <windows.h>
 #endif
 
@@ -42,26 +42,26 @@
 
 namespace
 {
-    // RwStream sarmalayıcısı — librw StreamFile sahipliği
+    // RwStream wrapper — librw StreamFile ownership
     struct ShimStream {
         rw::StreamFile file;
     };
 
-    RwBool s_engineRunning = FALSE; // RwEngineIsRunning durumu
+    RwBool s_engineRunning = FALSE; // RwEngineIsRunning state
 #ifdef RW_GL3
-    GLFWwindow *s_glfwWindow = nullptr; // Engine::start create eder
-    double s_lastMouseX = 0.0;          // mouse delta kalibrasyonu
+    GLFWwindow *s_glfwWindow = nullptr; // created by Engine::start
+    double s_lastMouseX = 0.0;          // mouse delta calibration
     double s_lastMouseY = 0.0;
     RwBool s_mouseCalibrated = FALSE;
 #endif
 #ifdef RW_D3D9
-    HWND s_hwnd = nullptr;     // D3D9 cihaz hedef penceresi
-    RwBool s_winQuit = FALSE;  // WM_CLOSE/WM_DESTROY → oyun döngüsü çıkışı
-    double s_lastMouseX = 0.0; // mouse delta kalibrasyonu (GL3 ile aynı)
+    HWND s_hwnd = nullptr;     // D3D9 device target window
+    RwBool s_winQuit = FALSE;  // WM_CLOSE/WM_DESTROY → game loop exits
+    double s_lastMouseX = 0.0; // mouse delta calibration (same as GL3)
     double s_lastMouseY = 0.0;
     RwBool s_mouseCalibrated = FALSE;
 
-    // GLFW tuş kodları (RW_KEY_*) → Win32 sanal tuş kodu.
+    // GLFW key codes (RW_KEY_*) → Win32 virtual key code.
     // RW_KEY_ESCAPE=256, ENTER=257, RIGHT=262, LEFT=263, DOWN=264, UP=265
     int GLFWKeyToVK(int key)
     {
@@ -72,7 +72,7 @@ namespace
         case 263: return VK_LEFT;
         case 264: return VK_DOWN;
         case 265: return VK_UP;
-        default:  return key; // ASCII 'A'-'Z' / ' ' → VK eşdeğer
+        default:  return key; // ASCII 'A'-'Z' / ' ' → VK equivalent
         }
     }
 
@@ -81,7 +81,7 @@ namespace
     {
         switch (uMsg) {
         case WM_CLOSE:
-            s_winQuit = TRUE; // MainLoop / RwPlatformShouldClose çıkarır
+            s_winQuit = TRUE; // MainLoop / RwPlatformShouldClose exits
             return 0;
         case WM_DESTROY:
             s_winQuit = TRUE;
@@ -93,7 +93,7 @@ namespace
         return DefWindowProcA(hWnd, uMsg, wParam, lParam);
     }
 
-    // D3D9 cihaz hedefi için Win32 penceresi (CS_OWNDC — DC kalıcı).
+    // Win32 window for the D3D9 device target (CS_OWNDC — DC persists).
     HWND CCD3DCreateWindow(int width, int height, const char *pTitle)
     {
         HINSTANCE hInst = GetModuleHandleA(nullptr);
@@ -104,7 +104,7 @@ namespace
         wc.hInstance = hInst;
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.lpszClassName = "CannonCruiseD3D9";
-        RegisterClassA(&wc); // sınıf zaten kayıtlıysa FALSE — sorun değil
+        RegisterClassA(&wc); // FALSE if the class is already registered — not a problem
 
         DWORD style = WS_OVERLAPPEDWINDOW;
         RECT rc = {0, 0, width, height};
@@ -124,26 +124,26 @@ namespace
 }
 
 // ---------------------------------------------------------------------------
-// Motor yaşam döngüsü — rw::Engine::init/open/start/stop/close/term
+// Engine lifecycle — rw::Engine::init/open/start/stop/close/term
 // ---------------------------------------------------------------------------
 RwBool RwEngineInit(RwMemoryFunctions *memFuncs, RwUInt32 flags,
                     RwUInt32 resEntrySize) {
-    (void)memFuncs; // default memfuncs (bkz. başlık sapması)
+    (void)memFuncs; // default memfuncs (see header deviation)
     (void)flags;
     (void)resEntrySize;
     if (rw::Engine::init() != TRUE) {
         return FALSE;
     }
-    // Geometry MESH plugin — streamRead EXTENSION'ından meshHeader kurar;
-    // GL3 instance/render meshHeader'sız çöker (NULL'da instance yoktu).
+    // Geometry MESH plugin — builds meshHeader from the streamRead EXTENSION;
+    // GL3 instance/render crashes without meshHeader (there was no instance in NULL).
     rw::registerMeshPlugin();
     return TRUE;
 }
 
 RwBool RwEngineOpen(void) {
 #ifdef RW_GL3
-    // GL3: gl3-glfw cihazı EngineOpenParams ile pencere tanımlar
-    // (openGLFW → glfwInit; pencere Engine::start'ta create edilir).
+    // GL3: the gl3-glfw device describes the window with EngineOpenParams
+    // (openGLFW -> glfwInit; the window is created in Engine::start).
     rw::EngineOpenParams params;
     params.window = &s_glfwWindow;
     params.width = 1280;
@@ -151,10 +151,10 @@ RwBool RwEngineOpen(void) {
     params.windowtitle = "CannonCruise";
     return rw::Engine::open(&params) ? TRUE : FALSE;
 #elif defined(RW_D3D9)
-    // D3D9: openD3D() params->window (HWND) pointer'ını doğrudan çözümler.
-    // NULL platformdaki Engine::open(nil) bu platformda NULL pointer
-    // çözümlemesine (0xC0000005 ACCESS_VIOLATION) yol açıyordu → pencere
-    // burada create edilip HWND Engine::open'a verilir.
+    // D3D9: openD3D() resolves the params->window (HWND) pointer directly.
+    // NULL platform's Engine::open(nil) was leading to a NULL pointer
+    // dereference (0xC0000005 ACCESS_VIOLATION) on this platform → the window is
+    // created here and the HWND is given to Engine::open.
     if (s_hwnd == nullptr) {
         s_hwnd = CCD3DCreateWindow(640, 480, "CannonCruise");
         if (s_hwnd == nullptr) {
@@ -165,7 +165,7 @@ RwBool RwEngineOpen(void) {
     params.window = s_hwnd;
     return rw::Engine::open(&params) ? TRUE : FALSE;
 #else
-    // NULL platform: EngineOpenParams tanımsız — device açılışı no-op
+    // NULL platform: EngineOpenParams is undefined — device open is a no-op
     return rw::Engine::open(nil) ? TRUE : FALSE;
 #endif
 }
@@ -175,7 +175,7 @@ RwBool RwPlatformPollEvents(void) {
     glfwPollEvents();
     return TRUE;
 #elif defined(RW_D3D9)
-    // Win32 mesaj kuyruğu — WM_PAINT / WM_SIZE / WM_CLOSE bu yoldan işlenir.
+    // Win32 message queue — WM_PAINT / WM_SIZE / WM_CLOSE are processed through this path.
     MSG msg;
     while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
         if (msg.message == WM_QUIT) {
@@ -205,12 +205,12 @@ RwBool RwPlatformShouldClose(void) {
 
 RwBool RwPlatformKeyDown(int key) {
 #ifdef RW_GL3
-    // GLFW_KEY_W == 'W' — ASCII kodlar doğrudan geçer.
+    // GLFW_KEY_W == 'W' — ASCII codes pass directly.
     return (s_glfwWindow != nullptr && glfwGetKey(s_glfwWindow, key) == GLFW_PRESS)
                ? TRUE
                : FALSE;
 #elif defined(RW_D3D9)
-    // GetAsyncKeyState — tuş durumu mesaj kuyruğundan bağımsız okunur.
+    // GetAsyncKeyState — key state read independently of the message queue.
     return (GetAsyncKeyState(GLFWKeyToVK(key)) & 0x8000) ? TRUE : FALSE;
 #else
     (void)key;
@@ -226,14 +226,14 @@ RwBool RwPlatformSetMouseCapture(RwBool capture) {
     glfwSetInputMode(s_glfwWindow, GLFW_CURSOR,
                      (capture == TRUE) ? GLFW_CURSOR_DISABLED
                                        : GLFW_CURSOR_NORMAL);
-    s_mouseCalibrated = FALSE; // yeniden kalibre (delta sıfırla)
+    s_mouseCalibrated = FALSE; // recalibrate (zero the delta)
     return TRUE;
 #elif defined(RW_D3D9)
     if (s_hwnd == nullptr) {
         return FALSE;
     }
     if (capture == TRUE) {
-        // imleci istemci dikdörtgenine kıs (GL3 CURSOR_DISABLED karşılığı)
+        // clip the cursor to the client rectangle (counterpart of GL3 CURSOR_DISABLED)
         RECT rc;
         GetClientRect(s_hwnd, &rc);
         POINT tl = {rc.left, rc.top};
@@ -245,7 +245,7 @@ RwBool RwPlatformSetMouseCapture(RwBool capture) {
     } else {
         ClipCursor(nullptr);
     }
-    s_mouseCalibrated = FALSE; // yeniden kalibre (delta sıfırla)
+    s_mouseCalibrated = FALSE; // recalibrate (zero the delta)
     return TRUE;
 #else
     (void)capture;
@@ -267,7 +267,7 @@ RwBool RwPlatformMouseDelta(int *pDX, int *pDY) {
         s_mouseCalibrated = TRUE;
         *pDX = 0;
         *pDY = 0;
-        return FALSE; // ilk kare: sıfır delta
+        return FALSE; // first frame: zero delta
     }
     *pDX = (int)(x - s_lastMouseX);
     *pDY = (int)(y - s_lastMouseY);
@@ -291,7 +291,7 @@ RwBool RwPlatformMouseDelta(int *pDX, int *pDY) {
         s_mouseCalibrated = TRUE;
         *pDX = 0;
         *pDY = 0;
-        return FALSE; // ilk kare: sıfır delta
+        return FALSE; // first frame: zero delta
     }
     *pDX = (int)(x - s_lastMouseX);
     *pDY = (int)(y - s_lastMouseY);
@@ -332,18 +332,18 @@ RwBool RwEngineTerm(void) {
 RwBool RwEngineIsRunning(void) { return s_engineRunning; }
 
 RwBool RwEngineSetConfig(const RwEngineConfig *pConfig) {
-    // librw'de near/fog globali yok — startup değerleri ({1e-5,1e-5,0.01f})
-    // ileride camera kurulumuna taşınacak (belgeli no-op).
+    // librw has no near/fog globals — startup values ({1e-5,1e-5,0.01f})
+    // will be moved to the camera setup later (documented no-op).
     (void)pConfig;
     return TRUE;
 }
 
 // ---------------------------------------------------------------------------
-// Akışlar — rw::StreamFile
+// Streams — rw::StreamFile
 // ---------------------------------------------------------------------------
 RwStream *RwStreamOpen(RwInt32 type, RwInt32 accessType, const void *pData) {
     if (type != rwSTREAMFILENAME || !pData) {
-        return 0; // yalnız dosya yolu (rwSTREAMMEMORY henüz kullanılmıyor)
+        return 0; // file path only (rwSTREAMMEMORY not used yet)
     }
     ShimStream *p = new ShimStream();
     const char *pMode = (accessType == rwSTREAMREAD) ? "rb" : "wb";
@@ -443,12 +443,12 @@ RwBool RwStreamReadChunkHeaderInfo(RwStream *stream,
     chunkHeader->length = header.length;
     chunkHeader->version = header.version;
     chunkHeader->buildVersion = header.build;
-    chunkHeader->isComplex = FALSE; // librw alan yok
+    chunkHeader->isComplex = FALSE; // librw has no field for this
     return TRUE;
 }
 
 // ---------------------------------------------------------------------------
-// Varlık okuma — clump/txd (world: librw'de yok — stub)
+// Asset reading — clump/txd (world: not in librw — stub)
 // ---------------------------------------------------------------------------
 RpClump *RpClumpStreamRead(RwStream *stream) {
     if (!stream) {

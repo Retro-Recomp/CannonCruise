@@ -48,7 +48,7 @@ CTowerCatapult::~CTowerCatapult() {
     sm_nTowersAddedToWorlds--;
   }
 
-  // Bullet dünyasından ve belleğinden çıkar
+  // Remove from the Bullet world and free from memory
   RemoveFromWorld();
   if (m_pShape) {
     PhysicsShape_Destroy(m_pShape);
@@ -71,17 +71,17 @@ CTowerCatapult::~CTowerCatapult() {
 void CTowerCatapult::HandleEvents(const RWS::CMsg &msg) {}
 
 // ---------------------------------------------------------------------------
-// SetWorldPosition – RWS clump yerine Bullet kinematic/static box oluşturur
+// SetWorldPosition – creates a Bullet kinematic/static box instead of an RWS clump
 // Tower the collision body so cannnonball's flight + bullet step can hit it.
 // ---------------------------------------------------------------------------
 void CTowerCatapult::SetWorldPosition(const RwV3d &pos) {
-  // Kule boyutları — 16×36×16 m (bayrak-gözcü kule)
+  // Tower dimensions — 16×36×16 m (flag watchtower)
   const RwReal halfExtents[3] = {8.0f, 18.0f, 8.0f};
   if (m_pShape == nullptr) {
     m_pShape = PhysicsShape_CreateBox(halfExtents);
   }
   if (m_pRigidBody == nullptr && m_pShape != nullptr) {
-    const RwReal p[3] = {pos.x, pos.y + 18.0f, pos.z}; // base-height center'e oturt
+    const RwReal p[3] = {pos.x, pos.y + 18.0f, pos.z}; // place at the base-height center
     m_pRigidBody = PhysicsBody_CreateWithShape(m_pShape, 0.0f, p, nullptr);
     if (m_pRigidBody != nullptr) {
       PhysicsBody_SetKinematic(m_pRigidBody, TRUE);

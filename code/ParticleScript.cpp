@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Particle Script Controller (ParticleScript.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ParticleScript.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00454d30 — CParticleScript::Deinitialize
 // ============================================================================
 
@@ -35,7 +35,7 @@ void CParticleScript::TriggerEffect(const char* pEffectName, const RwV3d* pPos)
 {
     if (!pEffectName || !pPos) return;
 
-    // Belirli bir parçacık şablonunu tetikle
+    // Trigger a specific particle template
 }
 
 void CParticleScript::Update(RwReal deltaTime)

@@ -32,7 +32,7 @@ RwBool ReadU16(Cursor *pCur, RwUInt16 *pOut) {
     return TRUE;
 }
 
-// [id][len][ver] başlığı; ver != 0x1803FFFF veya taşma ise FALSE
+// [id][len][ver] header; if ver != 0x1803FFFF or overflow, FALSE
 RwBool ReadChunkHeader(Cursor *pCur, RwUInt32 *pId, RwUInt32 *pLen) {
     RwUInt32 ver = 0;
     if (!ReadU32(pCur, pId) || !ReadU32(pCur, pLen) || !ReadU32(pCur, &ver)) {
@@ -50,7 +50,7 @@ void SkipAlign4(Cursor *pCur) {
     }
 }
 
-// String chunk gövdesi: NUL sonlu, kalan bayt 0/0xBF pad — NUL'a kadar kopya
+// String chunk body: NUL-terminated, remaining bytes 0/0xBF pad — copied up to NUL
 void ReadPaddedString(const RwUInt8 *pBody, RwUInt32 bodyLen, RwChar *pOut,
                       RwUInt32 maxOut) {
     RwUInt32 n = 0;
@@ -81,12 +81,12 @@ RwBool RwTxdDecodeImage(const RwUInt8 *pPayload, RwUInt32 len,
         }
         RwTxdTexture *pTex = &pOut->textures[pOut->count];
 
-        // ---- texture başına flag ----
+        // ---- per-texture flag ----
         RwUInt32 texFlag = 0;
         if (!ReadU32(&cur, &texFlag)) {
             return FALSE;
         }
-        (void)texFlag; // anlamı bilinmiyor (dosyada 1)
+        (void)texFlag; // meaning unknown (1 in file)
 
         // ---- 0x18 raster ----
         RwUInt32 id = 0, clen = 0;
@@ -142,7 +142,7 @@ RwBool RwTxdDecodeImage(const RwUInt8 *pPayload, RwUInt32 len,
             }
             ReadPaddedString(body.pData + body.pos, nlen, pTex->maskName,
                              rwtxdMAX_NAME);
-            // gövde kuyruğu: [id=3][0][ver] terminator — kapalı alan atlanır
+            // body tail: [id=3][0][ver] terminator — the enclosed area is skipped
         }
         cur.pos += clen;
         SkipAlign4(&cur);
@@ -153,13 +153,13 @@ RwBool RwTxdDecodeImage(const RwUInt8 *pPayload, RwUInt32 len,
 
 namespace {
 
-// 2'nin kuvveti doku boyutu mu (8..512)?
+// Is the texture size a power of 2 (8..512)?
 bool IsPow2Size(RwUInt32 v) {
     return v == 8 || v == 16 || v == 32 || v == 64 || v == 128 ||
            v == 256 || v == 512;
 }
 
-// Yazdırılabilir doku adı mı ([A-Za-z][A-Za-z0-9_]{1,..}, NUL sonlu)?
+// Printable texture name? ([A-Za-z][A-Za-z0-9_]{1,..}, NUL-terminated)
 bool ValidLevelName(const RwUInt8 *p, RwUInt32 len) {
     if (len == 0 || len > 48) {
         return false;
@@ -190,7 +190,7 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
         return FALSE;
     }
     std::memset(pOut, 0, sizeof(*pOut));
-    // İsim kaydı imzası: 06 11 00 00 02 00 00 00 len(<=48) libid
+    // Name record signature: 06 11 00 00 02 00 00 00 len(<=48) libid
     static const RwUInt8 kSig[8] = {0x06, 0x11, 0x00, 0x00,
                                     0x02, 0x00, 0x00, 0x00};
     static const RwUInt8 kLib[4] = {0xFF, 0xFF, 0x03, 0x18};
@@ -213,7 +213,7 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
         if (!ValidLevelName(np, nlen)) {
             continue;
         }
-        // Boyut kaydı: 30KB pencerede ilk geçerli dims imzası.
+        // Dimensions record: first valid dims signature in the 30KB window.
         RwUInt32 base = o + 16 + nlen;
         for (RwUInt32 q = base; q + 28 < len && q < base + 30000; ++q) {
             if (std::memcmp(pData + q, kDims, 12) != 0) {
@@ -252,8 +252,132 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
             t->pPixels = pData + px;
             t->pixelBytes = pi * h;
             ++pOut->count;
-            break; // bu isim için ilk geçerli dims
+            break; // first valid dims for this name
         }
+    }
+    pOut->textureCount = (RwUInt16)pOut->count;
+    return (pOut->count > 0) ? TRUE : FALSE;
+}
+
+// ---------------------------------------------------------------------------
+// Embedded UI texture pack (d3d8-IMAGE nested; end of level chunk0)
+// ---------------------------------------------------------------------------
+namespace {
+
+bool GuiIsVer(const RwUInt8 *p) {
+    return p[0] == 0xFF && p[1] == 0xFF && p[2] == 0x03 && p[3] == 0x18;
+}
+RwUInt32 GuiU32(const RwUInt8 *p) {
+    RwUInt32 v = 0;
+    std::memcpy(&v, p, 4);
+    return v;
+}
+bool GuiIsNamePrefix(const RwChar *name) {
+    return std::strncmp(name, "GUI_", 4) == 0 ||
+           std::strncmp(name, "compass_", 8) == 0 ||
+           std::strncmp(name, "fishbasic", 9) == 0;
+}
+
+} // namespace
+
+RwBool RwTxdDecodeGuiPack(const RwUInt8 *pData, RwUInt32 len,
+                          RwTxdImage *pOut) {
+    if (!pData || !pOut || len < 64) {
+        return FALSE;
+    }
+    std::memset(pOut, 0, sizeof(*pOut));
+    for (RwUInt32 o = 0; o + 24 < len; ++o) {
+        // [id=6][len][ver][id=1][len=4][ver] filter
+        if (GuiU32(pData + o) != 6 || !GuiIsVer(pData + o + 8)) {
+            continue;
+        }
+        const RwUInt32 slen = GuiU32(pData + o + 4);
+        if (slen == 0 || slen > 4096 || o + 12 + slen > len) {
+            continue;
+        }
+        if (GuiU32(pData + o + 12) != 1 || GuiU32(pData + o + 16) != 4 ||
+            !GuiIsVer(pData + o + 20)) {
+            continue;
+        }
+        RwUInt32 p = o + 12;
+        const RwUInt32 contentEnd = o + 12 + slen;
+        p += 16; // id=1 filter chunk (12 + 4)
+        // [id=2][nlen][ver] name
+        if (p + 12 > len || GuiU32(pData + p) != 2) {
+            continue;
+        }
+        const RwUInt32 nlen = GuiU32(pData + p + 4);
+        if (nlen == 0 || nlen > (RwUInt32)rwtxdMAX_NAME - 1 ||
+            !GuiIsVer(pData + p + 8)) {
+            continue;
+        }
+        p += 12;
+        RwChar name[rwtxdMAX_NAME];
+        std::memcpy(name, pData + p, nlen);
+        name[nlen] = '\0';
+        bool nameOk = (nlen >= 4);
+        for (RwUInt32 i = 0; i < nlen && nameOk; ++i) {
+            if (name[i] != 0 && (name[i] < 32 || name[i] > 126)) {
+                nameOk = false;
+            }
+        }
+        if (!nameOk || !GuiIsNamePrefix(name)) {
+            continue;
+        }
+        p += nlen;
+        // [id=2][mlen][ver] mask
+        if (p + 12 > len || GuiU32(pData + p) != 2 ||
+            !GuiIsVer(pData + p + 8)) {
+            continue;
+        }
+        const RwUInt32 mlen = GuiU32(pData + p + 4);
+        if (p + 12 + mlen > len) {
+            continue;
+        }
+        p += 12 + mlen;
+        // [id=3][0][ver] terminator
+        if (p + 12 > len || GuiU32(pData + p) != 3 ||
+            GuiU32(pData + p + 4) != 0 || !GuiIsVer(pData + p + 8)) {
+            continue;
+        }
+        p = contentEnd; // align to the struct tail
+        // optional [u32 flag] (right before the first raster)
+        if (p + 36 <= len && GuiU32(pData + p) != 0x18 &&
+            GuiU32(pData + p + 4) == 0x18 && GuiIsVer(pData + p + 12)) {
+            p += 4;
+        }
+        // raster chain: the first valid mip is the main texture
+        if (p + 40 > len || GuiU32(pData + p) != 0x18 ||
+            !GuiIsVer(pData + p + 8)) {
+            continue;
+        }
+        if (GuiU32(pData + p + 12) != 1 || GuiU32(pData + p + 16) != 0x10 ||
+            !GuiIsVer(pData + p + 20)) {
+            continue;
+        }
+        const RwUInt32 w = GuiU32(pData + p + 24);
+        const RwUInt32 h = GuiU32(pData + p + 28);
+        const RwUInt32 depth = GuiU32(pData + p + 32);
+        const RwUInt32 pitch = GuiU32(pData + p + 36);
+        if (w == 0 || h == 0 || w > 512 || h > 512 || depth != 32 ||
+            pitch < w * 4 || pitch > w * 4 + 64 ||
+            p + 40 + pitch * h > len) {
+            continue;
+        }
+        if (pOut->count >= rwtxdMAX_TEXTURES) {
+            break;
+        }
+        RwTxdTexture *t = &pOut->textures[pOut->count];
+        std::memcpy(t->name, name, nlen + 1);
+        t->maskName[0] = '\0';
+        t->filterFlags = 0;
+        t->width = w;
+        t->height = h;
+        t->depth = depth;
+        t->pitch = pitch;
+        t->pPixels = pData + p + 40;
+        t->pixelBytes = pitch * h;
+        ++pOut->count;
     }
     pOut->textureCount = (RwUInt16)pOut->count;
     return (pOut->count > 0) ? TRUE : FALSE;

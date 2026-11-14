@@ -30,17 +30,17 @@
         }                                                                    \
     } while (0)
 
-// rwstubs.cpp çizim sayaçları — DrawText batch flush doğrulaması
+// rwstubs.cpp draw counters — DrawText batch flush verification
 RwUInt32 RwStub_GetIm2DRenderCount(void);
 RwUInt32 RwStub_GetIm2DIndexedCount(void);
 void RwStub_ResetIm2DRenderCount(void);
 
 namespace
 {
-    // Sahte doku okuyucu — binary doku raster boyutlarını UV için okur
-    // (sub_5154D0); testler boyutları doğrudan verir. DrawText
-    // RwTextureGetRaster çağırdığı için gerçek (ama boş) bir RwTexture
-    // tahsis edilir — sabit sahte adres dereference edilemezdi.
+    // Fake texture reader — binary reads raster dimensions for UV
+    // (sub_5154D0); tests pass dimensions directly. Since DrawText
+    // calls RwTextureGetRaster, a real (but empty) RwTexture
+    // is allocated — a fixed fake address could not be dereferenced.
     bool g_texFail = false;
     int g_texCalls = 0;
     char g_lastName[128] = {0};
@@ -85,26 +85,26 @@ int main() {
     mkdir("fonts", 0755);
 #endif
 
-    // Test .met dosyaları
+    // Test .met files
     CHECK(WriteFile("fonts/CCF_T1.met",
-                    "METRICS1\r\n" // CRLF — StripNewline doğrulaması
+                    "METRICS1\r\n" // CRLF — StripNewline verification
                     "CCF_T1\r\n"
                     "16\r\n"
                     "65 0 0 8 16\r\n"    // 'A'
                     "66 8 0 16 16\r\n"   // 'B'
-                    "178 16 0 24 16\r\n" // 0xB2 — genişletilmiş
-                    "400 0 16 8 32\r\n")); // 0x190 — genişletilmiş (son satır)
+                    "178 16 0 24 16\r\n" // 0xB2 — extended
+                    "400 0 16 8 32\r\n")); // 0x190 — extended (last line)
     CHECK(WriteFile("fonts/CCF_T2.met",
                     "METRICS1\nCCF_T2\n8\n65 0 0 4 8\n"));
     CHECK(WriteFile("fonts/CCF_T3.met",
                     "METRICS1\nCCF_T3 mymask\n8\n65 0 0 4 8\n"));
     CHECK(WriteFile("fonts/CCF_T4.met",
                     "METRICS1\nCCF_T4\n8\n65 0 0 4 8\n"));
-    CHECK(WriteFile("fonts/mCCF_T4", "")); // maske yoklama dosyası
+    CHECK(WriteFile("fonts/mCCF_T4", "")); // mask probe file
     CHECK(WriteFile("fonts/CCF_M2.met", "METRICS2\nCCF_M2\n8\n"));
-    // METRICS3 — vektör konturlar + UTF-8 glif kodu ('é' = U+00E9 →
-    // geniş tablo + UTF-16LE modu). Biçim: '<önek><UTF-8 kod>' kod satırı
-    // (binary sub_4CE870 buf[1]'den okur — önek yok sayılır).
+    // METRICS3 — vector contours + UTF-8 glyph code ('é' = U+00E9 →
+    // wide table + UTF-16LE mode). Format: '<prefix><UTF-8 code>' code line
+    // (binary reads from buf[1] in sub_4CE870 — prefix ignored).
     CHECK(WriteFile("fonts/CCF_V3.met",
                     "METRICS3\n"
                     "CCF_V3\n"
@@ -125,7 +125,7 @@ int main() {
     FontSystem_SetTextureReader(&FakeTextureReader);
 
     // ------------------------------------------------------------------
-    // init — sub_4CD660 çeyrek-dörtgen tablosu
+    // init — sub_4CD660 quarter-quad table
     // ------------------------------------------------------------------
     CHECK(FontSystemAllocBuffers()); // sub_4CEFD0
     CHECK(FontSystemInit());         // sub_4CD660
@@ -138,20 +138,20 @@ int main() {
     CHECK(quad[63][0] == 252 && quad[63][2] == 255 && quad[63][5] == 253);
 
     // ------------------------------------------------------------------
-    // METRICS1 ayrıştırma — sub_4CDBC0
+    // METRICS1 parsing — sub_4CDBC0
     // ------------------------------------------------------------------
     g_texCalls = 0;
     CCFont *pFont = FontSystemLoad("CCF_T1");
     CHECK(pFont != 0);
     CHECK(g_texCalls == 1);
     CHECK(std::strcmp(g_lastName, "CCF_T1") == 0);
-    CHECK(g_lastMaskNull); // tek token, maske yoklama dosyası henüz yok
+    CHECK(g_lastMaskNull); // single token, mask probe file does not exist yet
     CHECK(pFont->glyphCount == 4);
     CHECK(pFont->textures[0] == g_lastTex);
-    CHECK(Near(pFont->lineExtent, 16.0f)); // son satır: alt-üst = 32-16
-    CHECK(Near(pFont->sizeScale, 1.0f));   // boyut 16 / 16
+    CHECK(Near(pFont->lineExtent, 16.0f)); // last line: bottom-top = 32-16
+    CHECK(Near(pFont->sizeScale, 1.0f));   // size 16 / 16
 
-    // UV: (piksel + 0.5) / doku boyutu (256×128)
+    // UV: (pixel + 0.5) / texture size (256×128)
     const CCFontGlyph *pGlyph = FontSystemGetGlyph(pFont, 65); // 'A'
     CHECK(pGlyph != 0);
     CHECK(Near(pGlyph->u0, 0.5f / 256.0f));
@@ -161,14 +161,14 @@ int main() {
     CHECK(Near(pGlyph->aspect, 0.5f)); // (8-0)/(16-0)
     CHECK(pGlyph->texture == g_lastTex);
 
-    // ASCII doğrudan harita: 'B' → glif 1; dosyada olmayan 'Z' → NULL
+    // ASCII direct map: 'B' → glyph 1; 'Z' not in file → NULL
     pGlyph = FontSystemGetGlyph(pFont, 66);
     CHECK(pGlyph != 0 && Near(pGlyph->u0, 8.5f / 256.0f));
     CHECK(FontSystemGetGlyph(pFont, 90) == 0);
     CHECK(pFont->ascii[65] == 0);
     CHECK(pFont->ascii[90] == 0xFFFF);
 
-    // Genişletilmiş harita — sub_4CE000: min=178, aralık=400-178+1
+    // Extended map — sub_4CE000: min=178, range=400-178+1
     CHECK(pFont->extMin == 178);
     CHECK(pFont->extCount == 400 - 178 + 1);
     CHECK(pFont->extTable != 0);
@@ -176,25 +176,25 @@ int main() {
     CHECK(pGlyph != 0 && pFont->extTable[0] == 2);
     pGlyph = FontSystemGetGlyph(pFont, 400);
     CHECK(pGlyph != 0 && pFont->extTable[400 - 178] == 3);
-    CHECK(FontSystemGetGlyph(pFont, 177) == 0); // aralık altı
-    CHECK(FontSystemGetGlyph(pFont, 500) == 0); // aralık üstü
+    CHECK(FontSystemGetGlyph(pFont, 177) == 0); // below range
+    CHECK(FontSystemGetGlyph(pFont, 500) == 0); // above range
     CHECK((pFont->glyphFlags & 2) != 0);        // [esi+0x10] |= 2
 
     // ------------------------------------------------------------------
-    // iki token başlık — (ad, maske) doğrudan sub_5154D0'ye gider
+    // two-token header — (name, mask) passed directly to sub_5154D0
     // ------------------------------------------------------------------
     CCFont *pFont3 = FontSystemLoad("CCF_T3");
     CHECK(pFont3 != 0);
     CHECK(std::strcmp(g_lastName, "CCF_T3") == 0);
     CHECK(!g_lastMaskNull && std::strcmp(g_lastMask, "mymask") == 0);
 
-    // tek token + varlık dosyası → maske "m<ad>" (binary: "%sm%s")
+    // single token + asset file → mask "m<name>" (binary: "%sm%s")
     CCFont *pFont4 = FontSystemLoad("CCF_T4");
     CHECK(pFont4 != 0);
     CHECK(!g_lastMaskNull && std::strcmp(g_lastMask, "mCCF_T4") == 0);
 
     // ------------------------------------------------------------------
-    // ';' yedek zinciri — sub_4CD9A0 aday döngüsü
+    // ';' fallback chain — sub_4CD9A0 candidate loop
     // ------------------------------------------------------------------
     CCFont *pFontFb = FontSystemLoad("CCF_NOPE;CCF_T2");
     CHECK(pFontFb != 0);
@@ -202,31 +202,31 @@ int main() {
     CHECK(FontSystemLoad("CCF_NOPE") == 0);
 
     // ------------------------------------------------------------------
-    // başarısızlıklar: METRICS2 (restor edilmedi) + doku yok
+    // failures: METRICS2 (not restored) + texture missing
     // ------------------------------------------------------------------
     CHECK(FontSystemLoad("CCF_M2") == 0);
     g_texFail = true;
     CHECK(FontSystemLoad("CCF_T1") == 0);
     g_texFail = false;
 
-    FontSystem_SetTextureReader(0); // varsayılan rota: RwTextureRead → NULL
+    FontSystem_SetTextureReader(0); // default route: RwTextureRead → NULL
     CHECK(FontSystemLoad("CCF_T1") == 0);
     FontSystem_SetTextureReader(&FakeTextureReader);
 
     // ------------------------------------------------------------------
-    // ad önbelleği — sub_4CEE90
+    // name cache — sub_4CEE90
     // ------------------------------------------------------------------
     CCFontNode *pNodeA = FontSystemGet("CCF_T1");
     CHECK(pNodeA != 0 && pNodeA->pFont != 0);
     CHECK(pNodeA->pName != 0 && std::strcmp(pNodeA->pName, "CCF_T1") == 0);
     CCFontNode *pNodeB = FontSystemGet("CCF_T1");
-    CHECK(pNodeA == pNodeB); // önbellek isabeti — yeniden yükleme yok
+    CHECK(pNodeA == pNodeB); // cache hit — no reload
     CHECK(FontSystemGet("CCF_YOK") == 0);
 
     // ------------------------------------------------------------------
-    // ölçüm — sub_4CD7E0 (FontSystem_MeasureText)
-    // CCF_T1: 'A'/'B' aspect 0.5, spacing 0; 0xB2/0x190 geniş glifleri
-    // nedeniyle glyphFlags&2 → metinler UTF-16LE (binary sözleşmesi).
+    // measure — sub_4CD7E0 (FontSystem_MeasureText)
+    // CCF_T1: 'A'/'B' aspect 0.5, spacing 0; 0xB2/0x190 wide glyphs
+    // therefore glyphFlags&2 → texts are UTF-16LE (binary contract).
     // ------------------------------------------------------------------
     const char wT1AB[] = {'A', 0, 'B', 0, 0, 0};
     const char wT1Z[] = {'Z', 0, 0, 0};
@@ -235,25 +235,25 @@ int main() {
     const char wT1A[] = {'A', 0, 0, 0};
     CHECK(Near(FontSystem_MeasureText(pFont, wT1AB, 1.0f), 1.0f));
     CHECK(Near(FontSystem_MeasureText(pFont, wT1AB, 16.0f), 16.0f));
-    CHECK(Near(FontSystem_MeasureText(pFont, wT1Z, 16.0f), 0.0f)); // yok sayılan
+    CHECK(Near(FontSystem_MeasureText(pFont, wT1Z, 16.0f), 0.0f)); // glyph ignored
     CHECK(Near(FontSystem_MeasureText(pFont, wT1AZA, 16.0f), 16.0f));
     CHECK(Near(FontSystem_MeasureText(pFont, wT1Empty, 16.0f), 0.0f));
     CHECK(Near(FontSystem_MeasureText(0, wT1A, 16.0f), 0.0f));
 
-    // spacing (font+0x0C) ilerlemeye eklenir — binary fadd [esi+0Ch]
+    // spacing (font+0x0C) is added to the advance — binary fadd [esi+0Ch]
     pFont->spacing = 0.25f;
     CHECK(Near(FontSystem_MeasureText(pFont, wT1AB, 1.0f), 1.5f));
     pFont->spacing = 0.0f;
 
     // ------------------------------------------------------------------
-    // çizim — sub_4CCC40 (FontSystem_DrawText): düz materyal yolu
+    // drawing — sub_4CCC40 (FontSystem_DrawText): plain material path
     // ------------------------------------------------------------------
     RwStub_ResetIm2DRenderCount();
 
     CCFontMaterial mat;
     std::memset(&mat, 0, sizeof(mat));
     mat.red = 200; mat.green = 100; mat.blue = 50; mat.alpha = 255;
-    mat.flags = 0; // düz renk yolu
+    mat.flags = 0; // plain color path
 
     RwReal posX = 100.0f;
     RwReal posY = 200.0f;
@@ -262,37 +262,37 @@ int main() {
     CHECK(Near(advanced, 16.0f));
     CHECK(Near(posX, 116.0f)); // binary: *pPos[0] += pen × scale
     CHECK(Near(posY, 200.0f));
-    CHECK(RwStub_GetIm2DIndexedCount() == 1); // tek doku → tek flush
+    CHECK(RwStub_GetIm2DIndexedCount() == 1); // single texture → single flush
 
     RwInt32 vertCount = 0;
     const RwIm2DVertex *pVerts = FontSystem_GetDrawVertices(&vertCount);
     CHECK(pVerts != 0);
-    CHECK(vertCount == 8); // 2 çeyrek-dörtgen × 4 vertex
+    CHECK(vertCount == 8); // 2 quarter-quads × 4 vertices
 
-    // 'A' quad'ı — birim uzay y ∈ {0,1} × ölçek; aspect 0.5 × 16 = 8 px
-    CHECK(Near(pVerts[0].x, 100.0f)); // V0 sol-üst (y=0)
+    // 'A' quad — unit space y ∈ {0,1} × scale; aspect 0.5 × 16 = 8 px
+    CHECK(Near(pVerts[0].x, 100.0f)); // V0 top-left (y=0)
     CHECK(Near(pVerts[0].y, 200.0f));
     CHECK(Near(pVerts[0].u, 0.5f / 256.0f));   // u0
-    CHECK(Near(pVerts[0].v, 16.5f / 128.0f));  // v1 (alt UV — binary sırası)
-    CHECK(Near(pVerts[1].x, 100.0f)); // V1 sol-alt (y=1)
+    CHECK(Near(pVerts[0].v, 16.5f / 128.0f));  // v1 (bottom UV — binary order)
+    CHECK(Near(pVerts[1].x, 100.0f)); // V1 bottom-left (y=1)
     CHECK(Near(pVerts[1].y, 216.0f));
-    CHECK(Near(pVerts[1].v, 0.5f / 128.0f));   // v0 (üst UV)
-    CHECK(Near(pVerts[2].x, 108.0f)); // V2 sağ-üst — pen + aspect×scale
+    CHECK(Near(pVerts[1].v, 0.5f / 128.0f));   // v0 (top UV)
+    CHECK(Near(pVerts[2].x, 108.0f)); // V2 top-right — pen + aspect×scale
     CHECK(Near(pVerts[2].u, 8.5f / 256.0f));  // u1
     CHECK(Near(pVerts[3].x, 108.0f));
     CHECK(Near(pVerts[3].y, 216.0f));
 
-    // düz renk — materyal baytları
+    // plain color — material bytes
     CHECK(pVerts[0].color.red == 200 && pVerts[0].color.green == 100 &&
           pVerts[0].color.blue == 50 && pVerts[0].color.alpha == 255);
     CHECK(pVerts[3].color.red == 200);
 
-    // 'B' quad'ı — pen ilerlemesi (aspect 0.5 × 16 = 8)
+    // 'B' quad — pen advance (aspect 0.5 × 16 = 8)
     CHECK(Near(pVerts[4].x, 108.0f));
     CHECK(Near(pVerts[6].x, 116.0f));
 
     // ------------------------------------------------------------------
-    // çizim — materyal NULL → düz beyaz (port varsayılanı)
+    // drawing — material NULL → plain white (port default)
     // ------------------------------------------------------------------
     posX = 0.0f; posY = 0.0f;
     advanced = FontSystem_DrawText(pFont, wT1A, 1.0f, &posX, &posY, 0);
@@ -302,8 +302,8 @@ int main() {
     CHECK(pVerts[0].color.red == 255 && pVerts[0].color.alpha == 255);
 
     // ------------------------------------------------------------------
-    // çizim — aydınlatma/degrade yolu (materyal +0x64 & 1)
-    // genlik: invW = 1/measure(text,1.0) = 1/1.0 = 1
+    // drawing — lighting/gradient path (material +0x64 & 1)
+    // width: invW = 1/measure(text,1.0) = 1/1.0 = 1
     // 'A': gradL = 0, gradR = 0.5 → V0/V1 = ambient, V2/V3 = ambient+light×0.5
     // ------------------------------------------------------------------
     CCFontMaterial litMat;
@@ -325,24 +325,24 @@ int main() {
     CHECK(Near(advanced, 1.0f));
     pVerts = FontSystem_GetDrawVertices(&vertCount);
     CHECK(vertCount == 8);
-    // V0 (taban, gradL=0): ambient (1,2,3,4)
+    // V0 (bottom, gradL=0): ambient (1,2,3,4)
     CHECK(pVerts[0].color.red == 1 && pVerts[0].color.green == 2 &&
           pVerts[0].color.blue == 3 && pVerts[0].color.alpha == 4);
-    // V1 (tepe, gradL=0): topAmbient (10,20,30,40)
+    // V1 (top, gradL=0): topAmbient (10,20,30,40)
     CHECK(pVerts[1].color.red == 10 && pVerts[1].color.green == 20 &&
           pVerts[1].color.blue == 30 && pVerts[1].color.alpha == 40);
-    // V2 (taban, gradR=0.5): 1 + 200×0.5 = 101
+    // V2 (bottom, gradR=0.5): 1 + 200×0.5 = 101
     CHECK(pVerts[2].color.red == 101 && pVerts[2].color.green == 2);
-    // V3 (tepe, gradR=0.5): 10 + 100×0.5 = 60
+    // V3 (top, gradR=0.5): 10 + 100×0.5 = 60
     CHECK(pVerts[3].color.red == 60 && pVerts[3].color.green == 20);
-    // 'B' V0 (taban, gradL=0.5): 1 + 200×0.5 = 101
+    // 'B' V0 (bottom, gradL=0.5): 1 + 200×0.5 = 101
     CHECK(pVerts[4].color.red == 101);
 
     // ------------------------------------------------------------------
-    // batch taşması — binary flush eşiği 63 çeyrek-dörtgen (ebx > 0x17A)
-    // 70 × 'A' → 63 + 7 = 2 flush (CCF_T1 geniş mod → UTF-16LE dize)
+    // batch overflow — binary flush threshold 63 quarter-quads (ebx > 0x17A)
+    // 70 × 'A' → 63 + 7 = 2 flushes (CCF_T1 wide mode → UTF-16LE string)
     // ------------------------------------------------------------------
-    char longText[142]; // 70 × ('A',0) + 00 00 sonlandırıcı
+    char longText[142]; // 70 × ('A',0) + 00 00 terminator
     for (int i = 0; i < 70; ++i) {
         longText[i * 2] = 'A';
         longText[i * 2 + 1] = 0;
@@ -355,22 +355,22 @@ int main() {
     CHECK(Near(advanced, 70.0f * 0.5f));
     CHECK(RwStub_GetIm2DIndexedCount() == 2); // 63 + 7 quad
     pVerts = FontSystem_GetDrawVertices(&vertCount);
-    CHECK(vertCount == 7 * 4); // son batch
+    CHECK(vertCount == 7 * 4); // last batch
 
     // ------------------------------------------------------------------
-    // METRICS3 vektör konturları — sub_4CE870 + UTF-16LE — glyphFlags&2
+    // METRICS3 vector contours — sub_4CE870 + UTF-16LE — glyphFlags&2
     // ------------------------------------------------------------------
     CCFont *pVec = FontSystemLoad("CCF_V3");
     CHECK(pVec != 0);
     CHECK(pVec->glyphCount == 2);
-    CHECK(pVec->textures[0] == 0);   // vektör fontu — doku yok
-    CHECK((pVec->glyphFlags & 2) != 0); // U+00E9 → geniş tablo + UTF-16
+    CHECK(pVec->textures[0] == 0);   // vector font — no texture
+    CHECK((pVec->glyphFlags & 2) != 0); // U+00E9 → wide table + UTF-16
     CHECK(Near(pVec->spacing, 0.0f));
-    CHECK(Near(pVec->lineExtent, 1.0f)); // M3 lineExtent'i güncellemez
+    CHECK(Near(pVec->lineExtent, 1.0f)); // M3 does not update lineExtent
 
     const CCFontGlyph *pGlyphA = FontSystemGetGlyph(pVec, 'A');
     CHECK(pGlyphA != 0 && pGlyphA->texture == 0 && pGlyphA->data != 0);
-    CHECK(Near(pGlyphA->aspect, 10.0f)); // son lineto x (var_A0)
+    CHECK(Near(pGlyphA->aspect, 10.0f)); // last lineto x (var_A0)
     const CCFontContour *pContA =
         static_cast<const CCFontContour *>(pGlyphA->data);
     CHECK(pContA->pointCount == 3); // moveto + 2×lineto
@@ -382,7 +382,7 @@ int main() {
 
     const CCFontGlyph *pGlyphE9 = FontSystemGetGlyph(pVec, 0xE9);
     CHECK(pGlyphE9 != 0 && pGlyphE9->texture == 0 && pGlyphE9->data != 0);
-    CHECK(Near(pGlyphE9->aspect, 7.0f)); // son lineto x
+    CHECK(Near(pGlyphE9->aspect, 7.0f)); // last lineto x
     const CCFontContour *pContE9 =
         static_cast<const CCFontContour *>(pGlyphE9->data);
     CHECK(pContE9->pointCount == 3); // moveto + curveto + lineto
@@ -392,9 +392,9 @@ int main() {
     CHECK(Near(pContE9->points[1].cx1, 4.0f) && Near(pContE9->points[1].cy1, 6.0f));
     CHECK(Near(pContE9->points[1].cx2, 6.0f) && Near(pContE9->points[1].cy2, 6.0f));
 
-    // UTF-16LE ölçü (geniş mod): {'A',0,'B',0,0,0} — 'B' glifi yok →
-    // atla, 10; {'é',0,0,0} → 7; ölçek 2.0 × ('A'+'é') = 34
-    // NOT: glyphFlags&2 setken çağıran UTF-16LE geçmeli (binary sözleşmesi).
+    // UTF-16LE measure (wide mode): {'A',0,'B',0,0,0} — 'B' glyph missing →
+    // skip, 10; {'é',0,0,0} → 7; scale 2.0 × ('A'+'é') = 34
+    // NOTE: when glyphFlags&2 is set, the caller must pass UTF-16LE (binary contract).
     const char wAB[] = {'A', 0, 'B', 0, 0, 0};
     CHECK(Near(FontSystem_MeasureText(pVec, wAB, 1.0f), 10.0f));
     const char wE9[] = {static_cast<char>(0xE9), 0, 0, 0};
@@ -403,11 +403,11 @@ int main() {
     CHECK(Near(FontSystem_MeasureText(pVec, wAE9, 2.0f), 34.0f));
 
     // ------------------------------------------------------------------
-    // vektör kontur raster — sub_4D54C0 portu
-    // 'A' kapanışlı: seg (0,0)→(10,0) n=(0,-1); (10,0)→(10,12) n=(1,0);
-    // kapanış (10,12)→(0,0) n=(-12,10)/sqrt(244)
-    // toplam = 10 + 12 + sqrt(244); w = strokeWidth (+0x70) = 2
-    // şerit: moveto dejenere çift + 3 segment çifti = 4 çift = 8 vert
+    // vector contour raster — sub_4D54C0 port
+    // 'A' closed: seg (0,0)→(10,0) n=(0,-1); (10,0)→(10,12) n=(1,0);
+    // closing (10,12)→(0,0) n=(-12,10)/sqrt(244)
+    // total = 10 + 12 + sqrt(244); w = strokeWidth (+0x70) = 2
+    // strip: degenerate moveto pair + 3 segment pairs = 4 pairs = 8 verts
     // ------------------------------------------------------------------
     CCFontMaterial strokeMat;
     std::memset(&strokeMat, 0, sizeof(strokeMat));
@@ -421,12 +421,12 @@ int main() {
     RwStub_ResetIm2DRenderCount();
     posX = 0.0f; posY = 0.0f;
     advanced = FontSystem_DrawText(pVec, wA, 1.0f, &posX, &posY, &strokeMat);
-    CHECK(Near(advanced, 10.0f)); // ilerleme (stroke ama ilerleme aynı)
+    CHECK(Near(advanced, 10.0f)); // advance (stroke but advance is the same)
     CHECK(Near(posX, 10.0f));     // inout pen
-    CHECK(RwStub_GetIm2DIndexedCount() == 1); // tek şerit flush
+    CHECK(RwStub_GetIm2DIndexedCount() == 1); // single strip flush
     pVerts = FontSystem_GetDrawVertices(&vertCount);
-    CHECK(vertCount == 8); // 4 çift
-    // P0 moveto — normal 0: A ve B base'de (0,0)
+    CHECK(vertCount == 8); // 4 pairs
+    // P0 moveto — normal 0: A and B on the base (0,0)
     CHECK(Near(pVerts[0].x, 0.0f) && Near(pVerts[0].y, 0.0f));
     CHECK(Near(pVerts[1].x, 0.0f) && Near(pVerts[1].y, 0.0f));
     // P1 base (10,0), n=(0,-1): A = base − n×w = (10, 2); B = (10, −2)
@@ -435,19 +435,19 @@ int main() {
     // P2 base (10,12), n=(1,0): A = (8, 12); B = (12, 12)
     CHECK(Near(pVerts[4].x, 8.0f) && Near(pVerts[4].y, 12.0f));
     CHECK(Near(pVerts[5].x, 12.0f) && Near(pVerts[5].y, 12.0f));
-    // P3 kapanış base (0,0): n = (-12, 10)/sqrt(244)
+    // P3 closing base (0,0): n = (-12, 10)/sqrt(244)
     const float n3x = -12.0f / std::sqrt(244.0f);
     const float n3y = 10.0f / std::sqrt(244.0f);
     CHECK(Near(pVerts[6].x, -n3x * 2.0f));
     CHECK(Near(pVerts[6].y, -n3y * 2.0f));
     CHECK(Near(pVerts[7].x, n3x * 2.0f));
     CHECK(Near(pVerts[7].y, n3y * 2.0f));
-    // düz renk — tüm vertexler (10,20,30,255)
+    // plain color — all vertices (10,20,30,255)
     CHECK(pVerts[0].color.red == 10 && pVerts[0].color.green == 20 &&
           pVerts[0].color.blue == 30 && pVerts[0].color.alpha == 255);
     CHECK(pVerts[7].color.red == 10 && pVerts[7].color.alpha == 255);
 
-    // ölçek + kaydırma: scale=2, pos=(100,50) → P1 A = (120, 54), B = (120, 46)
+    // scale + translation: scale=2, pos=(100,50) → P1 A = (120, 54), B = (120, 46)
     posX = 100.0f; posY = 50.0f;
     FontSystem_DrawText(pVec, wA, 2.0f, &posX, &posY, &strokeMat);
     pVerts = FontSystem_GetDrawVertices(&vertCount);
@@ -455,8 +455,8 @@ int main() {
     CHECK(Near(pVerts[2].x, 120.0f) && Near(pVerts[2].y, 54.0f));
     CHECK(Near(pVerts[3].x, 120.0f) && Near(pVerts[3].y, 46.0f));
 
-    // aydınlatma yolu — grad = acc × (1/total) (var_64 reciprocal);
-    // tepe +0x00/+0x18, taban +0x30/+0x48: P0 grad=0 → (10,..)/(1,..)
+    // lighting path — grad = acc × (1/total) (var_64 reciprocal);
+    // top +0x00/+0x18, bottom +0x30/+0x48: P0 grad=0 → (10,..)/(1,..)
     litMat.strokeWidth = 2.0f;
     posX = 0.0f; posY = 0.0f;
     FontSystem_DrawText(pVec, wA, 1.0f, &posX, &posY, &litMat);
@@ -468,11 +468,11 @@ int main() {
     CHECK(pVerts[0].color.red == 10 && pVerts[1].color.red == 1); // grad 0
     CHECK(pVerts[2].color.red == static_cast<int>(10.0f + 100.0f * grad1));
     CHECK(pVerts[3].color.red == static_cast<int>(1.0f + 200.0f * grad1));
-    // P3 grad≈1 — reciprocal zinciri testte de aynı (bit-level uyum)
+    // P3 grad≈1 — reciprocal chain identical in test (bit-level match)
     CHECK(pVerts[6].color.red == static_cast<int>(10.0f + 100.0f * grad3) &&
           pVerts[7].color.red == static_cast<int>(1.0f + 200.0f * grad3));
 
-    // strokeWidth 0 (materyal NULL) — dejenere çiftler base'de
+    // strokeWidth 0 (material NULL) — degenerate pairs on the base
     posX = 0.0f; posY = 0.0f;
     FontSystem_DrawText(pVec, wA, 1.0f, &posX, &posY, 0);
     pVerts = FontSystem_GetDrawVertices(&vertCount);
@@ -480,7 +480,7 @@ int main() {
     CHECK(Near(pVerts[2].x, 10.0f) && Near(pVerts[2].y, 0.0f));
     CHECK(Near(pVerts[3].x, 10.0f) && Near(pVerts[3].y, 0.0f));
 
-    // 'é' eğri — render'da 8 alt segment + 1 lineto → 10 çift = 20 vert
+    // 'é' curve — 8 sub-segments + 1 lineto at render → 10 pairs = 20 verts
     const char wE9only[] = {static_cast<char>(0xE9), 0, 0, 0};
     RwStub_ResetIm2DRenderCount();
     posX = 0.0f; posY = 0.0f;
@@ -491,15 +491,15 @@ int main() {
     pVerts = FontSystem_GetDrawVertices(&vertCount);
     CHECK(vertCount == 20);
 
-    // iki glif → iki şerit flush ('A' sonra 'é'); ilerleme 17
+    // two glyphs → two strip flushes ('A' then 'é'); advance 17
     RwStub_ResetIm2DRenderCount();
     posX = 0.0f; posY = 0.0f;
     advanced = FontSystem_DrawText(pVec, wAE9, 1.0f, &posX, &posY, &strokeMat);
     CHECK(Near(advanced, 17.0f)); // 10 + 7
     CHECK(Near(posX, 17.0f));     // inout pen
-    CHECK(RwStub_GetIm2DIndexedCount() == 2); // strip başına 1 flush
+    CHECK(RwStub_GetIm2DIndexedCount() == 2); // 1 flush per strip
 
-    // M3 yüklemesi doku okuyucu çağırmaz (vektör — doku çözümü yok)
+    // M3 load does not call the texture reader (vector — no texture resolution)
     const int texCallsBeforeV3 = g_texCalls;
     FontSystemTeardown();
     FontSystemShutdown();
@@ -514,9 +514,9 @@ int main() {
     CHECK(FontSystemInit());
 
     // ------------------------------------------------------------------
-    // stream font yükleyici — sub_4CC690 / sub_4D11D0
-    // Bellek akışı imleci + blob kurucu; iki yol (doku refCount==0,
-    // vektör refCount≠0) + zincir (flags&4) + hata yolları.
+    // stream font loader — sub_4CC690 / sub_4D11D0
+    // Memory stream cursor + blob builder; two paths (texture refCount==0,
+    // vector refCount≠0) + chain (flags&4) + error paths.
     // ------------------------------------------------------------------
     struct MemStream {
         const unsigned char *pData;
@@ -527,8 +527,8 @@ int main() {
         MemStream mem;
         CCFontStream stream;
     };
-    // (impl. aşağıda lambda benzeri statik yerine lokal fonksiyonlar —
-    //  C++14: ana fonksiyon içinde functor kullanılır)
+    // (impl. below: local functions instead of a lambda-like static —
+    //  C++14: a functor is used inside the main function)
     struct MemOps {
         static RwBool Read(CCFontStream *pSelf, void *pBuf, RwInt32 size) {
             MemStream *pM = static_cast<MemStream *>(pSelf->pUser);
@@ -541,7 +541,7 @@ int main() {
         }
         static RwBool ReadExact(CCFontStream *pSelf, void *pBuf,
                                 RwInt32 size) {
-            return Read(pSelf, pBuf, size); // tamamı okunduysa TRUE
+            return Read(pSelf, pBuf, size); // TRUE if everything was read
         }
         static RwBool FindChunk(CCFontStream *pSelf, RwUInt32 type) {
             MemStream *pM = static_cast<MemStream *>(pSelf->pUser);
@@ -557,7 +557,7 @@ int main() {
             return TRUE;
         }
     };
-    // blob kurucu — küçük yardımcı
+    // blob builder — small helper
     struct Blob {
         unsigned char bytes[512];
         size_t len;
@@ -591,12 +591,12 @@ int main() {
         }
     };
 
-    // --- doku yolu (refCount==0): 'A'/'B' iki glif, tek doku ---
+    // --- texture path (refCount==0): 'A'/'B' two glyphs, single texture ---
     g_texFail = false;
     {
         Blob b;
-        b.U32(0x01000000);        // tip etiketi — (>>24) == 1
-        b.U32(0);                 // refCount = 0 → doku yolu
+        b.U32(0x01000000);        // type tag — (>>24) == 1
+        b.U32(0);                 // refCount = 0 → texture path
         b.F32(16.0f);             // lineExtent
         b.F32(1.0f);              // sizeScale
         b.F32(0.5f);              // spacing
@@ -610,17 +610,17 @@ int main() {
             if (i == 66) idx = 1;
             b.Raw(&idx, 2);
         }
-        // glif 0: u0..v1 + aspect + flags
+        // glyph 0: u0..v1 + aspect + flags
         b.F32(0.1f); b.F32(0.2f); b.F32(0.3f); b.F32(0.4f);
         b.F32(0.5f);              // aspect
         unsigned char fl0 = 0;
         b.Raw(&fl0, 1);
-        // glif 1
+        // glyph 1
         b.F32(0.5f); b.F32(0.6f); b.F32(0.7f); b.F32(0.8f);
         b.F32(0.75f);
         b.Raw(&fl0, 1);
         b.U32(1);                 // texCount = 1
-        b.Raw("STREAMT", 7);      // 0x20 ad (NUL dolgulu)
+        b.Raw("STREAMT", 7);      // 0x20 name (NUL padded)
         b.Pad(0x20 - 7);
         CCFont *pSF = b.Load();
         CHECK(pSF != 0);
@@ -639,15 +639,15 @@ int main() {
         CHECK(FontSystemGetGlyph(pSF, 'A') == &pSF->glyphs[0]);
         CHECK(FontSystemGetGlyph(pSF, 'B') == &pSF->glyphs[1]);
         CHECK(FontSystemGetGlyph(pSF, 'C') == 0);
-        // ölçü: (0.5+0.5) + (0.75+0.5) = 2.25
+        // measure: (0.5+0.5) + (0.75+0.5) = 2.25
         CHECK(Near(FontSystem_MeasureText(pSF, "AB", 1.0f), 2.25f));
     }
 
-    // --- vektör yolu (refCount≠0): type-5 kapalı kontur + çizim ---
+    // --- vector path (refCount≠0): type-5 closed contour + drawing ---
     {
         Blob b;
         b.U32(0x01000000);
-        b.U32(1);                 // refCount = 1 → vektör yolu
+        b.U32(1);                 // refCount = 1 → vector path
         b.F32(1.0f);              // lineExtent
         b.F32(0.0f);              // sizeScale
         b.F32(0.0f);              // spacing
@@ -656,26 +656,26 @@ int main() {
         b.U32(1);                 // glyphCount
         b.U32(1);                 // extCount
         RwUInt16 ext0 = 0;
-        b.Raw(&ext0, 2);          // extTable[0] = glif 0
-        for (int i = 0; i < 128; ++i) { // ascii: hepsi boş
+        b.Raw(&ext0, 2);          // extTable[0] = glyph 0
+        for (int i = 0; i < 128; ++i) { // ascii: all empty
             RwUInt16 idx = 0xFFFF;
             b.Raw(&idx, 2);
         }
-        b.U32(0);                 // atık (binary arg_0)
+        b.U32(0);                 // padding (binary arg_0)
         b.F32(10.0f);             // aspect
-        b.U32(5);                 // tip 5 → kontur
-        b.U32(0x1A1);             // findChunk(0x1A1) işareti
-        // kontur başlığı: sürüm 1, 3 kayıt, flags = bit1 (closed)
+        b.U32(5);                 // type 5 → contour
+        b.U32(0x1A1);             // findChunk(0x1A1) marker
+        // contour header: version 1, 3 records, flags = bit1 (closed)
         b.U32(1); b.U32(3); b.U32(2); b.U32(0);
-        // kayıtlar 0x18: type/x/y/nx/ny/acc
+        // records 0x18: type/x/y/nx/ny/acc
         b.U32(0); b.F32(0.0f); b.F32(0.0f);
         b.F32(0.0f); b.F32(0.0f); b.F32(0.0f);
         b.U32(1); b.F32(10.0f); b.F32(0.0f);
         b.F32(0.0f); b.F32(-1.0f); b.F32(10.0f);
         b.U32(1); b.F32(10.0f); b.F32(12.0f);
         b.F32(1.0f); b.F32(0.0f); b.F32(22.0f);
-        b.U32(0);                 // post-kontur atık
-        b.U32(0);                 // ortak atık (loc_4CC939)
+        b.U32(0);                 // post-contour padding
+        b.U32(0);                 // common padding (loc_4CC939)
         CCFont *pVS = b.Load();
         CHECK(pVS != 0);
         CHECK(pVS->refCount == 1 && pVS->glyphCount == 1);
@@ -691,7 +691,7 @@ int main() {
         CHECK(pSC->points[0].type == 0 && Near(pSC->points[0].x, 0.0f));
         CHECK(pSC->points[1].type == 1 && Near(pSC->points[1].x, 10.0f));
         CHECK(pSC->points[2].type == 1 && Near(pSC->points[2].y, 12.0f));
-        // çizim — CCF_V3 'A' ile aynı geometri (8 vert, 1 flush)
+        // drawing — same geometry as CCF_V3 'A' (8 verts, 1 flush)
         strokeMat.strokeWidth = 2.0f;
         RwStub_ResetIm2DRenderCount();
         posX = 0.0f; posY = 0.0f;
@@ -704,36 +704,36 @@ int main() {
         CHECK(Near(pVerts[2].x, 10.0f) && Near(pVerts[2].y, 2.0f));
     }
 
-    // --- zincir (flags&4): head (tek moveto) + child (moveto+lineto) ---
+    // --- chain (flags&4): head (single moveto) + child (moveto+lineto) ---
     {
         Blob b;
         b.U32(0x01000000);
-        b.U32(1);                 // vektör yolu
+        b.U32(1);                 // vector path
         b.F32(1.0f); b.F32(0.0f); b.F32(0.0f);
         b.U32(0); b.U32(0);       // glyphFlags, extMin
         b.U32(1); b.U32(0);       // glyphCount, extCount
         for (int i = 0; i < 128; ++i) {
             RwUInt16 idx = 0xFFFF;
-            if (i == 65) idx = 0; // 'A' → glif 0
+            if (i == 65) idx = 0; // 'A' → glyph 0
             b.Raw(&idx, 2);
         }
-        b.U32(0);                 // atık
+        b.U32(0);                 // padding
         b.F32(1.0f);              // aspect
-        b.U32(5);                 // tip 5
+        b.U32(5);                 // type 5
         b.U32(0x1A1);
-        // head: 1 kayıt, flags = bit1|bit4 (closed + zincir)
+        // head: 1 record, flags = bit1|bit4 (closed + chain)
         b.U32(1); b.U32(1); b.U32(6); b.U32(0);
         b.U32(0); b.F32(5.0f); b.F32(7.0f);
         b.F32(0.0f); b.F32(0.0f); b.F32(0.0f);
-        b.U32(0x1A1);             // child chunk işareti
-        // child: 2 kayıt, closed
+        b.U32(0x1A1);             // child chunk marker
+        // child: 2 records, closed
         b.U32(1); b.U32(2); b.U32(2); b.U32(0);
         b.U32(0); b.F32(0.0f); b.F32(0.0f);
         b.F32(0.0f); b.F32(0.0f); b.F32(0.0f);
         b.U32(1); b.F32(3.0f); b.F32(4.0f);
         b.F32(0.0f); b.F32(0.0f); b.F32(5.0f);
-        b.U32(0);                 // post-kontur atık
-        b.U32(0);                 // ortak atık
+        b.U32(0);                 // post-contour padding
+        b.U32(0);                 // common padding
         CCFont *pCS = b.Load();
         CHECK(pCS != 0 && pCS->glyphCount == 1);
         const CCFontContour *pHead =
@@ -745,8 +745,8 @@ int main() {
         CHECK(pChild->pNext == 0);
         CHECK(Near(pChild->points[1].x, 3.0f) &&
               Near(pChild->points[1].y, 4.0f));
-        // çizim: head tek moveto (segment yok → flush yok), child
-        // moveto + lineto + kapanış → 3 çift = 6 vert, 1 flush
+        // drawing: head single moveto (no segment → no flush), child
+        // moveto + lineto + closing → 3 pairs = 6 verts, 1 flush
         RwStub_ResetIm2DRenderCount();
         const char wChainA[] = {'A', 0, 0, 0};
         posX = 0.0f; posY = 0.0f;
@@ -756,15 +756,15 @@ int main() {
         CHECK(vertCount == 6);
     }
 
-    // --- hata yolları ---
+    // --- error paths ---
     {
-        Blob bad;                 // tip baytı 0 → fail
+        Blob bad;                 // type byte 0 → fail
         bad.U32(0x00000000);
         CHECK(bad.Load() == 0);
-        Blob trunc;               // etiket sonrası kesik
+        Blob trunc;               // truncated after the tag
         trunc.U32(0x01000000);
         CHECK(trunc.Load() == 0);
-        Blob badVer;              // vektür kontur sürüm 2 → fail
+        Blob badVer;              // vector contour version 2 → fail
         badVer.U32(0x01000000);
         badVer.U32(1); badVer.F32(1.0f); badVer.F32(0.0f); badVer.F32(0.0f);
         badVer.U32(0); badVer.U32(0); badVer.U32(1); badVer.U32(0);
@@ -774,10 +774,10 @@ int main() {
         }
         badVer.U32(0); badVer.F32(1.0f); badVer.U32(5);
         badVer.U32(0x1A1);
-        badVer.U32(2);            // sürüm ≠ 1
+        badVer.U32(2);            // version ≠ 1
         badVer.U32(1); badVer.U32(0); badVer.U32(0);
         CHECK(badVer.Load() == 0);
-        Blob noChunk;             // type-5 ama findChunk başarısız
+        Blob noChunk;             // type-5 but findChunk fails
         noChunk.U32(0x01000000);
         noChunk.U32(1); noChunk.F32(1.0f); noChunk.F32(0.0f);
         noChunk.F32(0.0f); noChunk.U32(0); noChunk.U32(0);
@@ -787,10 +787,10 @@ int main() {
             noChunk.Raw(&idx, 2);
         }
         noChunk.U32(0); noChunk.F32(1.0f); noChunk.U32(5);
-        // 0x1A1 işareti YOK
+        // 0x1A1 marker MISSING
         noChunk.U32(0);
         CHECK(noChunk.Load() == 0);
-        // doku yolu: okuyucu fail
+        // texture path: reader fails
         Blob texFail;
         texFail.U32(0x01000000);
         texFail.U32(0); texFail.F32(16.0f); texFail.F32(1.0f);
@@ -814,7 +814,7 @@ int main() {
     }
 
     // ------------------------------------------------------------------
-    // ömür döngüsü — sub_4CD580 / sub_4CEF90 ve yeniden başlatma
+    // lifecycle — sub_4CD580 / sub_4CEF90 and restart
     // ------------------------------------------------------------------
     FontSystemTeardown(); // sub_4CD580 (__ioterm+62)
     FontSystemShutdown(); // sub_4CEF90 (__ioterm+67)

@@ -1,9 +1,9 @@
 ﻿// ============================================================================
 // CannonCruise - Player Ship Input Proxy (ShipPlayerInputProxy.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ShipPlayerInputProxy.cpp
-// Tersine mÃ¼hendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazÄ±lmÄ±ÅŸtÄ±r.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary FonksiyonlarÄ±:
+// Binary Functions:
 //   FUN_004ae6c0 â€” CShipPlayer registration & setup
 //   FUN_004b2fe0 â€” CShipPlayerInputProxy::Update
 // ============================================================================

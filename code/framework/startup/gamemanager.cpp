@@ -1,15 +1,15 @@
 // ============================================================================
 // CannonCruise - GameManager bootstrap (gamemanager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\startup\gamemanager.cpp
-// Tersine mühendislik ile CC_ida.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with CC_ida.asm.
 //
-// Binary Fonksiyonları:
-//   FUN_0044aaf0 — GameManagerInit   (startup init zinciri, "Adım 15")
-//   FUN_0044aba0 — GameManagerShutdown (startup shutdown zinciri, +24)
-//   sub_449d30   — GameManager giriş tablosu (serbest liste) kurulumu
+// Binary Functions:
+//   FUN_0044aaf0 — GameManagerInit   (startup init chain, "Step 15")
+//   FUN_0044aba0 — GameManagerShutdown (startup shutdown chain, +24)
+//   sub_449d30   — GameManager entry table (free list) setup
 //
-// Not: Dosya bağlamı yalnızca startup.cpp'deki çağrıdan biliniyor;
-//      binary'de bu fonksiyonlara ait assert path string'i yoktur.
+// Note: The file's context is only known from the call in startup.cpp;
+//      the binary has no assert path string for these functions.
 // ============================================================================
 
 #include "rwcore.h"
@@ -17,27 +17,27 @@
 
 namespace
 {
-    // GameManager giriş kaydı — 12 (0x0C) bayt (binary: sub_4053F0(0Ch, 2))
-    //   [+0x00] serbest liste başlangıç imleci (sub_449D30 tarafından yazılır)
-    //   [+0x04] giriş sayısı (binary: 0x2710 = 10000)
-    //   [+0x08] giriş tablosu (binary: 0x1D4C0 = 10000 * 12 bayt)
+    // GameManager entry record — 12 (0x0C) bytes (binary: sub_4053F0(0Ch, 2))
+    //   [+0x00] free list initial cursor (written by sub_449D30)
+    //   [+0x04] entry count (binary: 0x2710 = 10000)
+    //   [+0x08] entry table (binary: 0x1D4C0 = 10000 * 12 bytes)
     struct GameManagerEntry
     {
-        void*    pCursor;   // +0x00 — serbest liste imleci (tabloya işaret)
+        void*    pCursor;   // +0x00 — free list cursor (points to the table)
         RwUInt32 entryCount;// +0x04
         void*    pEntries;  // +0x08
     };
 
-    // dword_636878 — GameManager tekil örnek
+    // dword_636878 — GameManager singleton instance
     GameManagerEntry* s_pGameManager = 0;
 }
 
 // ---------------------------------------------------------------------------
-// GameManager giriş tablosunun serbest listesini kurar (binary: sub_449D30)
-// thiscall: ECX = this. Tablo elemanları 12 baytlık zincir oluşturur:
-//   entry[i].+0x04 = &entry[i+1]  (sonraki)
-//   entry[i].+0x08 = &entry[i-1]  (önceki)
-//   entry[count-1].+0x08 = &entry[count-2]; this.+0x00 = tablo başlangıcı
+// Sets up the free list for the GameManager entry table (binary: sub_449D30)
+// thiscall: ECX = this. The table elements form a 12-byte chain:
+//   entry[i].+0x04 = &entry[i+1]  (next)
+//   entry[i].+0x08 = &entry[i-1]  (previous)
+//   entry[count-1].+0x08 = &entry[count-2]; this.+0x00 = start of the table
 // ---------------------------------------------------------------------------
 static void InitGameManagerEntries(GameManagerEntry* pThis)
 {
@@ -46,7 +46,7 @@ static void InitGameManagerEntries(GameManagerEntry* pThis)
 
     if (count <= 1)
     {
-        // loc_449DAD: tek giriş — zincir başı 0, imleç = tablo
+        // loc_449DAD: single entry — chain head 0, cursor = table
         if (pTable)
         {
             *reinterpret_cast<void**>(pTable + 4) = 0;
@@ -55,7 +55,7 @@ static void InitGameManagerEntries(GameManagerEntry* pThis)
         return;
     }
 
-    // İlk girişin arka bağlantısı yok (+0x08 = 0)
+    // The first entry has no back link (+0x08 = 0)
     *reinterpret_cast<void**>(pTable + 8) = 0;
 
     // entry[i].+0x04 = &entry[i+1]  (i = 0 .. count-2)
@@ -70,25 +70,25 @@ static void InitGameManagerEntries(GameManagerEntry* pThis)
         }
     }
 
-    // Son girişin arkası = son öncesi (binary tail: [edx+eax*4-4])
+    // The last entry's back link = second-to-last (binary tail: [edx+eax*4-4])
     char* pLast = pTable + (count - 1) * 12;
     *reinterpret_cast<void**>(pLast + 8) = pTable + (count - 2) * 12;
 
-    // this.+0x00 = tablo başlangıcı (binary: mov [ecx], edx)
+    // this.+0x00 = start of the table (binary: mov [ecx], edx)
     pThis->pCursor = pTable;
 }
 
 // ============================================================================
 // GameManagerInit (FUN_0044AAF0)
-// Binary Adresi: 0x0044aaf0
-// XREF: sub_41A680 (startup init): 0041a6..+4E5 — startup.cpp "Adım 15"
+// Binary Address: 0x0044aaf0
+// XREF: sub_41A680 (startup init): 0041a6..+4E5 — startup.cpp "Step 15"
 //
-// dword_636878 null ise yeni GameManager oluşturur:
-//   1. 12 baytlık yönetici nesnesi (sub_4053F0(0Ch, 2))
+// If dword_636878 is null, creates a new GameManager:
+//   1. 12-byte manager object (sub_4053F0(0Ch, 2))
 //   2. entryCount = 0x2710 (10000); pEntries = new(0x1D4C0 = 10000 * 12)
-//   3. sub_449D30 ile serbest liste zinciri kurulur
-// Binary'de nesne zaten varsa (dword_636878 != 0) hiç dokunmadan döner.
-// (SEH kapsam koruyucu: sub_404E70(unk_657BA8) / sub_404E70(0) — yorumda.)
+//   3. The free list chain is set up via sub_449D30
+// In the binary, if the object already exists (dword_636878 != 0), returns without touching anything.
+// (SEH scope guard: sub_404E70(unk_657BA8) / sub_404E70(0) — in the comment.)
 // ============================================================================
 void GameManagerInit(void)
 {
@@ -114,12 +114,12 @@ void GameManagerInit(void)
 
 // ============================================================================
 // GameManagerShutdown (FUN_0044ABA0)
-// Binary Adresi: 0x0044aba0
-// XREF: sub_41AB90 (startup shutdown): +24 — startup.cpp shutdown zinciri
+// Binary Address: 0x0044aba0
+// XREF: sub_41AB90 (startup shutdown): +24 — startup.cpp shutdown chain
 //
-// dword_636878 null ise atlar. Değilse:
-//   1. pEntries (giriş tablosu) serbest (sub_4053B0 = operator delete)
-//   2. yönetici nesnesi serbest
+// If dword_636878 is null, it skips. Otherwise:
+//   1. pEntries (entry table) is freed (sub_4053B0 = operator delete)
+//   2. the manager object is freed
 //   3. dword_636878 = 0
 // ============================================================================
 void GameManagerShutdown(void)

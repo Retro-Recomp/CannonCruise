@@ -1,9 +1,9 @@
 // ============================================================================
-// CannonCruise - WorldGeometry decode + instantiate testi
-// Faz 4.6o: üç gerçek dünya RWS (VIKING01/IDUNA03/BEAVER01) envanter
-// sayıları (binary FUN_004c9b70 + hexdump çözümü) + VIKING01 clump
-// instantiate (gömülü geometri streamRead) + bozuk girdi.
-// Çalıştırma: worldgeometry_test <VIKING01> <IDUNA03> <BEAVER01>
+// CannonCruise - WorldGeometry decode + instantiate test
+// Phase 4.6o: the three real world RWS (VIKING01/IDUNA03/BEAVER01) inventory
+// counts (binary FUN_004c9b70 + hexdump solution) + VIKING01 clump
+// instantiate (embedded geometry streamRead) + invalid input.
+// Usage: worldgeometry_test <VIKING01> <IDUNA03> <BEAVER01>
 // ============================================================================
 
 #include "WorldGeometry.h"
@@ -27,7 +27,7 @@ static int s_failures = 0;
         }                                                                      \
     } while (0)
 
-/// RWS'ten WorldGeometry payload'unu okur (malloc; çağırıcı free).
+/// Reads the WorldGeometry payload from the RWS (malloc; caller free).
 static unsigned char *LoadWorldGeometryPayload(const char *pPath,
                                                unsigned int *pLen) {
     RwStudioFile *pFile = RwStudioFileOpen(pPath);
@@ -112,24 +112,24 @@ int main(int argc, char **argv) {
         CHECK(info.totalVertices == kExpected[i].verts);
         CHECK(info.totalTriangles == kExpected[i].tris);
         CHECK(info.trailingChunkType == kExpected[i].trailing);
-        CHECK(info.masterStruct[2] == 5); // STRUCT@8 üçüncü kelime
+        CHECK(info.masterStruct[2] == 5); // STRUCT@8 third word
 
         if (i == 0) {
-            pVikingPayload = pPayload; // clump testi için sakla
+            pVikingPayload = pPayload; // keep for clump test
             vikingLen = len;
         } else {
             std::free(pPayload);
         }
     }
 
-    // Clump instantiate — VIKING01 (en zengin dünya)
+    // Clump instantiate — VIKING01 (richest world)
     if (pVikingPayload) {
         void *pClump = WorldGeometry_CreateClump(pVikingPayload, vikingLen);
         CHECK(pClump != nullptr);
         if (pClump) {
-            // En az bir atomic (başarılı geometri) — sayı bilinmiyor
-            // (d3d8 MATLIST bağımlı) → en az 1 yeterli kanıt.
-            // 4.6q — bbox: VIKING01 bilinen aralık (min.y<0, max.y~124).
+            // at least one atomic (successful geometry) — count unknown
+            // (d3d8 MATLIST dependent) → at least 1 is sufficient proof.
+            // 4.6q — bbox: VIKING01 known range (min.y<0, max.y~124).
             WorldGeometryBounds bb;
             CHECK(WorldGeometry_GetLastBounds(&bb) == TRUE);
             CHECK(bb.min[0] < -400.0f && bb.max[0] > 400.0f);
@@ -138,12 +138,12 @@ int main(int argc, char **argv) {
             WorldGeometry_DestroyClump(pClump);
         }
 
-        // Bozuk girdi: prefix libid yanlış → FALSE / NULL
+        // Invalid input: prefix libid wrong → FALSE / NULL
         pVikingPayload[4] = 0x00;
         WorldGeometryInfo bad;
         CHECK(WorldGeometry_Inspect(pVikingPayload, vikingLen, &bad) == FALSE);
         CHECK(WorldGeometry_CreateClump(pVikingPayload, vikingLen) == nullptr);
-        pVikingPayload[4] = 0xFF; // geri al
+        pVikingPayload[4] = 0xFF; // restore
 
         // Truncated → FALSE
         CHECK(WorldGeometry_Inspect(pVikingPayload, 16, &bad) == FALSE);
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
         std::free(pVikingPayload);
     }
 
-    WorldGeometry_DestroyClump(nullptr); // NULL güvenli
+    WorldGeometry_DestroyClump(nullptr); // NULL safe
 
     RwEngineStop();
     RwEngineClose();

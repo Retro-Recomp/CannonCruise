@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (rwgfxresource.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\rwgfxresource\rwgfxresource.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00409800 - FUN_004098f0 (RWS::RwGfxResource)
 // ============================================================================
 
@@ -15,12 +15,12 @@ namespace RWS
 {
     /**
      * @class RwGfxResource
-     * @brief RenderWare grafik kaynaklarının (.dff, .bsp, .txd vb.) yüklenmesini sağlar.
+     * @brief Handles loading RenderWare graphics resources (.dff, .bsp, .txd etc.).
      *
-     * `CResourceManager` ve `CStreamHandler` ile entegre çalışır. Kaynakların
-     * tipi (`pType`) string'ine göre uygun RenderWare yığın işleyicisini seçer.
+     * Works integrated with `CResourceManager` and `CStreamHandler`.
+     * Selects the appropriate RenderWare chunk handler based on the resource's type (`pType`) string.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Load: `FUN_00409800`
      * - Unload: `FUN_00409860`
      * - RegisterHandlers: `FUN_004098b0`
@@ -29,25 +29,25 @@ namespace RWS
     {
     public:
         /**
-         * @brief Grafik kaynağını dosya yolundan okuyarak belleğe yükler.
-         * @param pFilename Okunacak dosya yolu.
-         * @param pType     Kaynak tipi (`CTextureResource`, `CWorldGeometryResource` vb.)
-         * @return void* — Oluşturulan kaynağa işaretçi (RpClump, RwTexture vb.)
+         * @brief Reads a graphics resource from a file path and loads it into memory.
+         * @param pFilename File path to read.
+         * @param pType     Resource type (`CTextureResource`, `CWorldGeometryResource` etc.)
+         * @return void* — Pointer to the created resource (RpClump, RwTexture etc.)
          */
         static void* Load(const char* pFilename, const char* pType);
 
         /**
-         * @brief Grafik kaynağını bellekten siler.
-         * @param pResource Yok edilecek kaynak.
-         * @param pType     Kaynak tipi.
+         * @brief Deletes the graphics resource from memory.
+         * @param pResource Resource to destroy.
+         * @param pType     Resource type.
          */
         static void Unload(void* pResource, const char* pType);
 
         /**
-         * @brief Grafik okuma yığın işleyicilerini `CStreamHandler`'a kaydeder.
+         * @brief Registers the graphics read chunk handlers with `CStreamHandler`.
          *
-         * Motor başlangıcında çağrılarak `.dff`, `.bsp` gibi dosyaların
-         * ayrıştırılabilmesi sağlanır.
+         * Called at engine startup so that files such as `.dff`, `.bsp`
+         * can be parsed.
          */
         static void RegisterHandlers();
     };

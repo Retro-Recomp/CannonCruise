@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cmaterialevent.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\cmaterialevent.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0042b090 — CMaterialEvent::PluginAttach
 //   FUN_0042b310 — CMaterialEvent::GetMaterialData
 // ============================================================================
@@ -43,7 +43,7 @@ namespace RWS
 
     // ========================================================================
     // CMaterialEvent::PluginAttach (FUN_0042b090)
-    // ASM: 0042b090 — RpMaterialRegisterPlugin ile eklentiyi kaydet
+    // ASM: 0042b090 — Register the plugin with RpMaterialRegisterPlugin
     // ========================================================================
     RwBool CMaterialEvent::PluginAttach()
     {
@@ -63,7 +63,7 @@ namespace RWS
 
     // ========================================================================
     // CMaterialEvent::GetMaterialData (FUN_0042b310)
-    // ASM: 0042b310 — Materyaldeki eklenti verisini al
+    // ASM: 0042b310 — Get the plugin data in the material
     // ========================================================================
     MaterialEventData* CMaterialEvent::GetMaterialData(RpMaterial* pMaterial)
     {

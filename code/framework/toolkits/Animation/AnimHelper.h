@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (AnimHelper.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Animation\AnimHelper.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00409000 - FUN_004091a0 (RWS::AnimHelper)
 // ============================================================================
 
@@ -17,13 +17,13 @@ namespace RWS
 {
     /**
      * @class AnimHelper
-     * @brief RenderWare HAnim animasyon hiyerarşileri için yardımcı araç sınıfı.
+     * @brief Helper utility class for RenderWare HAnim animation hierarchies.
      *
-     * `CAnimController` tarafından kullanılarak 3D karakter animasyonlarının
-     * (yürüme, ateş etme vb.) oynatılması, güncellenmesi ve geçişlerinin (blend)
-     * yönetilmesini sağlar.
+     * Used by `CAnimController` so that 3D character animations
+     * (walking, shooting etc.) are played, updated and transitioned (blended)
+     * in a managed way.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - UpdateHierarchy: `FUN_00409000`
      * - SetCurrentAnim: `FUN_00409060`
      * - BlendHierarchy: `FUN_004090d0`
@@ -33,33 +33,33 @@ namespace RWS
     {
     public:
         /**
-         * @brief Animasyon hiyerarşisinin süresini ilerletir.
-         * @param pHierarchy Güncellenecek HAnim hiyerarşisi.
-         * @param deltaTime  Geçen zaman (saniye).
+         * @brief Advances the animation hierarchy's time.
+         * @param pHierarchy HAnim hierarchy to update.
+         * @param deltaTime  Elapsed time (seconds).
          */
         static void UpdateHierarchy(RpHAnimHierarchy* pHierarchy, RwReal deltaTime);
 
         /**
-         * @brief Hiyerarşi için geçerli animasyonu ayarlar.
-         * @param pHierarchy Hedef HAnim hiyerarşisi.
-         * @param pAnim      Oynatılacak RenderWare animasyon nesnesi.
+         * @brief Sets the current animation for the hierarchy.
+         * @param pHierarchy Target HAnim hierarchy.
+         * @param pAnim      RenderWare animation object to play.
          */
         static void SetCurrentAnim(RpHAnimHierarchy* pHierarchy, RtAnimAnimation* pAnim);
 
         /**
-         * @brief İki animasyon hiyerarşisi arasında geçiş (blend) yapar.
-         * @param pDestHierarchy Hedef (çıkış) hiyerarşi.
-         * @param pSrcHierarchy  Kaynak (geçiş yapılacak) hiyerarşi.
-         * @param blendAlpha     Geçiş ağırlığı (0.0 - 1.0 aralığında).
+         * @brief Blends between two animation hierarchies.
+         * @param pDestHierarchy Destination (output) hierarchy.
+         * @param pSrcHierarchy  Source (to blend from) hierarchy.
+         * @param blendAlpha     Blend weight (in the 0.0 - 1.0 range).
          */
         static void BlendHierarchy(RpHAnimHierarchy* pDestHierarchy, RpHAnimHierarchy* pSrcHierarchy, RwReal blendAlpha);
 
         /**
-         * @brief Hiyerarşideki kemik matrislerini günceller.
-         * @param pHierarchy Hedef HAnim hiyerarşisi.
+         * @brief Updates the bone matrices in the hierarchy.
+         * @param pHierarchy Target HAnim hierarchy.
          *
-         * Bu işlem genellikle `UpdateHierarchy` veya `BlendHierarchy`
-         * sonrasında, matrislerin dünya koordinatlarına çevrilmesi için çağrılır.
+         * This operation is usually called after `UpdateHierarchy` or `BlendHierarchy`
+         * to transform the matrices into world coordinates.
          */
         static void UpdateHierarchyMatrices(RpHAnimHierarchy* pHierarchy);
     };

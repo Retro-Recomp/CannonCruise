@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Scene Container (Scene.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\Scene.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0049f100 — CScene::Load ("m_iGameInputFocusID == -1 Failed", "Failed to create WaveBreaker world")
 //   FUN_0049f6a0 — CScene::Unload
 // ============================================================================

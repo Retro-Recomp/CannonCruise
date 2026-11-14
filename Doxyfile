@@ -1,29 +1,29 @@
-# Doxyfile — CannonCruise dokümantasyon yapılandırması (Faz 5.3)
-# Oluşturma: doxygen Doxyfile   (Çıktı: docs/html/)
+# Doxyfile — CannonCruise documentation configuration (Phase 5.3)
+# Generate: doxygen Doxyfile   (output: docs/html/)
 
 PROJECT_NAME           = "CannonCruise"
-PROJECT_NUMBER         = "tersine mühendislik (aktif geliştirme)"
-PROJECT_BRIEF          = "CannonCruisePC yeniden inşa kaynak kodu"
+PROJECT_NUMBER         = "reverse engineering (active development)"
+PROJECT_BRIEF          = "CannonCruisePC reconstructed source code"
 
-# ---- Girdi ----
+# ---- Input ----
 INPUT                  = code
 FILE_PATTERNS          = *.h *.hpp *.cpp
 RECURSIVE              = YES
 EXCLUDE_PATTERNS       = */build/* */build_*/*
 EXCLUDE_SYMBOLS        =
 
-# ---- Çıktı ----
+# ---- Output ----
 OUTPUT_DIRECTORY       = docs
 CREATE_SUBDIRS         = NO
 
-# ---- Çıktı biçimleri ----
+# ---- Output formats ----
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 GENERATE_LATEX         = NO
 GENERATE_XML           = NO
 GENERATE_MAN           = NO
 
-# ---- İçerik ----
+# ---- Content ----
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = NO
 EXTRACT_STATIC         = YES
@@ -34,16 +34,16 @@ QT_AUTOBRIEF           = YES
 MARKDOWN_SUPPORT       = YES
 AUTOLINK_SUPPORT       = YES
 
-# ---- Uyarılar ----
+# ---- Warnings ----
 QUIET                  = YES
 WARN_IF_UNDOCUMENTED   = NO
 WARN_IF_DOC_ERROR      = YES
 WARN_LOGFILE           = docs/doxygen-warnings.log
 
-# ---- Grafik ----
+# ---- Graphs ----
 HAVE_DOT               = NO
 CLASS_GRAPH            = NO
 
-# ---- Sınıflandırma ----
+# ---- Classification ----
 SHOW_FILES             = YES
 SHOW_NAMESPACES        = YES

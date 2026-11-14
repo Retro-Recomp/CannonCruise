@@ -1,11 +1,11 @@
 // ============================================================================
 // CannonCruise - Physics Entity + Trigger Test (physics_entity_test.cpp)
-// Doğrulanan bağlantılar (Faz 4.6 — entity akışı):
+// Verified links (Phase 4.6 — entity flow):
 //   CPhysicsEntity::Set/GetPosition, Set/GetLinearVelocity → PhysicsBackend
 //   CPhysicsEntity::AddToWorld/RemoveFromWorld → CPhysicsWorld singleton
-//     → backend dünya kaydı
+//     → backend world registration
 //   CCollisionTrigger::InitializeWithSphere → btGhostObject phantom +
-//     AddPhantom; PollOverlaps farkları OnEntityEnter/Leave'a akar.
+//     AddPhantom; PollOverlaps diffs flow to OnEntityEnter/Leave.
 // ============================================================================
 
 #include "PhysicsBackend.h"
@@ -76,7 +76,7 @@ static void TestEntityLifecycle() {
     entity.AddToWorld();
     CHECK(world.RigidBodyExistsInWorld(pBody));
 
-    // pozisyon erişimi — backend PhysicsBody_Set/GetPosition
+    // position access — backend PhysicsBody_Set/GetPosition
     RwV3d pos = {4.0f, 5.0f, 6.0f};
     entity.SetPosition(&pos);
     RwV3d out = {0, 0, 0};
@@ -84,7 +84,7 @@ static void TestEntityLifecycle() {
     CHECK(Near(out.x, 4.0f, 1e-5f) && Near(out.y, 5.0f, 1e-5f) &&
           Near(out.z, 6.0f, 1e-5f));
 
-    // hız erişimi
+    // velocity access
     RwV3d vel = {7.0f, 8.0f, 9.0f};
     entity.SetLinearVelocity(&vel);
     RwV3d vout = {0, 0, 0};
@@ -92,18 +92,18 @@ static void TestEntityLifecycle() {
     CHECK(Near(vout.x, 7.0f, 1e-4f) && Near(vout.y, 8.0f, 1e-4f) &&
           Near(vout.z, 9.0f, 1e-4f));
 
-    // simülasyon adımı — yerçekimi vy'yi düşürür; vx sürtünmesiz kalır
+    // simulation step — gravity lowers vy; vx stays frictionless
     world.Update(1.0f / 60.0f);
     entity.GetLinearVelocity(&vout);
     CHECK(Near(vout.x, 7.0f, 1e-4f));
-    CHECK(vout.y < 8.0f); // gravity etkisi
+    CHECK(vout.y < 8.0f); // gravity effect
 
     entity.RemoveFromWorld();
     CHECK(!world.RigidBodyExistsInWorld(pBody));
 
     entity.SetRigidBody(0); // dtor RemoveFromWorld — null safe
     PhysicsBody_Destroy(pBody);
-    // world dtor: vektörler boş olmalı (assert)
+    // world dtor: vectors should be empty (assert)
 }
 
 static void TestTriggerEnterLeave() {
@@ -111,20 +111,20 @@ static void TestTriggerEnterLeave() {
 
     CCountingTrigger trigger;
     RwV3d center = {0.0f, 10.0f, 0.0f};
-    trigger.InitializeWithSphere(&center, 3.0f); // yarıçap 3 AABB
+    trigger.InitializeWithSphere(&center, 3.0f); // radius 3 AABB
 
-    void *pBody = MakeBoxBody(0.0f, 10.0f, 0.0f, 1.0f); // tetik içinde
+    void *pBody = MakeBoxBody(0.0f, 10.0f, 0.0f, 1.0f); // inside the trigger
     world.AddRigidBody(pBody);
 
-    world.Update(1.0f / 60.0f); // broadphase/overlap güncelle
+    world.Update(1.0f / 60.0f); // update broadphase/overlap
     trigger.PollOverlaps();
     CHECK(trigger.enters == 1);
     CHECK(trigger.lastEnter == pBody);
 
-    trigger.PollOverlaps(); // ikinci tur — yeniden giriş yok
+    trigger.PollOverlaps(); // second pass — no re-enter
     CHECK(trigger.enters == 1);
 
-    // gövdeyi tetikten çıkar (teleport) → leave
+    // remove body from the trigger (teleport) → leave
     PhysicsBody_SetPosition(pBody, 100.0f, 10.0f, 100.0f);
     world.Update(1.0f / 60.0f);
     trigger.PollOverlaps();
@@ -132,30 +132,30 @@ static void TestTriggerEnterLeave() {
 
     world.RemoveRigidBody(pBody);
     PhysicsBody_Destroy(pBody);
-    // trigger dtor: phantom'ı dünyadan çıkarır + yok eder
+    // trigger dtor: removes the phantom from the world + destroys it
 }
 
 static void TestBehaviourSingletonReuse() {
-    // startup zinciri: CPhysicsWorld::Create() singleton'ı yaratır
+    // startup chain: CPhysicsWorld::Create() creates the singleton
     // (binary sub_41A680: alloc → ctor → dword_635AF4)
     CPhysicsWorld *pWorld = CPhysicsWorld::Create();
     CHECK(pWorld != 0);
     CHECK(CPhysicsWorld::GetSingletonPtr() == pWorld);
 
-    // Create() tekrar çağrısı ikinci dünya YARATMAZ (mevcut döner)
+    // Create() called again does NOT create a second world (returns existing)
     CHECK(CPhysicsWorld::Create() == pWorld);
 
-    // behaviour singleton'ı KULLANIR (binary sub_43B860 — container-only ctor)
+    // behaviour USES the singleton (binary sub_43B860 — container-only ctor)
     CPhysicsWorldBehaviour *pBeh = new CPhysicsWorldBehaviour();
     CHECK(CPhysicsWorld::GetSingletonPtr() == pWorld);
     CHECK(CPhysicsWorld::GetSingletonPtr()->RigidBodyExistsInWorld(0) ==
           FALSE);
 
-    // dtor: sahip değil → dünya yaşar
+    // dtor: does not own → world survives
     delete pBeh;
     CHECK(CPhysicsWorld::GetSingletonPtr() == pWorld);
 
-    delete pWorld; // singleton temizliği (CSingleton dtor)
+    delete pWorld; // singleton cleanup (CSingleton dtor)
     CHECK(CPhysicsWorld::GetSingletonPtr() == 0);
 }
 

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (csystemcommands.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\csystemcommands.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00415620 — CSystemCommands::HandleLoadMatrix
 //   FUN_00415ac0 — CSystemCommands::HandleSetParent
 // ============================================================================
@@ -16,7 +16,7 @@ namespace RWS
 {
     // ========================================================================
     // CSystemCommands::HandleLoadMatrix (FUN_00415620)
-    // ASM: 00415620 — Matris verisini alıp frame'e uygula
+    // ASM: 00415620 — Read matrix data and apply it to the frame
     // ========================================================================
     void CSystemCommands::HandleLoadMatrix(RwFrame* pFrame, const CAttributeCommand& attrCmd)
     {
@@ -32,14 +32,14 @@ namespace RWS
             // Matris optimizasyonu & normalizasyon (FUN_0050f690 / RwMatrixUpdate)
             RwMatrixUpdate(&matrixCopy);
 
-            // Frame dönüşümünü güncelle (FUN_0050e910 / RwFrameTransform)
+            // Update the frame transform (FUN_0050e910 / RwFrameTransform)
             RwFrameTransform(pFrame, &matrixCopy, rwCOMBINEREPLACE);
         }
     }
 
     // ========================================================================
     // CSystemCommands::HandleSetParent (FUN_00415ac0)
-    // ASM: 00415ac0 — Frame ebeveyn hiyerarşisini bağla
+    // ASM: 00415ac0 — Link the frame parent hierarchy
     // ========================================================================
     void CSystemCommands::HandleSetParent(RwFrame* pChildFrame, RwFrame* pParentFrame)
     {

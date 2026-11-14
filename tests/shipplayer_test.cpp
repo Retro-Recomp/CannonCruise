@@ -11,13 +11,13 @@ int main(int argc, char* argv[])
 {
     std::printf("=== CannonCruise CShipPlayer Test ===\n");
 
-    // 1. CClassFactory kayit testi
+    // 1. CClassFactory registration test
     std::printf("[1] Reflection class factory registration...\n");
     RwBool isReg = RWS::CClassFactory::ClassIsRegistered("CShipPlayer");
     assert(isReg == TRUE && "CShipPlayer must be registered with CClassFactory");
     std::printf("  OK: 'CShipPlayer' is registered in CClassFactory\n");
 
-    // 2. Factory create testi
+    // 2. Factory create test
     std::printf("[2] Factory Create()...\n");
     void* pInstance = RWS::CClassFactory::Create("CShipPlayer");
     assert(pInstance != nullptr && "CClassFactory::Create('CShipPlayer') must succeed");
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     assert(CShipPlayer::GetPlayerShip() == pPlayer && "GetPlayerShip() must point to active instance");
     std::printf("  OK: Instance created and registered as active player ship\n");
 
-    // 3. Skor ve can ozellikleri
+    // 3. Score and health properties
     std::printf("[3] Score and health properties...\n");
     assert(pPlayer->GetTotalScore() == 0);
     pPlayer->IncreaseStaticScore(150);
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     assert(pPlayer->GetTotalScore() == 200);
     std::printf("  OK: Scores updated (Total = %d)\n", pPlayer->GetTotalScore());
 
-    // 4. Hava durumu ve olay yonetimi
+    // 4. Weather and event handling
     std::printf("[4] Event message handling...\n");
     assert(pPlayer->IsStormActive() == FALSE);
 
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     assert(pPlayer->IsStormActive() == FALSE && "Storm should be stopped");
     std::printf("  OK: Storm events processed correctly\n");
 
-    // 5. Respawn testi
+    // 5. Respawn test
     std::printf("[5] Respawn test...\n");
     RwV3d spawnPos = {10.0f, 0.0f, 25.0f};
     pPlayer->Respawn(spawnPos);

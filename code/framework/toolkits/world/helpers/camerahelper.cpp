@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (camerahelper.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\camerahelper.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00429170 — CameraHelper::CreateCamera
 //   FUN_00429430 — CameraHelper::DestroyCamera
 //   FUN_004295b0 — CameraHelper::SetFieldOfView
@@ -17,7 +17,7 @@ namespace RWS
 {
     // ========================================================================
     // CameraHelper::CreateCamera (FUN_00429170)
-    // ASM: 00429170 — Kamera, frame, raster ve Z-raster oluştur
+    // ASM: 00429170 — Create camera, frame, raster and Z-raster
     // ========================================================================
     RwCamera* CameraHelper::CreateCamera(RwInt32 width, RwInt32 height, RwBool zBuffer)
     {
@@ -45,7 +45,7 @@ namespace RWS
 
     // ========================================================================
     // CameraHelper::DestroyCamera (FUN_00429430)
-    // ASM: 00429430 — Kamera ve bağlı raster/frameleri temizle
+    // ASM: 00429430 — Clean up camera and attached raster/frames
     // ========================================================================
     void CameraHelper::DestroyCamera(RwCamera* pCamera)
     {
@@ -77,7 +77,7 @@ namespace RWS
 
     // ========================================================================
     // CameraHelper::SetFieldOfView (FUN_004295b0)
-    // ASM: 004295b0 — Kamera FOV ve projeksiyon matrisi ayarla
+    // ASM: 004295b0 — Set camera FOV and projection matrix
     // ========================================================================
     void CameraHelper::SetFieldOfView(RwCamera* pCamera, RwReal fov, RwInt32 width, RwInt32 height)
     {

@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (clumphelper.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\clumphelper.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include "clumphelper.h"
@@ -12,7 +12,7 @@ namespace RWS
     static RpAtomic* GetFirstAtomicCallback(RpAtomic* pAtomic, void* pData)
     {
         *(RpAtomic**)pData = pAtomic;
-        return 0; // İlkinde dur
+        return 0; // stop at the first one
     }
 
     static RpAtomic* SetAtomicFlagsCallback(RpAtomic* pAtomic, void* pData)

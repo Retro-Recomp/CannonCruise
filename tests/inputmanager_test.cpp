@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 
     CInputManager inputMgr;
 
-    // 1. Focus Stack Testi
+    // 1. Focus Stack Test
     std::printf("[1] Focus Stack...\n");
     RwInt32 focusMenu = inputMgr.AllocateFocusID();
     RwInt32 focusGame = inputMgr.AllocateFocusID();
@@ -32,41 +32,41 @@ int main(int argc, char* argv[])
     inputMgr.FreeFocusID(focusGame);
     std::printf("  OK: Focus stack allocated, pushed, popped and freed\n");
 
-    // 2. Button State & Edge Detection Testi
+    // 2. Button State & Edge Detection Test
     std::printf("[2] Button State & Edge Trigger Detection...\n");
     assert(inputMgr.IsButtonDown(0, P1_INPUT_3) == FALSE);
 
-    // Kare 1: Buton basildi
+    // Frame 1: Button pressed
     inputMgr.SetButtonState(0, P1_INPUT_3, TRUE);
     assert(inputMgr.IsButtonDown(0, P1_INPUT_3) == TRUE);
-    assert(inputMgr.IsButtonPressed(0, P1_INPUT_3) == TRUE && "İlk karede rising edge olmalı");
+    assert(inputMgr.IsButtonPressed(0, P1_INPUT_3) == TRUE && "Rising edge expected on first frame");
 
-    // Latch update (Kare 2)
+    // Latch update (Frame 2)
     inputMgr.Update();
     assert(inputMgr.IsButtonDown(0, P1_INPUT_3) == TRUE);
-    assert(inputMgr.IsButtonPressed(0, P1_INPUT_3) == FALSE && "İkinci karede edge sönmeli");
+    assert(inputMgr.IsButtonPressed(0, P1_INPUT_3) == FALSE && "Edge must fade on second frame");
 
-    // Buton bırakıldı
+    // Button released
     inputMgr.SetButtonState(0, P1_INPUT_3, FALSE);
     inputMgr.Update();
     assert(inputMgr.IsButtonDown(0, P1_INPUT_3) == FALSE);
     std::printf("  OK: Button press and edge detection verified\n");
 
-    // 3. ShipPlayerInputProxy Entegrasyon Testi
+    // 3. ShipPlayerInputProxy Integration Test
     std::printf("[3] ShipPlayerInputProxy integration...\n");
     CShipPlayer ship;
     CShipPlayerInputProxy proxy(&ship);
 
-    // İleri hareket (P1_INPUT_3)
+    // Forward movement (P1_INPUT_3)
     inputMgr.SetButtonState(0, P1_INPUT_3, TRUE);
     proxy.Update();
     ship.Update(0.1f);
-    assert(ship.GetSpeed() > 0.0f && "Gemi ileri hizlanmali");
+    assert(ship.GetSpeed() > 0.0f && "Ship must accelerate forward");
 
-    // Sol dumen (P1_INPUT_1)
+    // Left rudder (P1_INPUT_1)
     inputMgr.SetButtonState(0, P1_INPUT_1, TRUE);
     proxy.Update();
-    // Rudder -1.0f ayarlandi
+    // Rudder set to -1.0f
 
     std::printf("  OK: Ship steering and throttle driven by InputManager\n");
 

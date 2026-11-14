@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - RenderBehaviourWorld property apply testi
-// Gerçek MAINMENU.RWS obj#0 (CWbRenderBehavior, 13 property) verisiyle
-// FUN_004c3e40 switch'inin id→offset haritası doğrulanır.
-// Çalıştırma: renderworld_test <MAINMENU.RWS>
+// CannonCruise - RenderBehaviourWorld property apply test
+// With the real MAINMENU.RWS obj#0 (CWbRenderBehavior, 13 properties) data,
+// the id→offset map of the FUN_004c3e40 switch is verified.
+// Usage: renderworld_test <MAINMENU.RWS>
 // ============================================================================
 
 #include "RenderBehaviourWorld.h"
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    // ---- ctor default'ları (FUN_004c4410) ----
+    // ---- ctor defaults (FUN_004c4410) ----
     CRenderBehaviourWorld *pWorld = CRenderBehaviourWorld::Instance();
     CHECK(pWorld != 0);
     if (pWorld) {
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
         CHECK(pWorld->m_pad58 == 0);
     }
 
-    // ---- MAINMENU obj#0 CWbRenderBehavior property'lerini uygula ----
+    // ---- apply obj#0 properties → singleton fields ----
     {
         RwStudioFile *pFile = RwStudioFileOpen(argv[1]);
         CHECK(pFile != 0);
@@ -99,9 +99,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    // ---- obj#0 değerleri → singleton alanları (FUN_004c3e40 haritası) ----
+    // ---- obj#0 values → singleton fields (FUN_004c3e40 map) ----
     if (pWorld) {
-        // prop0=0xFFFFFFFF (raw u32 — NaN float'a bit kopyası)
+        // prop0=0xFFFFFFFF (raw u32 — bit copy as NaN float)
         CHECK(AsU32((const RwUInt8 *)&pWorld->m_Render.m_param0) ==
               0xFFFFFFFFu);
         CHECK(pWorld->m_Render.m_param1 == 1000.0f); // prop1
@@ -114,8 +114,8 @@ int main(int argc, char **argv) {
         CHECK(pWorld->m_color1G == 0.0f);
         CHECK(pWorld->m_color1B == 0.0f);
         CHECK(pWorld->m_param7 == 0.1f); // prop7
-        CHECK(pWorld->m_param8 == 1000.0f); // prop8 (default ile aynı)
-        CHECK(pWorld->m_param9 == 300.0f);  // prop9 (default ile aynı)
+        CHECK(pWorld->m_param8 == 1000.0f); // prop8 (same as default)
+        CHECK(pWorld->m_param9 == 300.0f);  // prop9 (same as default)
         // propA = 0x00FFD0FF → RGB(255,208,255)
         CHECK(pWorld->m_color2R == 255.0f);
         CHECK(pWorld->m_color2G == 208.0f);
@@ -124,11 +124,11 @@ int main(int argc, char **argv) {
         CHECK(pWorld->m_paramC == 30.0f); // propC
     }
 
-    // ---- bilinmeyen id → UNHANDLED (binary: assert) ----
+    // ---- unknown id → UNHANDLED (binary: assert) ----
     if (pWorld) {
         CHECK(pWorld->ApplyWbRenderAttribute(0xD, 0) == FALSE);
         CHECK(pWorld->ApplyWbRenderAttribute(0xFF, 0x1234) == FALSE);
-        // alanlar son apply'dan etkilenmedi
+        // fields unaffected by last apply
         CHECK(pWorld->m_paramC == 30.0f);
     }
 

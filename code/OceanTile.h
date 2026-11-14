@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Ocean Water Tile (OceanTile.h)
 // Original path: D:\Projects\CannonCruisePC\code\OceanTile.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include <rwcore.h>

@@ -157,8 +157,8 @@ typedef struct RpClump RpClump;
 struct RwStream;
 typedef struct RwStream RwStream;
 
-// Video modu — FUN_0041af10 (CameraInit) 6 dword (24 byte) kopyalar; alan
-// sırası binary'deki skorlamaya göre width/height/depth/flags + 2 bilinmeyen.
+// Video mode — FUN_0041af10 (CameraInit) copies 6 dwords (24 bytes); the field
+// order is based on the binary's scoring: width/height/depth/flags + 2 unknowns.
 struct RwVideoMode
 {
     RwInt32 width;
@@ -170,7 +170,7 @@ struct RwVideoMode
 };
 typedef struct RwVideoMode RwVideoMode;
 
-// Alt sistem bilgisi (FUN_0050b1d0 — RwEngineGetSubSystemInfo)
+// Subsystem info (FUN_0050b1d0 — RwEngineGetSubSystemInfo)
 #define rwSUBSYSTEMINFONAMELEN 80
 struct RwSubSystemInfo
 {
@@ -229,8 +229,8 @@ RwCamera* RwCameraBeginUpdate(RwCamera *camera);
 RwCamera* RwCameraEndUpdate(RwCamera *camera);
 RwCamera* RwCameraShowRaster(RwCamera *camera, void *pDev, RwUInt32 flags);
 
-// Engine alt sistem / video modu sorguları (FUN_0050b060 komut dağıtıcı ailesi;
-// CameraInit FUN_0041af10 bunlarla en iyi modu puanlar)
+// Engine subsystem / video mode queries (FUN_0050b060 command dispatcher family;
+// CameraInit FUN_0041af10 scores the best mode with these)
 RwInt32   RwEngineGetNumSubSystems(void);
 RwBool    RwEngineSetSubSystem(RwInt32 subSystemIndex);
 RwBool    RwEngineGetSubSystemInfo(RwSubSystemInfo *info, RwInt32 subSystemIndex);
@@ -268,14 +268,14 @@ struct RwChunkHeaderInfo
 
 RwBool    RwStreamReadChunkHeaderInfo(RwStream *stream, RwChunkHeaderInfo *chunkHeader);
 RwUInt32  RwStreamSkip(RwStream *stream, RwUInt32 length);
-RwUInt32  RwStreamTell(RwStream *stream); // debug/parse hizalama (Faz 4.6e)
-RwBool    RwStreamSeekAbs(RwStream *stream, RwUInt32 position); // Faz 4.6e
+RwUInt32  RwStreamTell(RwStream *stream); // debug/parse alignment (Phase 4.6e)
+RwBool    RwStreamSeekAbs(RwStream *stream, RwUInt32 position); // Phase 4.6e
 
 #define rwSTREAMFILENAME 1
 #define rwSTREAMREAD     1
-// Oyunun kendi RW sürümü (3.6.0.3, libid 0x1803FFFF) txd chunk tipini
-// 0x23 YAZAR (Faz 4.6e dosya kanıtı — embedded [0x23][len][libid] tüm
-// .RWS txd kayıtlarında; klasik SDK 0x16 bu dosya ailesinde geçmez).
+// The game's own RW version (3.6.0.3, libid 0x1803FFFF) writes the txd chunk type as
+// 0x23 (Phase 4.6e file evidence — embedded [0x23][len][libid] in all
+// .RWS txd records; the classic SDK 0x16 does not appear in this file family).
 #define rwID_TEXDICTIONARY 0x0023
 #define rwID_WORLD         0x000B
 #define rwCAMERACLEARIMAGE 0x0001
@@ -370,7 +370,7 @@ void*     RwRenderStateGet(RwUInt32 state);
 RwBool    RwIm2DRenderPrimitive(RwUInt32 primType, const RwIm2DVertex *vertices, RwInt32 numVertices);
 RwBool    RwIm2DRenderIndexedPrimitive(RwUInt32 primType, const RwUInt16 *indices, RwInt32 numIndices);
 
-// Shade mode (rwRENDERSTATESHADEMODE değeri)
+// Shade mode (rwRENDERSTATESHADEMODE value)
 enum RwShadeMode
 {
     rwSHADEMODEFLAT   = 0,
@@ -416,7 +416,7 @@ void   RwIm3DEnd(void);
 RwBool RwIm3DRenderPrimitive(RwUInt32 primType);
 RwBool RwIm3DRenderIndexedPrimitive(RwUInt32 primType, RwUInt16 *indices, RwInt32 numIndices);
 
-// Memory functions (RW global allocator — memoryhandler üzerinden geçer)
+// Memory functions (RW global allocator — goes through memoryhandler)
 void*   RwMalloc(size_t size, RwUInt32 hint);
 void    RwFree(void *mem);
 void*   RwRealloc(void *mem, size_t size, RwUInt32 hint);
@@ -430,38 +430,38 @@ struct RwMemoryFunctions
 
 // Engine functions
 // FUN_0050b640 — binary: arg_0 = memFuncs, arg_4 = flags (byte, bit0 = ?),
-//                arg_8 = resEntrySize (motor global'ine yazılıyor)
+//                arg_8 = resEntrySize (written to the engine global)
 RwBool    RwEngineInit(RwMemoryFunctions *memFuncs, RwUInt32 flags, RwUInt32 resEntrySize);
 RwBool    RwEngineTerm(void);
-// FUN_00422960 — binary: argümansız (retn, arg_0 yok); startup.cpp RwEngineOpen() çağırır
+// FUN_00422960 — binary: no arguments (retn, no arg_0); startup.cpp calls RwEngineOpen()
 RwBool    RwEngineOpen(void);
 RwBool    RwEngineClose(void);
 RwBool    RwEngineStart(void);
 RwBool    RwEngineStop(void);
-// Platform olay döngüsü (GL3: glfwPollEvents; NULL: no-op → FALSE).
+// Platform event loop (GL3: glfwPollEvents; NULL: no-op → FALSE).
 RwBool    RwPlatformPollEvents(void);
-// GL3: pencere kapatıldı mı (GLFWwindowShouldClose); NULL: hep FALSE.
+// GL3: is the window closed (GLFWwindowShouldClose); NULL: always FALSE.
 RwBool    RwPlatformShouldClose(void);
-// 4.6q freecam: tuş basılı mı (key = GLFW key kodu / ASCII 'W','A'...).
-// GL3: glfwGetKey; NULL: hep FALSE.
+// 4.6q freecam: is the key held (key = GLFW key code / ASCII 'W','A'...).
+// GL3: glfwGetKey; NULL: always FALSE.
 RwBool    RwPlatformKeyDown(int key);
-// GL3 ok tuş kodları (GLFW; ASCII tuşlar doğrudan bu değerlerle geçer).
+// GL3 arrow key codes (GLFW; ASCII keys pass directly with these values).
 #define RW_KEY_RIGHT 262
 #define RW_KEY_LEFT  263
 #define RW_KEY_DOWN  264
 #define RW_KEY_UP    265
-// 4.6r menü durum makinesi: onay/kaçış (GLFW).
+// 4.6r menu state machine: confirm/cancel (GLFW).
 #define RW_KEY_ESCAPE 256
 #define RW_KEY_ENTER  257
-// 4.6q mouse look: imleç yakalama (GLFW_CURSOR_DISABLED) + kare delta'sı.
-// GL3: gerçek; NULL: FALSE.
+// 4.6q mouse look: cursor capture (GLFW_CURSOR_DISABLED) + frame delta.
+// GL3: real; NULL: FALSE.
 RwBool    RwPlatformSetMouseCapture(RwBool capture);
 RwBool    RwPlatformMouseDelta(int *pDX, int *pDY);
-// FUN_0050f660 — RwEngineSetConfig: binary TEK pointer argüman alır
-// (Ghidra: undefined4 FUN_0050f660(undefined4 *param_1); IDA: arg_0'ı
-// 12 bayt okuyup motor nesnesine (dword_65D7A4 + dword_65D884 + 0xC)
-// kopyalar, her zaman 1 döner). sub_41A680 çağırmadan önce yığına
-// {1e-5, 1e-5, 0.01f} yazar (startup.cpp "Adım 12" ile aynı değerler).
+// FUN_0050f660 — RwEngineSetConfig: binary takes a SINGLE pointer argument
+// (Ghidra: undefined4 FUN_0050f660(undefined4 *param_1); IDA: reads arg_0
+// 12 bytes and copies them into the engine object (dword_65D7A4 + dword_65D884 + 0xC),
+// always returns 1). Before calling sub_41A680, writes to the stack
+// {1e-5, 1e-5, 0.01f} (same values as startup.cpp "Step 12").
 struct RwEngineConfig
 {
     RwReal nearClip;
@@ -469,9 +469,9 @@ struct RwEngineConfig
     RwReal fog;
 };
 RwBool    RwEngineSetConfig(const RwEngineConfig *pConfig);
-// sub_41CDF0 — bağlam sorgusu (binary: dword_6361B4 = sub_41CE00 render
-// hedefi; NULL ise ResizeCameraRasters FALSE döner). Geçici karşılık:
-// durum makinesi START == TRUE (gerçek ctx Faz 4.4b'de restor edilecek).
+// sub_41CDF0 — context query (binary: dword_6361B4 = sub_41CE00 render
+// target; if NULL, ResizeCameraRasters returns FALSE). Temporary counterpart:
+// state machine START == TRUE (real ctx will be restored in Phase 4.4b).
 RwBool    RwEngineIsRunning(void);
 
 struct RwFreeList

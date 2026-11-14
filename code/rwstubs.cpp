@@ -1,14 +1,14 @@
 // ============================================================================
 // CannonCruise - RenderWare SDK Stub Implementations (rwstubs.cpp)
 //
-// Bu dosya, statik kütüphanenin link sırasında ihtiyaç duyduğu tüm RenderWare
-// 3.6 dış sembollerini sağlar (Rp*/Rw*/Rt* + Im3D + bellek).
+// This file provides all RenderWare 3.6 external symbols the static
+// library needs at link order (Rp*/Rw*/Rt* + Im3D + memory).
 //
-// Durum: LINK STUB — fonksiyonlar derleyici/çalışma zamanı hatalarını önlemek
-//        için no-op veya güvenli varsayılan değer döndürür. Gerçek RenderWare
-//        SDK kütüphaneleriyle değiştirilmesi planlanmıştır (Faz 4.5 → 4.4b).
+// Status: LINK STUB — functions return no-ops or safe defaults to prevent
+//         compiler/runtime errors. It is planned to be replaced with the real
+//        RenderWare SDK libraries (Phase 4.5 → 4.4b).
 //
-// Eksik sembol listesi `nm -u libCannonCruiseLib.a` ile doğrulanmıştır.
+// The missing symbol list was verified with `nm -u libCannonCruiseLib.a`.
 // ============================================================================
 
 #include <rwcore.h>
@@ -22,7 +22,7 @@
 #include <cstring>
 
 // ---------------------------------------------------------------------------
-// Bellek (RwMalloc ailesi — Ocean_W32 dahil oyun kodu bunları çağırır)
+// Memory (RwMalloc family — called by game code including Ocean_W32)
 // ---------------------------------------------------------------------------
 void* RwMalloc(size_t size, RwUInt32 hint)
 {
@@ -44,8 +44,8 @@ void* RwRealloc(void* mem, size_t size, RwUInt32 hint)
 // ---------------------------------------------------------------------------
 // Render State / Im2D / Im3D
 // ---------------------------------------------------------------------------
-// Birim testlerin çizim çağrısı sayısını gözlemlemesi için sayaçlar
-// (FontSystem_DrawText batch flush doğrulaması).
+// Counters for the unit tests to observe the number of draw calls
+// (FontSystem_DrawText batch flush verification).
 static RwUInt32 s_im2DPrimitiveCount = 0;
 static RwUInt32 s_im2DIndexedCount = 0;
 
@@ -84,8 +84,8 @@ RwBool RwIm2DRenderPrimitive(RwUInt32 primType, const RwIm2DVertex* vertices, Rw
     return TRUE;
 }
 
-// Font çizim yolu (FontSystem_DrawText, sub_4CCC40 karşılığı) indeksli
-// üçgen listesi gönderir (binary: sub_518FC0 + sub_518F90).
+// Font draw path (FontSystem_DrawText, sub_4CCC40 counterpart) sends an
+// indexed triangle list (binary: sub_518FC0 + sub_518F90).
 RwBool RwIm2DRenderIndexedPrimitive(RwUInt32 primType, const RwUInt16* indices, RwInt32 numIndices)
 {
     (void)primType; (void)indices; (void)numIndices;
@@ -117,7 +117,7 @@ RwBool RwIm3DRenderIndexedPrimitive(RwUInt32 primType, RwUInt16* indices, RwInt3
 }
 
 // ---------------------------------------------------------------------------
-// Matris
+// Matrix
 // ---------------------------------------------------------------------------
 void RwMatrixSetIdentity(RwMatrix* matrix)
 {
@@ -199,7 +199,7 @@ RwFrame* RwFrameForAllChildren(RwFrame* frame, RwFrameCallBack callBack, void* d
 RwRaster* RwRasterCreate(RwInt32 width, RwInt32 height, RwInt32 depth, RwInt32 flags)
 {
     (void)width; (void)height; (void)depth; (void)flags;
-    return 0; // Opaque tip — gerçek SDK'da heap tahsisi yapar
+    return 0; // Opaque type — real SDK allocates on the heap
 }
 
 RwBool RwRasterDestroy(RwRaster* raster)
@@ -225,7 +225,7 @@ RwInt32 RwRasterGetHeight(const RwRaster* raster)
 // ---------------------------------------------------------------------------
 RwCamera* RwCameraCreate(void)
 {
-    return 0; // Opaque tip
+    return 0; // Opaque type
 }
 
 RwBool RwCameraDestroy(RwCamera* camera)
@@ -328,14 +328,14 @@ RwReal RwCameraGetFarClipPlane(const RwCamera* camera)
 }
 
 // ---------------------------------------------------------------------------
-// Engine lifecycle — GERÇEK implementasyon rw_librw.cpp'de (librw:
-// rw::Engine::init/open/start/stop/close/term). Buradan taşındı (Faz 4.6d).
+// Engine lifecycle — REAL implementation in rw_librw.cpp (librw:
+// rw::Engine::init/open/start/stop/close/term). Moved from here (Phase 4.6d).
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Engine alt sistem / video modu (FUN_0050b060 komut dağıtıcı ailesi stub'ları)
-// CameraInit (FUN_0041af10) bu sorgularla en iyi modu puanlar; test için
-// kasıtlı olarak birden çok mod sunulur.
+// Engine subsystem / video mode (FUN_0050b060 command dispatcher family stubs)
+// CameraInit (FUN_0041af10) scores the best mode with these queries; intentionally
+// multiple modes are offered for testing.
 // ---------------------------------------------------------------------------
 static RwInt32 s_activeSubSystem = 0;
 static RwInt32 s_activeVideoMode = 0;
@@ -396,16 +396,16 @@ RwBool RwEngineSetVideoMode(RwInt32 videoModeIndex)
 }
 
 // ---------------------------------------------------------------------------
-// Stream — GERÇEK implementasyon rw_librw.cpp'de (librw rw::StreamFile +
-// rw::findChunk/readChunkHeaderInfo). RwStreamRead/Write da shim'de
-// tanımlı (Faz 4.6d).
+// Stream — REAL implementation in rw_librw.cpp (librw rw::StreamFile +
+// rw::findChunk/readChunkHeaderInfo). RwStreamRead/Write are also defined in the shim
+// (Phase 4.6d).
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Texture (rwcore.h: RwTextureRead/Destroy/SetRaster/GetRaster)
-// Font sistemi (FontSystem.cpp, sub_5154D0) bu API'yi çağırır. Gerçek dosya
-// yüklemesi olmadığından RwTextureRead NULL döndürür — binary'de doku
-// bulunamazsa font yüklemesi de başarısız olur (aynı davranış).
+// The font system (FontSystem.cpp, sub_5154D0) calls this API. Since there is no
+// real file loading, RwTextureRead returns NULL — if the texture is not found in the
+// binary, font loading also fails (same behavior).
 // ---------------------------------------------------------------------------
 struct RwTexture {
     RwRaster* raster;
@@ -417,7 +417,7 @@ RwTexture* RwTextureRead(const RwChar* name, const RwChar* maskName)
 {
     (void)name;
     (void)maskName;
-    return 0; // Opaque tip — gerçek SDK'da dosya/txd yükler
+    return 0; // Opaque type — real SDK loads file/txd
 }
 
 RwBool RwTextureDestroy(RwTexture* texture)
@@ -454,8 +454,8 @@ RwTexDictionary* RwTexDictionarySetCurrent(RwTexDictionary* dict)
     return 0;
 }
 
-// RwTexDictionaryStreamRead — GERÇEK implementasyon rw_librw.cpp'de
-// (librw rw::TexDictionary::streamRead; Faz 4.6d).
+// RwTexDictionaryStreamRead — REAL implementation in rw_librw.cpp
+// (librw rw::TexDictionary::streamRead; Phase 4.6d).
 
 // ---------------------------------------------------------------------------
 // Atomic / Geometry (rpworld)
@@ -516,10 +516,10 @@ RwFrame* RpClumpGetFrame(RpClump* clump)
     return 0;
 }
 
-// RpClumpStreamRead — GERÇEK implementasyon rw_librw.cpp'de
-// (librw rw::rp::Clump::streamRead; Faz 4.6d).
+// RpClumpStreamRead — REAL implementation in rw_librw.cpp
+// (librw rw::rp::Clump::streamRead; Phase 4.6d).
 
-// CollisionTrigger (phantom AABB) için eklendi — librw'de gerçek veri
+// Added for CollisionTrigger (phantom AABB) — real data in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump* clump)
 {
     (void)clump;
@@ -535,8 +535,8 @@ const RwSphere* RpGeometryGetBoundingSphere(const RpGeometry* geometry)
     return 0;
 }
 
-// CollisionGeometry (Clump→şekil) için eklendi — librw entegrasyonunda
-// gerçek vertex/triangle verisi döner
+// Added for CollisionGeometry (Clump->shape) — in the librw integration
+// real vertex/triangle data is returned
 RwInt32 RpGeometryGetNumVertices(const RpGeometry* geometry)
 {
     (void)geometry;
@@ -601,8 +601,8 @@ void RpWorldRender(RpWorld* world)
 
 RpWorld* RpWorldStreamRead(RwStream* stream)
 {
-    // librw'de rp::World streamRead YOK (BSP world) — kapı 4 riski
-    // belgeli; world streamleri henüz işlenemiyor (Faz 4.6d).
+    // librw has NO rp::World streamRead (BSP world) — gate 4 risk
+    // documented; world streams cannot be processed yet (Phase 4.6d).
     (void)stream;
     return 0;
 }
@@ -616,7 +616,7 @@ RwInt32 RpMaterialRegisterPlugin(RwInt32 size, RwUInt32 pluginID,
                                  RwPluginObjectCopy copyCB)
 {
     (void)size; (void)pluginID; (void)constructCB; (void)destructCB; (void)copyCB;
-    return -1; // Gerçek SDK'da eklenti ofseti döndürür
+    return -1; // Real SDK returns the plugin offset
 }
 
 RwBool RpWorldPluginAttach(void)     { return TRUE; }
@@ -699,5 +699,5 @@ void* RtCompressedKeyFrameGetCustomKeyFrameScheme(void)
 }
 
 // ---------------------------------------------------------------------------
-// 2D Maestro (rt2danim) — gerçek implementasyon: Rt2dMaestro.cpp (4.6r)
+// 2D Maestro (rt2danim) — real implementation: Rt2dMaestro.cpp (4.6r)
 // ---------------------------------------------------------------------------

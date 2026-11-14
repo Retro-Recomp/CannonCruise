@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (framehelper.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\framehelper.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include "framehelper.h"
@@ -19,8 +19,8 @@ namespace RWS
     static RwFrame* FrameFindCallback(RwFrame* pFrame, void* pData)
     {
         FrameSearchData* pSearch = (FrameSearchData*)pData;
-        // Frame kullanıcı verisi veya node adı kontrolü
-        // (RwFrameForAllChildren hiyerarşik tarama)
+        // Frame user data or node name check
+        // (RwFrameForAllChildren hierarchical scan)
         pSearch->pFoundFrame = pFrame;
         return 0; // Dur
     }

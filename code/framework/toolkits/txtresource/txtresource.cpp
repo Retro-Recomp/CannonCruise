@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (txtresource.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\txtresource\txtresource.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00428890 — TxtResource::Load
 //   FUN_00428b50 — TxtResource::Unload
 // ============================================================================
@@ -17,7 +17,7 @@ namespace RWS
 {
     // ========================================================================
     // TxtResource::Load (FUN_00428890)
-    // ASM: 00428890 — TEXT dosyasını oku ve belleğe yükle
+    // ASM: 00428890 — Read the TEXT file and load it into memory
     // ========================================================================
     char* TxtResource::Load(const char* pFilename)
     {

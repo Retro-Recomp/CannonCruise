@@ -1,20 +1,20 @@
 // ============================================================================
-// CannonCruise - rwstudio Konteyner Okuyucu (RwStudioStream.cpp)
+// CannonCruise - rwstudio Container Reader (RwStudioStream.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\RwStudioStream.cpp
 //
-// Format kanıtı: Streams/MAINMENU.RWS + GLOBAL.RWS + VIKING01.RWS hexdump
-// (Faz 4.6e). Örnek — MAINMENU 0x0716 #0 (txd):
-//   [12B RW başlık 0x0716/libid 0x1802FFFF]
+// Format evidence: Streams/MAINMENU.RWS + GLOBAL.RWS + VIKING01.RWS hexdump
+// (Phase 4.6e). Example — MAINMENU 0x0716 #0 (txd):
+//   [12B RW header 0x0716/libid 0x1802FFFF]
 //   [u32 metaLen=0xC8][typeName][GUID16][rwIdName][sourcePath]
-//   [u32 4][0xBF×3]                       <- meta kuyruğu (metaLen içinde)
-//   [u32 resource][u32 va]                 <- rwstudio iç alanlar
+//   [u32 4][0xBF×3]                       <- meta tail (inside metaLen)
+//   [u32 resource][u32 va]                 <- rwstudio inner fields
 //   [u32 embType=0x23][u32 embLen][u32 libid 0x1803FFFF]
-//   [gömülü payload: embLen-12 bayt]
-//     payload: i16 dokuSayısı, i16 device=1 (d3d8), IMAGE chunk'ları...
-// embLen, embType alanından chunk sonuna kadar (12B başlık dahil):
-// metaLen+20+embLen == chunkLength doğrulandı.
+//   [embedded payload: embLen-12 bytes]
+//     payload: i16 textureCount, i16 device=1 (d3d8), IMAGE chunks...
+// embLen, from the embType field to the chunk end (including 12B header):
+// metaLen+20+embLen == chunkLength verified.
 // Non-embed (WorldGeometry/.dff, StaticCollision/.col): embType=0;
-// .col verisi chunk içinde inline (CPhysicsResource::Load bu alanı okur).
+// .col data inline inside the chunk (CPhysicsResource::Load reads this field).
 // ============================================================================
 
 #include "RwStudioStream.h"
@@ -25,19 +25,19 @@
 
 struct RwStudioFile {
     RwStream *pStream;
-    RwUInt32 pendingPayload;  // gömülü payload bayt sayısı (okunmadıysa)
-    RwUInt32 embedPayloadPos; // gömülü payload'un dosya konumu
-    RwUInt32 chunkEndPos;     // mevcut chunk sonu (mutlak)
+    RwUInt32 pendingPayload;  // embedded payload byte count (if unread)
+    RwUInt32 embedPayloadPos; // file position of the embedded payload
+    RwUInt32 chunkEndPos;     // end of the current chunk (absolute)
     RwUInt32 classCount;
     RwChar classNames[rwstudioMAX_CLASSES][48];
-    RwBool hasObject;         // son NextAsset 0x0704 mü?
-    RwStudioObject object;    // son nesne şeması (Faz 4.6f)
+    RwBool hasObject;         // was the last NextAsset a 0x0704?
+    RwStudioObject object;    // last object schema (Phase 4.6f)
 };
 
 namespace
 {
 
-// uzunluk önekli string: [u32 len][len bayt; '\0'+0xBF doldurma, 4 hizalı]
+// length-prefixed string: [u32 len][len bytes; '\0'+0xBF padding, 4-aligned]
 RwBool ReadLenString(RwStream *pStream, RwChar *pOut, RwUInt32 maxOut) {
     RwUInt32 len = 0;
     if (RwStreamRead(pStream, &len, 4) != 4 || len == 0 || len > 512) {
@@ -56,7 +56,7 @@ RwBool ReadLenString(RwStream *pStream, RwChar *pOut, RwUInt32 maxOut) {
     return TRUE;
 }
 
-// manifest string'i: null-terminated + 0xBF doldurma (4 hizalı), uzunluk yok
+// manifest string: null-terminated + 0xBF padding (4-aligned), no length
 RwBool ReadPadString(RwStream *pStream, RwChar *pOut, RwUInt32 maxOut,
                      RwUInt32 *pConsumed) {
     RwChar buf[64];
@@ -127,7 +127,7 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
     if (!pFile || !pAsset) {
         return FALSE;
     }
-    // önceki asset'in gömülü payload'u okunmadıysa chunk sonuna atla
+    // if the previous asset's embedded payload was not read, skip to the chunk end
     if (pFile->pendingPayload > 0) {
         RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
         pFile->pendingPayload = 0;
@@ -135,8 +135,8 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
     std::memset(pAsset, 0, sizeof(*pAsset));
     pFile->hasObject = FALSE;
 
-    // chunk başlangıcı + bitişi: seek tabanlı hizalama (format varyantları
-    // byte-sayımı yerine mutlak konumla güvenli atlanır)
+    // chunk start + end: seek-based alignment (format variants
+    // are safely skipped by absolute position instead of byte counting)
     const RwUInt32 chunkStart = RwStreamTell(pFile->pStream);
 
     RwChunkHeaderInfo header;
@@ -176,11 +176,11 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                            rwstudioMAX_PATH)) {
             return FALSE;
         }
-        // meta kuyruğu: standart asset'lerde [u32 4][0xBF×3+0x00]; animasyon
-        // (rwID_2DMAESTRO) gibi varyantlarda bu YOK — dördüncü string meta'yı
-        // tamamlar. Tolerant kural: sonraki u32==4 ise pad4 + standart alan;
-        // değilse resource'un kendisi (va/A/B kaymaz — iki dalda da toplam
-        // metaLen+16, embed'de +4 libid).
+        // meta tail: in standard assets [u32 4][0xBF×3+0x00]; in variants like
+        // (rwID_2DMAESTRO) this is MISSING — the fourth string completes meta.
+        // Tolerant rule: if the next u32==4, pad4 + standard field;
+        // otherwise it is the resource itself (va/A/B don't shift — in both
+        // branches the total is metaLen+16, +4 libid for embeds).
         RwUInt32 tail = 0;
         if (RwStreamRead(pFile->pStream, &tail, 4) != 4) {
             return FALSE;
@@ -191,11 +191,11 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                 return FALSE;
             }
         }
-        // [u32 resource][u32 va][u32 A][u32 B] (+ embed ise [u32 libid])
+        // [u32 resource][u32 va][u32 A][u32 B] (+ [u32 libid] if embed)
         // — txd: [res][va][0x23][embLen][libid][payload]
-        //      wbID_Texture: [res][len][pngPath]; 2DMAESTRO/PPB: kendi
-        //      stream'leri. Embed TANIMI kimlik ile: A/B varyant yorumu
-        //      gerekmez; diğerleri chunk sonuna seek ile atlanır.
+        //      wbID_Texture: [res][len][pngPath]; 2DMAESTRO/PPB: their own
+        //      streams. Embed is DEFINED by identity: no A/B variant
+        //      interpretation is needed; others are skipped by seeking to the chunk end.
         RwUInt32 resource = 0, va = 0;
         if (RwStreamRead(pFile->pStream, &resource, 4) != 4 ||
             RwStreamRead(pFile->pStream, &va, 4) != 4) {
@@ -218,12 +218,12 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                 RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
                 return TRUE;
             }
-            // embB klasik RW konvansiyonu: payload boyutu (12B başlık hariç)
+            // embB is the classic RW convention: payload size (excluding the 12B header)
             pFile->embedPayloadPos = RwStreamTell(pFile->pStream);
             pFile->pendingPayload = embB;
         } else {
-            // embed yok — resource payload'u chunk sonuna kadar (örn. .col):
-            // kaydet + pendingPayload ile OKUNMAZSA sonraki NextAsset atlar
+            // no embed — resource payload runs to the chunk end (e.g. .col):
+            // record it + if not consumed via pendingPayload, the next NextAsset skips it
             const RwUInt32 pos = RwStreamTell(pFile->pStream);
             pFile->embedPayloadPos = pos;
             if (pFile->chunkEndPos > pos) {
@@ -237,8 +237,8 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
     }
 
     if (header.type == rwstudioID_MANIFEST) {
-        // [u32 count][entry: (string+0xBF pad) + u32 sürüm]...[kuyruk]
-        // — sayım/entry hatalarında bile chunk sonuna seek ile hizalanır
+        // [u32 count][entry: (string+0xBF pad) + u32 version]...[tail]
+        // — even on count/entry errors, alignment is guaranteed by seeking to the chunk end
         RwUInt32 count = 0;
         if (RwStreamRead(pFile->pStream, &count, 4) == 4 && count <= 256) {
             for (RwUInt32 i = 0; i < count; ++i) {
@@ -265,9 +265,9 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
     }
 
     if (header.type == rwstudioID_OBJECTRECORD) {
-        // 0x0704: [u32 field0] + segment/property dizisi (bkz. header
-        // şeması). Chunk sonu seek ile garanti altına alınır; parse
-        // hatası sessizce yarım nesne bırakır.
+        // 0x0704: [u32 field0] + segment/property array (see header
+        // schema). Chunk end is guaranteed via seek; a parse
+        // error silently leaves a half object behind.
         RwStudioObject &obj = pFile->object;
         std::memset(&obj, 0, sizeof(obj));
         if (RwStreamRead(pFile->pStream, &obj.objectIndex, 4) != 4) {
@@ -275,10 +275,10 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
             return TRUE;
         }
         RwStudioBehaviour *pCur = 0;
-        // 0x80 davranışları: ilk behaviour'da ad tekrarı (0x20+GUID sonrası),
-        // sonraki 0x80 = YENI behaviour (ad tek segment — GUID yok).
-        // Durum: afterStart = 0x20 sonrası (GUID beklemede);
-        //        afterGuid = GUID sonrası (ad tekrarı beklemede).
+        // 0x80 behaviours: name repetition in the first behaviour (after 0x20+GUID),
+        // the next 0x80 = NEW behaviour (single-segment name — no GUID).
+        // State: afterStart = after 0x20 (GUID pending);
+        //        afterGuid = after GUID (name repetition pending).
         int state = 0;
         while (RwStreamTell(pFile->pStream) + 8 <= pFile->chunkEndPos) {
             RwUInt32 x = 0;
@@ -286,7 +286,7 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                 break;
             }
             if (x == 0x1C || x == 0x18) {
-                // segment: [segLen][flags][içerik]
+                // segment: [segLen][flags][content]
                 RwUInt32 flags = 0;
                 if (RwStreamRead(pFile->pStream, &flags, 4) != 4) {
                     break;
@@ -299,21 +299,21 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                     std::memset(pCur, 0, sizeof(*pCur));
                     ReadPadString(pFile->pStream, pCur->className,
                                   sizeof(pCur->className), 0);
-                    state = 1; // GUID bekle
+                    state = 1; // wait for GUID
                 } else if (flags == 0x40000000) {
                     if (pCur) {
                         RwStreamRead(pFile->pStream, pCur->guid, 16);
                     }
-                    state = 2; // ad tekrarı bekle
+                    state = 2; // wait for name repetition
                 } else if (flags == 0x80000000) {
                     RwChar name[48];
                     ReadPadString(pFile->pStream, name, sizeof(name), 0);
                     if (state == 2 && pCur &&
                         std::strcmp(name, pCur->className) == 0) {
-                        // ad tekrarı — ad zaten 0x20'de okundu; doğrula
+                        // name repetition — the name was already read at 0x20; validate
                         state = 3;
                     } else {
-                        // yeni behaviour (farklı ad — GUID'suz tekrar kaydı)
+                        // new behaviour (different name — repeated record without GUID)
                         if (obj.behaviourCount >= rwstudioMAX_BEHAVIOURS) {
                             break;
                         }
@@ -324,14 +324,14 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                         state = 3;
                     }
                 } else if (flags == 0x00000000) {
-                    // flags=0: string segment (ör. ses entity adı) VEYA 16B
-                    // blob (GUID — ör. CSystemCommands alt segmentleri).
-                    // içerik uzunluğu kesin: x-8; ReadPadString blob'ta
-                    // aşırı okuyup stream'i kaydırırdı — tam uzunluk tüket.
+                    // flags=0: string segment (e.g. voice entity name) OR 16B
+                    // blob (GUID — e.g. CSystemCommands sub-segments).
+                    // content length is exact: x-8; ReadPadString would over-read
+                    // the blob and shift the stream — consume the exact length.
                     RwUInt32 contentLen = x >= 8 ? x - 8 : 0;
                     RwChar buf[64];
                     if (contentLen > sizeof(buf)) {
-                        // bilinmeyen uzun blob — chunk sonuna seek
+                        // unknown long blob — seek to chunk end
                         RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
                         break;
                     }
@@ -340,7 +340,7 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                             contentLen) {
                         break;
                     }
-                    // tespit: ilk bayt yazdırılabilir → string; değilse blob
+                    // detect: first byte printable -> string; otherwise blob
                     if (pCur && contentLen > 0 && buf[0] >= 0x20 &&
                         buf[0] < 0x7F) {
                         RwUInt32 i = 0;
@@ -352,11 +352,11 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                         pCur->name[i] = '\0';
                     }
                 } else {
-                    break; // bilinmeyen segment — chunk sonuna seek
+                    break; // unknown segment — seek to chunk end
                 }
             } else if (x == 12 || x == 20) {
-                // property: [size][id][size-8 değer] — kapasite yoksa da
-                // baytları tüket (hizayı koru)
+                // property: [size][id][size-8 value] — even if capacity is missing,
+                // consume the bytes (preserve alignment)
                 RwUInt32 propId = 0;
                 if (RwStreamRead(pFile->pStream, &propId, 4) != 4) {
                     break;
@@ -376,7 +376,7 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                     ++pCur->propCount;
                 }
             } else {
-                break; // beklenmeyen alan — hizayı koru
+                break; // unexpected field — preserve alignment
             }
         }
         pFile->hasObject = TRUE;
@@ -384,7 +384,7 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
         return TRUE;
     }
 
-    // bilinmeyen türler: chunk sonuna seek
+    // unknown types: seek to chunk end
     RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
     return TRUE;
 }
@@ -395,7 +395,7 @@ RwUInt32 RwStudioAssetReadEmbedded(RwStudioFile *pFile,
     if (!pFile || !pAsset || !pBuf || pFile->pendingPayload == 0) {
         return 0;
     }
-    // mutlak konum + chunk sonu seek: hizа her koşulda korunur
+    // absolute position + seek to chunk end: alignment preserved in every case
     RwStreamSeekAbs(pFile->pStream, pFile->embedPayloadPos);
     RwUInt32 toRead = pFile->pendingPayload;
     if (toRead > maxLen) {
@@ -414,7 +414,7 @@ RwUInt32 RwStudioAssetReadResource(RwStudioFile *pFile,
         pAsset->resourceLength == 0 || pAsset->embeddedType != 0) {
         return 0;
     }
-    // embed payload mekanizması aynı alanları paylaşır (pos + pending)
+    // embed payload mechanism shares the same fields (pos + pending)
     return RwStudioAssetReadEmbedded(pFile, pAsset, pBuf, maxLen);
 }
 

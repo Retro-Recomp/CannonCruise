@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Particle Emitter (ParticleEmitter.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ParticleEmitter.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0044f770 — CParticleEmitter::Deinitialize
 // ============================================================================
 
@@ -89,12 +89,12 @@ void CParticleEmitter::Update(RwReal deltaTime)
                 continue;
             }
 
-            // Pozisyon ve yerçekimi
+            // Position and gravity
             m_Particles[i].m_Pos.x += m_Particles[i].m_Vel.x * deltaTime;
             m_Particles[i].m_Pos.y += m_Particles[i].m_Vel.y * deltaTime - 0.5f * m_pDef->m_fGravity * deltaTime * deltaTime;
             m_Particles[i].m_Pos.z += m_Particles[i].m_Vel.z * deltaTime;
 
-            // Boyut ve renk interpolasyonu
+            // Size and color interpolation
             RwReal t = m_Particles[i].m_fLife / m_Particles[i].m_fMaxLife;
             m_Particles[i].m_fSize = m_pDef->m_fStartSize + (m_pDef->m_fEndSize - m_pDef->m_fStartSize) * t;
         }
@@ -103,7 +103,7 @@ void CParticleEmitter::Update(RwReal deltaTime)
 
 void CParticleEmitter::Render()
 {
-    // Billboard parçacık Im3D çizimi
+    // Billboard particle Im3D rendering
 }
 
 void CParticleEmitter::Deinitialize()

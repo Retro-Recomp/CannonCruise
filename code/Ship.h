@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Ship Base Class (Ship.h)
 // Original path: D:\Projects\CannonCruisePC\code\Ship.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Cannon.h"

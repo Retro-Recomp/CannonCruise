@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (clinearmemorymanager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\clinearmemorymanager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00414850 — CLinearMemoryManager::Instance()
 //   FUN_00414930 — CLinearMemoryManager::~CLinearMemoryManager()
 //   FUN_00414e60 — CLinearMemoryManager::Delete()
@@ -32,7 +32,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager Destructor (FUN_00414930)
-    // ASM: 00414930 — Havuzları sil, serbest bırakılmamış bellek varsa uyar
+    // ASM: 00414930 — Delete the pools, warn if there is unreleased memory
     // ========================================================================
     CLinearMemoryManager::~CLinearMemoryManager()
     {
@@ -56,7 +56,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::Instance (FUN_00414850)
-    // ASM: 00414850 — Singleton al / yoksa oluştur (DAT_0063567c)
+    // ASM: 00414850 — Get singleton / create it if missing (DAT_0063567c)
     // ========================================================================
     CLinearMemoryManager* CLinearMemoryManager::Instance()
     {
@@ -69,7 +69,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::Delete (FUN_00414e60)
-    // ASM: 00414e60 — Singleton nesnesini serbest bırak
+    // ASM: 00414e60 — Release the singleton object
     // ========================================================================
     void CLinearMemoryManager::Delete()
     {
@@ -82,7 +82,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::Alloc (FUN_00414e80)
-    // ASM: 00414e80 — Doğrusal bellek havuzundan blok tahsis et
+    // ASM: 00414e80 — Allocate a block from the linear memory pool
     // ========================================================================
     void* CLinearMemoryManager::Alloc(RwUInt32 size)
     {
@@ -94,13 +94,13 @@ namespace RWS
         RwUInt8* pCurrent = (RwUInt8*)sm_pActivePool->m_pCurrent;
         RwUInt8* pEnd = (RwUInt8*)sm_pActivePool->m_pEnd;
 
-        // Havuzda yeterli alan var mı?
+        // Is there enough space in the pool?
         if (pCurrent + size > pEnd)
         {
             return 0;
         }
 
-        // 64-byte hizalama kontrolü
+        // 64-byte alignment check
         assert((size & (CClassFactory::m_AlignmentSize - 1)) == 0 &&
                "Size should always be a multiple of CClassFactory::m_AlignmentSize to ensure alignment. check the scope of the new operation ::RWS_NEW vs RWS_NEW.");
 
@@ -113,7 +113,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::Free (FUN_00415160)
-    // ASM: 00415160 — Blok serbest bırak, havuz boşalırsa yok et
+    // ASM: 00415160 — Free the block, destroy the pool if it becomes empty
     // ========================================================================
     RwBool CLinearMemoryManager::Free(void* pMem)
     {
@@ -144,7 +144,7 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::DestroyPool (FUN_00415200)
-    // ASM: 00415200 — Havuz belleğini serbest bırak
+    // ASM: 00415200 — Release the pool memory
     // ========================================================================
     void CLinearMemoryManager::DestroyPool(MemoryPool* pPool)
     {
@@ -161,13 +161,13 @@ namespace RWS
 
     // ========================================================================
     // CLinearMemoryManager::CreatePool (FUN_004154a0)
-    // ASM: 004154a0 — Yeni bir bellek havuzu oluştur (64-byte hizalanmış)
+    // ASM: 004154a0 — Create a new memory pool (64-byte aligned)
     // ========================================================================
     void CLinearMemoryManager::CreatePool(RwUInt32 poolSize)
     {
         MemoryPool* pPool = new MemoryPool();
         
-        // Hizalama için ekstra 64 byte tahsis et
+        // Allocate an extra 64 bytes for alignment
         pPool->m_pBase = malloc(poolSize + CClassFactory::m_AlignmentSize);
         
         // 64-byte hizalama hesapla

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Performance Visualizer (PerformanceVisualizer.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PerformanceVisualizer.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00497de0 — CPerformanceVisualizer constructor & registration
 //   FUN_00498020 — CPerformanceVisualizer::Render
 // ============================================================================
@@ -42,7 +42,7 @@ void CPerformanceVisualizer::Render()
     RwReal recipZ = 1.0f / RwCameraGetNearClipPlane(pCamera);
     RwReal nearZ = RwCameraGetNearClipPlane(pCamera);
 
-    // RenderStates ayarları
+    // RenderState settings
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)0);
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)FALSE);
@@ -50,7 +50,7 @@ void CPerformanceVisualizer::Render()
     RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 
-    // Sol üst köşe, Performans (FPS/Profil) arka planı
+    // Top-left corner, Performance (FPS/Profile) background
     RwReal panelWidth = 200.0f;
     RwReal panelHeight = 100.0f;
     RwReal panelX = 10.0f;
@@ -60,7 +60,7 @@ void CPerformanceVisualizer::Render()
     for (int i = 0; i < 4; i++) {
         RwIm2DVertexSetScreenZ(&bgVerts[i], nearZ);
         RwIm2DVertexSetRecipCameraZ(&bgVerts[i], recipZ);
-        RwIm2DVertexSetIntRGBA(&bgVerts[i], 0, 0, 0, 150); // Yarı saydam siyah
+        RwIm2DVertexSetIntRGBA(&bgVerts[i], 0, 0, 0, 150); // Semi-transparent black
     }
     
     RwIm2DVertexSetScreenX(&bgVerts[0], panelX);              RwIm2DVertexSetScreenY(&bgVerts[0], panelY);
@@ -70,7 +70,7 @@ void CPerformanceVisualizer::Render()
     
     RwIm2DRenderPrimitive(rwPRIMTYPETRISTRIP, bgVerts, 4);
 
-    // Varsayılan duruma geri dön
+    // Restore default state
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)TRUE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)TRUE);
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)FALSE);

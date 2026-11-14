@@ -1,25 +1,25 @@
 // ============================================================================
-// CannonCruise - Rt2dMaestro gerçek implementasyonu (Rt2dMaestro.cpp)
+// CannonCruise - Rt2dMaestro real implementation (Rt2dMaestro.cpp)
 //
-// Eski: rwstubs.cpp no-op (Rt2dMaestroDestroy/Update/Render) — silindi.
-// Yeni: parse edilmiş stream + seçim durumu + Im2D placeholder render.
+// Old: rwstubs.cpp no-op (Rt2dMaestroDestroy/Update/Render) -- removed.
+// New: parsed stream + selection state + Im2D placeholder render.
 // ============================================================================
 
 #include "Rt2dMaestro.h"
 #include "RenderPlatform.h"
 #include "ShowText.h"
 
-#include <rw.h> // RwIm2DVertexSetScreenX — C API (RenderPlatform.cpp ile aynı)
+#include <rw.h> // RwIm2DVertexSetScreenX -- C API (same as RenderPlatform.cpp)
 
 #include <cstring>
 
-// NOT: Im2D çizimleri piksel koordinatlı olmalı (CShowText::Render deseni).
-// Eski matris tabanlı DrawQuad view-window (-1..1) üretiyordu → ~1 piksel
-// köşede çiziliyordu (görünmez). Artık RenderPlatform_DrawOverlayQuad kullanılıyor.
+// NOTE: Im2D draws must be in pixel coordinates (CShowText::Render pattern).
+// The old matrix-based DrawQuad produced a view-window (-1..1) -> ~1 pixel
+// triangle (invisible). RenderPlatform_DrawOverlayQuad is used now.
 
 Rt2dMaestro *Rt2dMaestroCreate(void)
 {
-    return nullptr; // streamsiz create yok (binary da stream ister)
+    return nullptr; // no streamless create (the binary also requires a stream)
 }
 
 Rt2dMaestro *Rt2dMaestroCreateFromMemory(const void *pData, RwUInt32 len)
@@ -33,7 +33,7 @@ Rt2dMaestro *Rt2dMaestroCreateFromMemory(const void *pData, RwUInt32 len)
         delete p;
         return nullptr;
     }
-    // komut indekslerini topla (menü öğeleri)
+    // gather command indices (menu items)
     for (RwUInt32 i = 0; i < p->info.nodeCount; ++i) {
         if (p->info.nodes[i].type == rwrt2dNODE_COMMAND) {
             p->commands[p->commandCount++] = (RwInt32)i;
@@ -57,36 +57,36 @@ void Rt2dMaestroUpdate(Rt2dMaestro *maestro, RwReal deltaTime)
     }
 }
 
-// Im2D overlay: koyu zemin + başlık + komut listesi (gömülü 5x7 bitmap
-// font ile okunur etiketler — gerçek menü görselleri {GUID} txd/dff yok).
-// Tüm çizim PİKSEL koordinatlı (RenderPlatform_BeginOverlay2D altında).
+// Im2D overlay: dark background + title + command list (readable labels with
+// the embedded 5x7 bitmap font -- real menu visuals {GUID} txd/dff are absent).
+// All drawing is in PIXEL coordinates (under RenderPlatform_BeginOverlay2D).
 void Rt2dMaestroRender(Rt2dMaestro *maestro)
 {
     if (maestro == nullptr) {
         return;
     }
-    // ekran pikseli — RenderPlatform_Initialize(1280, 720)
+    // screen pixel -- RenderPlatform_Initialize(1280, 720)
     const RwReal kScreenW = 1280.0f;
     const RwReal kScreenH = 720.0f;
     const int scale = 3;
 
-    // Im2D render state'leri —3D sahne derinlik yazdı; ZTEST kapalı yoksa elenir
+    // Im2D render states -- the 3D scene wrote depth; ZTEST must be off or they get culled
     RenderPlatform_BeginOverlay2D();
 
-    // zemin (koyu mavi-siyah)
+    // background (dark blue-black)
     RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, kScreenH,
                                    0xFF0C1420);
-    // başlık şeridi
+    // title bar
     RenderPlatform_DrawOverlayQuad(kScreenW * 0.025f, kScreenH * 0.045f,
                                    kScreenW * 0.95f, kScreenH * 0.12f,
                                    0xFF204068);
 
-    // başlık metni
+    // title text
     ShowText_DrawBitmapText("CANNONCRUISE MAINMENU", kScreenW * 0.05f,
                             kScreenH * 0.06f, scale, 220, 230, 255, 255);
 
-    // komut listesi — seçim çubuğu + etiket
-    const RwInt32 kVisible = 12; // ekrana sığan satır sayısı
+    // command list -- selection bar + label
+    const RwInt32 kVisible = 12; // number of rows fitting on screen
     const RwInt32 total = maestro->commandCount;
     const RwInt32 sel = (total > 0) ? maestro->selection : 0;
     RwInt32 first = 0;
@@ -106,7 +106,7 @@ void Rt2dMaestroRender(Rt2dMaestro *maestro)
         const RwInt32 ci = first + i;
         const RwReal y = listY + (RwReal)i * rowH;
         const RwBool active = (ci == sel) ? TRUE : FALSE;
-        // seçim/etiket zemini (piksel koordinatlı satır bandı)
+        // selection/label background (pixel-coordinate row band)
         RenderPlatform_DrawOverlayQuad(listX, y - rowH * 0.1f,
                                        kScreenW * 0.84f, rowH * 0.7f,
                                        active ? 0xFFC89030u : 0xFF182838u);
@@ -118,7 +118,7 @@ void Rt2dMaestroRender(Rt2dMaestro *maestro)
                                 active ? 20 : 210,
                                 active ? 20 : 230, 255);
     }
-    // toplam / ipucu
+    // total / hint
     char status[96];
     std::snprintf(status, sizeof(status),
                   "SELECTED: %s   [%d/%d]  W/S=MOVE ENTER=OK ESC=QUIT",

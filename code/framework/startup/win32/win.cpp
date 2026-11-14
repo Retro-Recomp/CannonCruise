@@ -4,18 +4,18 @@
 
 // ============================================================================
 // CannonCruise - Framework Startup Win32 (win.cpp)
-// Orijinal dosya: D:\Projects\CannonCruisePC\code\framework\startup\win32\win.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Original file: D:\Projects\CannonCruisePC\code\framework\startup\win32\win.cpp
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
-// Global Değişkenler (Hafıza adresleri: DAT_00635acc, DAT_00635ad0, DAT_00635ad1)
+// Global Variables (memory addresses: DAT_00635acc, DAT_00635ad0, DAT_00635ad1)
 HWND theMainWindow    = NULL;   // DAT_00635acc
 static HINSTANCE ghInstance  = NULL;   // DAT_00635ac8
-static BOOL bSuspended        = FALSE;  // DAT_00635ad0 (Pencere odağı kaybedildiğinde askıya alma)
-static BOOL bQuit             = FALSE;  // DAT_00635ad1 (Oyun döngüsünden çıkış bayrağı)
-static DWORD gLastFrameTime   = 0;      // DAT_00635690 (Kare zamanlayıcısı)
+static BOOL bSuspended        = FALSE;  // DAT_00635ad0 (suspend when window loses focus)
+static BOOL bQuit             = FALSE;  // DAT_00635ad1 (exit flag for the game loop)
+static DWORD gLastFrameTime   = 0;      // DAT_00635690 (frame timer)
 
-// Sabitler (Binary string havuzundan)
+// Constants (from the binary string pool)
 static const char* const APP_CLASS_NAME  = "CannonCruise";             // 0x005ef420
 static const char* const APP_WINDOW_NAME = "CannonCruise";             // 0x005ef430
 static const char* const APP_MUTEX_NAME  = "CANNONCRUISE";             // 0x00613094
@@ -25,9 +25,9 @@ static const char* const REG_VAL_WIDTH   = "VideoResWidth";            // 0x0061
 static const char* const REG_VAL_HEIGHT  = "VideoResHeight";           // 0x00613058
 static const char* const REG_VAL_DEPTH   = "VideoResDepth";            // 0x00613048
 
-// Harici Motor Geri Çağrıları (startup.cpp / RenderWare motor bağlantıları)
-// NOT: ResizeCameraRasters GERÇEK tanımı enginewin.cpp'de BOOL döner
-// (FUN_00418130). İmza 'void' yazılırsa MSVC farklı mangled sembol üretir
+// External Engine Callbacks (startup.cpp / RenderWare engine linkage)
+// NOTE: ResizeCameraRasters' REAL definition in enginewin.cpp returns BOOL
+// (FUN_00418130). If the signature is written as 'void', MSVC produces a different mangled symbol
 // → LNK2019 (?ResizeCameraRasters@@YAXHHH@Z vs @@YAHHH@Z).
 extern void Idle();
 extern BOOL ResizeCameraRasters(int width, int height, int depth);
@@ -36,17 +36,17 @@ extern BOOL InitEngine(HWND hWnd, HINSTANCE hInstance, int width, int height, in
 extern DWORD GetTime();
 
 // ----------------------------------------------------------------------------
-// MainWndProc (0x00418230): Ana Pencere Mesaj Prosedürü
+// MainWndProc (0x00418230): Main Window Message Procedure
 // ----------------------------------------------------------------------------
 LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
     case WM_ACTIVATEAPP:
-        // Uygulama odağını kaybettiğinde çizimi durdur ve bekleme moduna geç
+        // When the app loses focus, stop rendering and enter wait mode
         bSuspended = (wParam == 0);
         return 0;
 
     case WM_SIZE:
-        // Pencere boyutu değiştiğinde RenderWare kamera rasterlarını güncelle
+        // When the window size changes, update the RenderWare camera rasters
         if (wParam != SIZE_MINIMIZED) {
             int width  = LOWORD(lParam);
             int height = HIWORD(lParam);
@@ -55,20 +55,20 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_KEYDOWN:
-        // Hile / konsol tuş kombinasyonu kaydı (A-Z arası tuşlar)
+        // Cheat / console key combination logging (A-Z keys)
         if (wParam >= 'A' && wParam <= 'Z') {
-            // Dahili tampon kaydı
+            // Internal buffer logging
         }
         return 0;
 
     case WM_CLOSE:
-        // Motor kaynaklarını temizle ve pencereyi sonlandır
+        // Clean up engine resources and terminate the window
         CleanupEngine(hWnd);
         DestroyWindow(hWnd);
         return 0;
 
     case WM_DESTROY:
-        // Mesaj döngüsünü bitir
+        // End the message loop
         theMainWindow = NULL;
         PostQuitMessage(0);
         return 0;
@@ -80,10 +80,10 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 // ----------------------------------------------------------------------------
-// InitApp (FUN_00418420): Pencere Sınıfını Kaydeder (RegisterClass)
+// InitApp (FUN_00418420): Registers the Window Class (RegisterClass)
 // ----------------------------------------------------------------------------
 BOOL InitApp(HINSTANCE hInstance) {
-    // Assert kontrolü (0x00612fb8)
+    // Assert check (0x00612fb8)
     assert(hInstance != NULL && "Failed PRE-condition: processInstance");
 
     ghInstance = hInstance;
@@ -105,7 +105,7 @@ BOOL InitApp(HINSTANCE hInstance) {
 }
 
 // ----------------------------------------------------------------------------
-// CreateMainWindow (FUN_00418700): Ana Oyun Penceresini Oluşturur
+// CreateMainWindow (FUN_00418700): Creates the Main Game Window
 // ----------------------------------------------------------------------------
 HWND CreateMainWindow(HINSTANCE hInstance, int x, int y, int width, int height, BOOL bFullscreen) {
     assert(hInstance != NULL && "Failed PRE-condition: processInstance");
@@ -138,12 +138,12 @@ HWND CreateMainWindow(HINSTANCE hInstance, int x, int y, int width, int height, 
 }
 
 // ----------------------------------------------------------------------------
-// MainLoop (FUN_004189e0): Ana Oyun Mesaj ve Kare Döngüsü
+// MainLoop (FUN_004189e0): Main Game Message and Frame Loop
 // ----------------------------------------------------------------------------
 int MainLoop() {
     MSG msg;
     while (!bQuit) {
-        Sleep(0); // İşlemci zaman dilimini bırak
+        Sleep(0); // Yield the CPU time slice
 
         if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
@@ -154,13 +154,13 @@ int MainLoop() {
             DispatchMessageA(&msg);
         } else {
             if (bSuspended) {
-                // Pencere simge durumundayken veya odaksızken CPU harcamamak için bekle
+                // Wait to avoid burning CPU while the window is minimized or unfocused
                 WaitMessage();
             } else {
-                // Oyun çizimi ve güncelleme adımı
+                // Game draw and update step
                 Idle();
 
-                // Kare hızı sabitleyici (Kare süresi < 10ms ise uyu -> Max ~100 FPS)
+                // Frame rate limiter (if frame time < 10ms, sleep -> Max ~100 FPS)
                 DWORD currentTime = GetTime();
                 DWORD elapsed = currentTime - gLastFrameTime;
                 if (elapsed < 10) {
@@ -187,20 +187,20 @@ void QuitApp() {
 }
 
 // ----------------------------------------------------------------------------
-// AppMain (FUN_00418ce0): Uygulama Başlatma ve Yapılandırma Mantığı
+// AppMain (FUN_00418ce0): Application Startup and Configuration Logic
 // ----------------------------------------------------------------------------
 int AppMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    // 1. Zaten çalışan başka bir kopya var mı kontrolü
+    // 1. Check whether another copy is already running
     if (FindWindowA(APP_CLASS_NAME, APP_WINDOW_NAME) != NULL) {
         return -1;
     }
 
-    // 2. Pencere sınıfını kaydet
+    // 2. Register the window class
     if (!InitApp(hInstance)) {
         return -1;
     }
 
-    // 3. Kayıt defterinden (Registry) video ayarlarını oku
+    // 3. Read the video settings from the Registry
     int width  = 640;
     int height = 480;
     int depth  = 16;
@@ -223,18 +223,18 @@ int AppMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         RegCloseKey(hKey);
     }
 
-    // Tam ekranda imleci gizle
+    // Hide the cursor in fullscreen
     if (bFullscreen) {
         ShowCursor(FALSE);
     }
 
-    // 4. Ana pencereyi oluştur
+    // 4. Create the main window
     theMainWindow = CreateMainWindow(hInstance, 0, 0, width, height, bFullscreen);
     if (!theMainWindow) {
         return -1;
     }
 
-    // Pencereli modda ekranın ortasına konumlandır
+    // In windowed mode, center on the screen
     if (!bFullscreen) {
         int screenW = GetSystemMetrics(SM_CXSCREEN);
         int screenH = GetSystemMetrics(SM_CYSCREEN);
@@ -246,23 +246,23 @@ int AppMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ShowWindow(theMainWindow, nCmdShow);
     UpdateWindow(theMainWindow);
 
-    // 5. RenderWare ve motor sistemlerini başlat
+    // 5. Initialize RenderWare and the engine systems
     if (!InitEngine(theMainWindow, hInstance, width, height, depth, bFullscreen)) {
         DestroyWindow(theMainWindow);
         return -1;
     }
 
-    // 6. Ana oyun döngüsüne gir
+    // 6. Enter the main game loop
     int exitCode = MainLoop();
 
-    // 7. Döngüden çıkış sonrası denetim
+    // 7. Post-exit check after the loop
     assert(theMainWindow == NULL && "theMainWindow hasn't been destroyed");
 
     return exitCode;
 }
 
 // ----------------------------------------------------------------------------
-// WinMain (FUN_00418ca0): Win32 Giriş Noktası
+// WinMain (FUN_00418ca0): Win32 Entry Point
 // ----------------------------------------------------------------------------
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     ATOM atom = GlobalAddAtomA(APP_ATOM_NAME);

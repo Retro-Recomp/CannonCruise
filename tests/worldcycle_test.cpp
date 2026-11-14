@@ -1,15 +1,15 @@
 // ============================================================================
-// CannonCruise - Faz 4.6s entegrasyon stres testi (worldcycle_test.cpp)
+// CannonCruise - Phase 4.6s integration stress test (worldcycle_test.cpp)
 //
-// Tam oyun döngüsünün dünya-yükleme çekirdeğini sürer: dünya yüklenir,
-// clump instantiate edilir, doğrulanır, UNLOAD edilir — iki farklı dünya
-// üzerinden art arda turlar. Amaç: load/unload zincirinde crash ve
-// doğrulama hatası olmaması (play loop → seviye geçişi → unload).
+// Drives the world-loading core of the full game loop: a world is loaded,
+// the clump is instantiated, verified, UNLOADed — consecutive rounds across
+// two different worlds. Purpose: no crashes or verification errors in the
+// load/unload chain (play loop → level transition → unload).
 //
 //   usage: worldcycle_test <VIKING01.RWS> <IDUNA03.RWS> <BEAVER01.RWS>
 //
-// Her turda: RwsStudio open → WorldGeometry asset payload → Inspect →
-// CreateClump (grup1+grup2) → atomic sayısı → DestroyClump → free.
+// Each round: RwsStudio open → WorldGeometry asset payload → Inspect →
+// CreateClump (group1+group2) → atomic count → DestroyClump → free.
 // ============================================================================
 
 #include "WorldGeometry.h"
@@ -86,7 +86,7 @@ static void Cycle(const WorldCase &wc, int iteration) {
     if (pClump != nullptr) {
         rw::Clump *pC = static_cast<rw::Clump *>(pClump);
         const int n = (int)pC->countAtomics();
-        std::printf("  atomics=%d (beklenen %d)\n", n, wc.expectedAtomics);
+        std::printf("  atomics=%d (expected %d)\n", n, wc.expectedAtomics);
         CHECK(n == wc.expectedAtomics);
         WorldGeometry_DestroyClump(pClump);
     }
@@ -107,12 +107,12 @@ int main(int argc, char **argv) {
         return 2;
     }
     const WorldCase worlds[3] = {
-        {argv[1], 130}, // VIKING01: 96 + 34 (grup2)
+        {argv[1], 130}, // VIKING01: 96 + 34 (group2)
         {argv[2], 61},  // IDUNA03:  31 + 30
         {argv[3], 176}, // BEAVER01: 119 + 57
     };
-    // Oyun döngüsü: art arda iki seviye geçişi (A→B→C→A→B) — unload
-    // zinciri bellek bozulumu olmadan çalışmalı.
+    // Game loop: two consecutive level transitions in a row (A→B→C→A→B) — the
+    // unload chain must work without memory corruption.
     const int order[6] = {0, 1, 2, 0, 1, 2};
     for (int i = 0; i < 6; ++i) {
         Cycle(worlds[order[i]], i + 1);

@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (skinhelper.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\skinhelper.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00408c00 - FUN_00408d40 (RWS::SkinHelper)
 // ============================================================================
 
@@ -17,20 +17,20 @@ namespace RWS
 {
     /**
      * @class SkinHelper
-     * @brief RpSkin ve HAnim hiyerarşisi için yardımcı sınıf.
+     * @brief Helper class for RpSkin and HAnim hierarchy.
      *
-     * Asker, kuş gibi iskelet animasyonlu karakterler `RpSkin` plugin'ini
-     * kullanan atomikler içerir. `SkinHelper`, bu atomikleri bulur ve
-     * `RpHAnimHierarchy` animasyon hiyerarşisini bağlar.
+     * Skeletal-animated characters such as soldiers and birds contain atomics
+     * using the `RpSkin` plugin. `SkinHelper` finds these atomics and
+     * binds the `RpHAnimHierarchy` animation hierarchy.
      *
-     * **Kullanım örneği:**
+     * **Usage example:**
      * ```cpp
      * RpAtomic* pSkinAtomic = SkinHelper::FindSkinAtomic(pClump);
      * RpHAnimHierarchy* pHier = SkinHelper::GetHierarchy(pSkinAtomic);
      * SkinHelper::SetHierarchy(pSkinAtomic, pHier);
      * ```
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - FindSkinAtomic: `FUN_00408c00`
      * - GetHierarchy: `FUN_00408c60`
      * - SetHierarchy: `FUN_00408cc0`
@@ -39,24 +39,24 @@ namespace RWS
     {
     public:
         /**
-         * @brief Clump içindeki RpSkin plugin'ine sahip atomici bulur.
-         * @param pClump Arama yapılacak clump.
-         * @return RpAtomic* — Skin atomici; bulunamazsa nullptr.
+         * @brief Finds the atomic with the RpSkin plugin inside the clump.
+         * @param pClump Clump to search.
+         * @return RpAtomic* — The skin atomic; nullptr if not found.
          */
         static RpAtomic* FindSkinAtomic(RpClump* pClump);
 
         /**
-         * @brief Atomice bağlı HAnim hiyerarşisini döndürür.
-         * @param pAtomic Hedef skin atomici.
-         * @return RpHAnimHierarchy* — Hiyerarşi; yoksa nullptr.
+         * @brief Returns the HAnim hierarchy attached to the atomic.
+         * @param pAtomic Target skin atomic.
+         * @return RpHAnimHierarchy* — The hierarchy; nullptr if absent.
          */
         static RpHAnimHierarchy* GetHierarchy(RpAtomic* pAtomic);
 
         /**
-         * @brief HAnim hiyerarşisini atomice bağlar.
-         * @param pAtomic     Hedef skin atomici.
-         * @param pHierarchy  Bağlanacak hiyerarşi.
-         * @return TRUE ise bağlama başarılı.
+         * @brief Binds the HAnim hierarchy to the atomic.
+         * @param pAtomic     Target skin atomic.
+         * @param pHierarchy  Hierarchy to bind.
+         * @return TRUE if the binding succeeded.
          */
         static RwBool SetHierarchy(RpAtomic* pAtomic, RpHAnimHierarchy* pHierarchy);
     };

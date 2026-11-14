@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (Audio.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\Audio\Audio.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // ============================================================================
 
 #include "Audio.h"
@@ -63,7 +63,7 @@ namespace RWS
             assert(pForward != 0);
             assert(pUp != 0);
 
-            // 3D ses motoru dinleyici oryantasyonunu güncelle
+            // Update the 3D audio engine listener orientation
         }
     }
 }

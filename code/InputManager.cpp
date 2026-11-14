@@ -1,9 +1,9 @@
 ﻿// ============================================================================
 // CannonCruise - Input Manager (InputManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\InputManager.cpp
-// Tersine mÃ¼hendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazÄ±lmÄ±ÅŸtÄ±r.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary FonksiyonlarÄ±:
+// Binary Functions:
 //   FUN_0048c180 / FUN_0048c280 â€” CInputManager::FreeFocusID / AllocateFocusID ("m_iFocusIDPoolIndex < MAX_FOCUS_ID_COUNT Failed")
 //   FUN_0048c480 â€” CInputManager::PushFocusID ("m_iFocusStackIndex < MAX_FOCUS_ID_COUNT Failed", "!IsFocusIDInStack(iFocusID) Failed")
 //   FUN_0048c810 â€” CInputManager::PopFocusID

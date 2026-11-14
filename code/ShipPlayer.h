@@ -4,9 +4,9 @@
 // ============================================================================
 // CannonCruise - Player Ship Entity (ShipPlayer.h)
 // Original path: D:\Projects\CannonCruisePC\code\ShipPlayer.cpp
-// Tersine muhendislik ile Ghidra ve CC_ida.asm analiz edilerek yeniden yazilmistir.
+// Reverse-engineered via Ghidra and CC_ida.asm analysis.
 //
-// Binary Fonksiyonlari:
+// Binary Functions:
 //   sub_4AE6C0 - CClassFactory::Register("CShipPlayer", 0x488)
 //   sub_4AE700 - CShipPlayer constructor & event registration
 //   sub_4AF3C0 - CShipPlayer per-frame update & physics

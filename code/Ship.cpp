@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Ship Base Class (Ship.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\Ship.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004a7430 — CShip constructor & initialization
 //   FUN_004a76d0 — CShip::Update
 //   FUN_004a7bc0 — CShip::TakeDamage
@@ -132,7 +132,7 @@ void CShip::Update(RwReal deltaTime) {
   if (m_bSinking)
     return;
 
-  // Hız ve rotasyon interpolasyonu
+  // Speed and rotation interpolation
   m_fCurrentSpeed += (m_fTargetSpeed - m_fCurrentSpeed) * deltaTime * 2.0f;
 }
 

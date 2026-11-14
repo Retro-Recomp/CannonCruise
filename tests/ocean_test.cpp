@@ -1,7 +1,7 @@
 // ============================================================================
-// CannonCruise — Ocean smoke test (Faz 4.6q wire-in)
-// COcean::Initialize ızgara kurulumu + COceanTile dalgaları + Im3D render
-// yolunun çökmeden çalıştığını doğrular (NULL platform: device no-op).
+// CannonCruise — Ocean smoke test (Phase 4.6q wire-in)
+// verifies COcean::Initialize grid setup + COceanTile waves + Im3D render
+// path running without crashing (NULL platform: device no-op).
 // ============================================================================
 
 #include "Ocean.h"
@@ -32,25 +32,25 @@ int main() {
     CHECK(pOcean != nullptr);
     CHECK(COcean::GetInstance() == pOcean);
 
-    // Grid: 2×2 tile, 100 birim, köşe (-100,-100) → [-100..100]²
+    // Grid: 2×2 tiles, 100 units, corner (-100,-100) → [-100..100]²
     pOcean->Initialize(2, 2, 100.0f, -100.0f, -100.0f);
     pOcean->Update(0.5f);
     pOcean->Update(1.0f);
-    pOcean->Render(); // Begin/End dışı — null: no-op; GL3: device yutarsa no-op
+    pOcean->Render(); // outside Begin/End — null: no-op; GL3: no-op if device swallows it
 
-    // Bozuk girdi clamp'lenmeli (min 1×1, tileSize>0) — çökmemek yeterli
+    // corrupt input should be clamped (min 1×1, tileSize>0) — not crashing is enough
     pOcean->Initialize(0, 0, -1.0f, 0.0f, 0.0f);
     pOcean->Update(0.0f);
     pOcean->Render();
 
-    // Yeniden-init eski ızgarayı temizler (leak/çakışma yok)
+    // re-init clears the old grid (no leak/overlap)
     pOcean->Initialize(4, 4, 50.0f, -100.0f, -100.0f);
     pOcean->Render();
 
     delete pOcean;
     CHECK(COcean::GetInstance() == nullptr);
 
-    // NULL güvenli çağrılar
+    // NULL-safe calls
     pOcean = nullptr;
 
     RwEngineStop();

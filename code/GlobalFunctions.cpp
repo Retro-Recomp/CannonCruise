@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Global Helper & Math Utilities (GlobalFunctions.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\GlobalFunctions.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00401200 — RandomRangeFloat
 //   FUN_00401260 — RandomRangeInt
 // ============================================================================

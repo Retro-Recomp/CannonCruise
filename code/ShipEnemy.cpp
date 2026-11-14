@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Enemy AI Ship (ShipEnemy.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ShipEnemy.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004a8cd0 — CShipEnemy class registration & factory
 //   FUN_004a8d10 — CShipEnemy constructor & event wiring
 //   FUN_004a9c00 — CShipEnemy::Initialize (frame hierarchy: Rudder, Paddle_Back, Paddle_Right)

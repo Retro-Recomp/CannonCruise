@@ -54,10 +54,10 @@ public:
     void AttachMaestro(Rt2dMaestro* pMaestro);
     Rt2dMaestro* GetMaestro() const { return m_pMaestro; }
 
-    /// Harita gezgin (W/S/↑/↓) + maestro ilerletme.
+    /// Map navigator (W/S/↑/↓) + maestro advance.
     RwBool MoveNext();
     RwBool MovePrev();
-    /// Onay (Enter): MapMenuEnter → bekleyen seviye. TRUE=terminal.
+    /// Confirm (Enter): MapMenuEnter → pending level. TRUE=terminal.
     RwBool Confirm();
     /// Back (Esc): TRUE=exit loop.
     RwBool Back();

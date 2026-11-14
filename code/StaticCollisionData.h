@@ -70,9 +70,9 @@ RwBool StaticCollisionData_Decode(const RwUInt8 *pPayload, RwUInt32 len,
                                   StaticCollisionMesh *pOut);
 
 /**
- * @brief Mesh'ten bağımsız çarpışma shape'i üretir
+ * @brief Generates a collision shape independent of the mesh
  * (PhysicsShape_CreateTriMesh — btBvhTriangleMeshShape).
- * shape çağırının malıdır; PhysicsShape_Destroy ile serbest bırakılır.
+ * the shape belongs to the caller; it is released with PhysicsShape_Destroy.
  */
 void *StaticCollisionData_CreateShape(const StaticCollisionMesh *pMesh);
 

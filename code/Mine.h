@@ -4,9 +4,9 @@
 // ============================================================================
 // CannonCruise - Naval Sea Mine Entity (Mine.h)
 // Original path: D:\Projects\CannonCruisePC\code\Mine.cpp
-// Tersine muhendislik ile Ghidra ve CC_ida.asm analiz edilerek yeniden yazilmistir.
+// Reconstructed via reverse engineering with Ghidra and CC_ida.asm analysis.
 //
-// Binary Fonksiyonlari:
+// Binary functions:
 //   sub_495E90 - CClassFactory::Register("CMine", 0xE4)
 //   sub_495ED0 - CMine constructor & event registration
 //   Audio_LayMine, Audio_MineImpact, Mine_collision

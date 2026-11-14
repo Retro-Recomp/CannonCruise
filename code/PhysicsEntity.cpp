@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Physics Entity Base (PhysicsEntity.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\PhysicsEntity.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00436480 — CPhysicsEntity constructor & event wiring
 //   FUN_00437410 — CPhysicsEntity::AddToWorld
 //   FUN_00437c60 — CPhysicsEntity::RemoveFromWorld
@@ -72,7 +72,7 @@ void CPhysicsEntity::RemoveFromWorld() {
 
 // ---------------------------------------------------------------------------
 // SetPosition – assigns world-space position to the underlying rigid body.
-// Backend: PhysicsBody_SetPosition (motion state dahil).
+// Backend: PhysicsBody_SetPosition (including motion state).
 // ---------------------------------------------------------------------------
 void CPhysicsEntity::SetPosition(const RwV3d *pPos) {
   assert(pPos != 0);

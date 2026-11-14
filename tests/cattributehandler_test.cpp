@@ -20,7 +20,7 @@ int main()
     using RWS::CAttributeHandler;
 
     // -----------------------------------------------------------------
-    // Initialize + tekil örnek
+    // Initialize + singleton instance
     // -----------------------------------------------------------------
     CAttributeHandler::Initialize();
     CHECK(CAttributeHandler::Instance() != 0);
@@ -36,7 +36,7 @@ int main()
     CHECK(CAttributeHandler::FindInstance(1) == &obj);
     CHECK(CAttributeHandler::FindInstance(2) == 0);
 
-    // Aynı id'ye yeniden kayıt güncellemeli
+    // Re-registering the same id should update
     RegisteredObject other;
     CAttributeHandler::RegisterInstance(1, &other);
     CHECK(CAttributeHandler::FindInstance(1) == &other);
@@ -45,7 +45,7 @@ int main()
     CHECK(CAttributeHandler::FindInstance(1) == 0);
 
     // -----------------------------------------------------------------
-    // Paket tipi yardımcıları (tek bayt dizin işaretçileri)
+    // Packet type helpers (single-byte directory pointers)
     // -----------------------------------------------------------------
     const RwUInt8 instanceCreationPacket[] = { 0x01, 0xAA, 0xBB };
     const RwUInt8 dataPacket[]              = { 0x02, 0xAA };
@@ -65,7 +65,7 @@ int main()
     CHECK(CAttributeHandler::IsFinished(0) == TRUE);
 
     // -----------------------------------------------------------------
-    // Shutdown sonrası instance erişimi güvenli olmalı
+    // Instance access after Shutdown should be safe
     // -----------------------------------------------------------------
     CAttributeHandler::Shutdown();
 

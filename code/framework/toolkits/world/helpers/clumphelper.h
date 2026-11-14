@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (clumphelper.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\clumphelper.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00408400 - FUN_00408680 (RWS::ClumpHelper)
 // ============================================================================
 
@@ -15,13 +15,13 @@ namespace RWS
 {
     /**
      * @class ClumpHelper
-     * @brief RpClump nesneleri için yardımcı araç sınıfı.
+     * @brief Helper utility class for RpClump objects.
      *
-     * CannonCruise'da her 3D nesne (gemi, asker, top mermisi vb.) bir `RpClump`
-     * içinde barındırılır. `ClumpHelper`, bu nesnelerin ortak işlemlerini (arama,
-     * klonlama, yok etme, bounding sphere) merkezi bir API ile sunar.
+     * In CannonCruise every 3D object (ship, soldier, cannonball etc.) is contained in a `RpClump`.
+     * `ClumpHelper` offers the common operations on these objects (search,
+     * cloning, destroying, bounding sphere) through a central API.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - FindFirstAtomic: `FUN_00408400`
      * - CalculateBoundingSphere: `FUN_00408480`
      * - Clone: `FUN_004084f0`
@@ -31,52 +31,52 @@ namespace RWS
     {
     public:
         /**
-         * @brief Clump içindeki ilk `RpAtomic` nesnesini bulur.
-         * @param pClump Arama yapılacak clump.
-         * @return RpAtomic* — İlk atomic; bulunamazsa nullptr.
+         * @brief Finds the first `RpAtomic` object inside the clump.
+         * @param pClump Clump to search.
+         * @return RpAtomic* — The first atomic; nullptr if not found.
          */
         static RpAtomic* FindFirstAtomic(RpClump* pClump);
 
         /**
-         * @brief Tüm atomiklere belirtilen render bayrağını uygular.
-         * @param pClump Hedef clump.
-         * @param flags  Uygulanacak `rpATOMICRENDER` vb. bayraklar.
+         * @brief Applies the given render flags to all atomics.
+         * @param pClump Target clump.
+         * @param flags  `rpATOMICRENDER` etc. flags to apply.
          */
         static void SetAtomicFlags(RpClump* pClump, RwUInt32 flags);
 
         /**
-         * @brief Clump'un tüm geometrisini kapsayan küreyi hesaplar.
-         * @param pClump  Hedef clump.
-         * @param pSphere Hesaplanan kürenin yazılacağı çıkış parametresi.
+         * @brief Computes the sphere enclosing all geometry of the clump.
+         * @param pClump  Target clump.
+         * @param pSphere Output parameter where the computed sphere will be written.
          */
         static void CalculateBoundingSphere(RpClump* pClump, RwSphere* pSphere);
 
         /**
-         * @brief Clump'u klonlar (derin kopya).
-         * @param pClump Klonlanacak kaynak clump.
-         * @return RpClump* — Yeni klonlanmış clump; başarısızlıkta nullptr.
+         * @brief Clones the clump (deep copy).
+         * @param pClump Source clump to clone.
+         * @return RpClump* — The newly cloned clump; nullptr on failure.
          */
         static RpClump* Clone(RpClump* pClump);
 
         /**
-         * @brief Clump'u ve bağlı tüm kaynakları yok eder.
-         * @param pClump Yok edilecek clump.
+         * @brief Destroys the clump and all its attached resources.
+         * @param pClump Clump to destroy.
          */
         static void Destroy(RpClump* pClump);
 
-        /// @brief `Destroy()` için uyumluluk sarmalayıcısı
+        /// @brief Compatibility wrapper for `Destroy()`
         static void DestroyClump(RpClump* pClump) { Destroy(pClump); }
 
         /**
-         * @brief Ham kaynak verisinden clump oluşturur (stub).
-         * @return RpClump* — CannonCruise'da her zaman nullptr.
+         * @brief Creates a clump from raw resource data (stub).
+         * @return RpClump* — always nullptr in CannonCruise.
          */
         static RpClump* CreateClumpFromResource(const void* pResourceData) { return 0; }
 
         /**
-         * @brief Clump'a özellik paketi uygular (stub).
-         * @param pClump  Hedef clump.
-         * @param packet  Uygulanacak özellik paketi.
+         * @brief Applies an attribute packet to the clump (stub).
+         * @param pClump  Target clump.
+         * @param packet  Attribute packet to apply.
          */
         static void HandleAttributes(RpClump* pClump, const class CAttributePacket& packet) {}
     };

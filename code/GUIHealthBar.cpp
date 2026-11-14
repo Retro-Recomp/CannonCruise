@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - GUI Health Bar (GUIHealthBar.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\GUIHealthBar.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00483ca0 — CGUIHealthBar constructor & registration
 //   FUN_00484030 — CGUIHealthBar::SetDimensions
 //   FUN_00484500 — CGUIHealthBar::SetHealth
@@ -114,25 +114,25 @@ void CGUIHealthBar::Render()
     RwReal recipZ = 1.0f / RwCameraGetNearClipPlane(pCamera);
     RwReal nearZ = RwCameraGetNearClipPlane(pCamera);
 
-    // Ekran koordinatlarını hesapla (Normalize 0.0-1.0 -> Pixel)
+    // Compute screen coordinates (normalized 0.0-1.0 -> pixels)
     RwReal x = m_fX * screenWidth;
     RwReal y = m_fY * screenHeight;
     RwReal w = m_fWidth * screenWidth;
     RwReal h = m_fHeight * screenHeight;
     RwReal healthW = w * m_fHealth;
 
-    // RenderStates ayarları
+    // RenderState settings
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)0);
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)FALSE);
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)FALSE);
 
-    // Arka plan (Boşalan canı temsil eden kırmızı alan)
+    // Background (red area representing depleted health)
     RwIm2DVertex bgVerts[4];
     for (int i = 0; i < 4; i++) {
         RwIm2DVertexSetScreenZ(&bgVerts[i], nearZ);
         RwIm2DVertexSetRecipCameraZ(&bgVerts[i], recipZ);
-        RwIm2DVertexSetIntRGBA(&bgVerts[i], 128, 0, 0, 255); // Koyu kırmızı
+        RwIm2DVertexSetIntRGBA(&bgVerts[i], 128, 0, 0, 255); // Dark red
     }
     
     RwIm2DVertexSetScreenX(&bgVerts[0], x);     RwIm2DVertexSetScreenY(&bgVerts[0], y);
@@ -142,14 +142,14 @@ void CGUIHealthBar::Render()
     
     RwIm2DRenderPrimitive(rwPRIMTYPETRISTRIP, bgVerts, 4);
 
-    // Ön plan (Aktif canı temsil eden yeşil alan)
+    // Foreground (green area representing current health)
     if (m_fHealth > 0.0f)
     {
         RwIm2DVertex fgVerts[4];
         for (int i = 0; i < 4; i++) {
             RwIm2DVertexSetScreenZ(&fgVerts[i], nearZ);
             RwIm2DVertexSetRecipCameraZ(&fgVerts[i], recipZ);
-            RwIm2DVertexSetIntRGBA(&fgVerts[i], 0, 255, 0, 255); // Parlak yeşil
+            RwIm2DVertexSetIntRGBA(&fgVerts[i], 0, 255, 0, 255); // Bright green
         }
         
         RwIm2DVertexSetScreenX(&fgVerts[0], x);          RwIm2DVertexSetScreenY(&fgVerts[0], y);
@@ -160,7 +160,7 @@ void CGUIHealthBar::Render()
         RwIm2DRenderPrimitive(rwPRIMTYPETRISTRIP, fgVerts, 4);
     }
 
-    // Varsayılan duruma geri dön
+    // Restore default state
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)TRUE);
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)TRUE);
 }

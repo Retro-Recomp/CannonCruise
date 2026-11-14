@@ -18,28 +18,28 @@
 
 namespace {
 
-// SCR.mov yükleme ekranı: siyah üst, ufukta dalgalı deniz çizgisi, ortada
-// parchment şerit, üzerinde "LOADING..." (canlı noktalar), Hugo kayığı
-// denizde soldan sağa ilerler (ilerleme = yüklenme oranı). 30 fps sabit.
+// SCR.mov loading screen: black top, wavy sea line at the horizon, a parchment
+// strip in the middle with "LOADING..." (animated dots) on it, Hugo's boat
+// drifts from left to right across the sea (progress = load ratio). Fixed 30 fps.
 void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
     const RwReal progress =
         (frameBudget > 0) ? (RwReal)frame / (RwReal)frameBudget : 1.0f;
-    const RwReal horizonY = (RwReal)H * 0.56f; // ufuk çizgisi (deniz üstü)
+    const RwReal horizonY = (RwReal)H * 0.56f; // horizon line (above the sea)
 
     RenderPlatform_BeginOverlay2D();
 
-    // Zemin — üst gece siyahı (#040914), ufuk altı koyu lacivert deniz
-    // (#0C1E3A). DrawOverlayQuad BGRA bayt sırası: 0xAABBGGRR değil, R=b0 G=b1 B=b2.
+    // Background — night black on top (#040914), dark navy sea below the
+    // horizon (#0C1E3A). DrawOverlayQuad BGRA byte order: not 0xAABBGGRR, R=b0 G=b1 B=b2.
     RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, (RwReal)W, horizonY,
                                    0xFF140904);
     RenderPlatform_DrawOverlayQuad(0.0f, horizonY, (RwReal)W,
                                    (RwReal)H - horizonY, 0xFF3A1E0C);
 
-    // Parchment şerit — deniz üzerinde yüzer tabela.
+    // Parchment strip — floating sign above the sea.
     const RwReal stripW = W * 0.72f;
-    const RwReal stripH = stripW * (128.0f / 512.0f); // orijinal en/boy oranı
+    const RwReal stripH = stripW * (128.0f / 512.0f); // original aspect ratio
     const RwReal stripX = ((RwReal)W - stripW) * 0.5f;
-    const RwReal stripY = H * 0.545f;                 // deniz üstünde asılı
+    const RwReal stripY = H * 0.545f;                 // hanging above the sea
     if (RenderPlatform_HasTexture("Load_NT_001") == TRUE) {
         RenderPlatform_DrawTexturedQuad(stripX, stripY, stripW, stripH,
                                         "Load_NT_001");
@@ -48,9 +48,9 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
                                        0xFF5C94B8); // parchment fallback (BGRA)
     }
 
-    // Hugo — parchment önünde denizde (dalgaların arkasında) soldan sağa
-    // süzülür (ilerleme = yüklenme oranı), hafif yalpalama. Gövdesi dalga
-    // bandının altında kalacak şekilde oturur.
+    // Hugo — on the sea in front of the parchment (behind the waves), drifts
+    // from left to right (progress = load ratio), gentle rocking. Sits so its
+    // hull stays below the wave band.
     const RwReal boatW = H * 0.26f;
     const RwReal boatY = stripY - boatW * 0.02f +
                          std::sin((RwReal)frame * 0.11f) * 2.0f;
@@ -62,13 +62,13 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
                                         "Load_NT_003");
     }
 
-    // Dalga bordürü — parchment'un üzerine, tekneyle parchment birleşimine
-    // oturur (ön planda su); 512x32 doku sağa sürüklenir.
+    // Wave border — over the parchment, sitting at the junction of the boat and
+    // the parchment (water in the foreground); the 512x32 texture scrolls right.
     if (RenderPlatform_HasTexture("Load_NT_005") == TRUE) {
         const RwReal waveH = H * 0.085f;
         const RwReal waveW = 512.0f;
-        const RwReal offset = (RwReal)(frame * 1);        // yavaş sürüklenme
-        const RwReal waveY = stripY - waveH * 0.42f;      // parchment üst çizgisi
+        const RwReal offset = (RwReal)(frame * 1);        // slow drift
+        const RwReal waveY = stripY - waveH * 0.42f;      // parchment top edge
         for (int i = -1; i < 3; ++i) {
             RenderPlatform_DrawTexturedQuad(
                 (RwReal)i * waveW - offset, waveY, waveW, waveH,
@@ -76,7 +76,7 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
         }
     }
 
-    // "LOADING" + canlı noktalar — parchment'un alt yarısında, koyu mürekkep.
+    // "LOADING" + live dots — in the lower half of the parchment, dark ink.
     const char *dots = (frame / 18) % 4 == 0   ? ""
                        : (frame / 18) % 4 == 1 ? "."
                        : (frame / 18) % 4 == 2 ? ".."
@@ -91,7 +91,7 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
                             stripY + stripH * 0.62f, textScale, 72, 48, 26,
                             255);
 
-    // İpucu — sol alt.
+    // Hint — bottom left.
     ShowText_DrawBitmapText("ESC", (RwReal)(W * 0.04f), (RwReal)(H * 0.95f),
                             2, 190, 185, 170, 255);
 
@@ -104,13 +104,13 @@ RwBool LoadingScreen_Play(int frames, int screenW, int screenH) {
     if (frames <= 0) {
         return TRUE;
     }
-    // Ses — orijinal: yükleme döngüsü (Loading.wav).
+    // Sound — original: loading loop (Loading.wav).
     CAudioManager *pAudio = CAudioManager::GetSingletonPtr();
     if (pAudio != nullptr) {
         pAudio->PlayStream("Loading", TRUE);
     }
 
-    // 30 fps hedefi — kare atlatmadan canlı ritim (uykuda bloklamadan).
+    // 30 fps target — smooth live rhythm without frame skipping (no blocking sleep).
     const auto kFrameDuration = std::chrono::milliseconds(33); // ~30 fps
     std::chrono::steady_clock::time_point nextFrame =
         std::chrono::steady_clock::now();
@@ -140,19 +140,19 @@ RwBool LoadingScreen_Play(int frames, int screenW, int screenH) {
                 std::getenv("CANNONCRUISE_SCREENSHOT_LOADING"));
         }
 
-        // Düğmeye basıldıysa çıkış — yükleme atlandı (oyuna geç).
+        // Quit if a button was pressed — loading skipped (go to the game).
         if (RwPlatformKeyDown(RW_KEY_ESCAPE) || RwPlatformKeyDown(' ') ||
             RwPlatformKeyDown(RW_KEY_ENTER)) {
             break;
         }
 
-        // 30 fps beklemesi (yoğun kare içinde yumuşak nefes).
+        // 30 fps wait (gentle pause within the busy frame).
         const std::chrono::steady_clock::time_point now =
             std::chrono::steady_clock::now();
         if (now < nextFrame) {
             std::this_thread::sleep_for(nextFrame - now);
         } else {
-            nextFrame = now; // geride kaldıysak bir sonraki kareyi geciktirme
+            nextFrame = now; // if we're behind, don't delay the next frame
         }
     }
 

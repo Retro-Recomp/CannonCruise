@@ -1,10 +1,11 @@
 // ============================================================================
 // CannonCruise - Playground/physics smoke test (playground_test.cpp)
 //
-// Sprint 1 doğrulama: oyuncunun gemisi spawn edip throttle katsayısı 1.0
-// ile 120 kare güncellediğinde hız 0'dan pozitif değere yükselir ve gemi
-// ileri yönde ilerler. Bullet PhysicsBackend çağrılır; tekne Bullet dünya
-// kaydında kinematic holder olarak yaşar; PlayerShip_Shutdown ile temizlenir.
+// Sprint 1 verification: the player ship spawns and, after 120 updates
+// with a throttle coefficient of 1.0, its speed rises from 0 to a positive
+// value and the ship advances forward. The Bullet PhysicsBackend is called;
+// the boat lives in the Bullet world registry as a kinematic holder;
+// cleaned up with PlayerShip_Shutdown.
 //
 //   usage: playground_test
 // ============================================================================
@@ -14,15 +15,16 @@
 #include "PhysicsBackend.h"
 #include "Cannonball.h"
 #include "TowerCatapult.h"
+#include "HUD.h"
 #include "rwcore.h"
 
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 
-static const int kFrames = 120;        // 120 kare × 1/60 s = 2 s
+static const int kFrames = 120;        // 120 frames × 1/60 s = 2 s
 static const RwReal kMaxSpeedExpect = 18.0f;
-static const RwReal kTargetTime = 120.0f / 60.0f; // 2 saniye
+static const RwReal kTargetTime = 120.0f / 60.0f; // 2 seconds
 
 static int g_failures = 0;
 
@@ -39,55 +41,61 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
-    // PhysicsWorld singleton'ı (startup zinciri gibi davranır)
+    // PhysicsWorld singleton (behaves like the startup chain)
     CPhysicsWorld::Create();
-    
-    // Tek test için tekne spawn
+
+    // Spawn the boat for a single test
     PlayerShipState state;
     RwV3d spawnPos = {0.0f, 0.0f, 0.0f};
-    PlayerShip_Spawn(&spawnPos, 0.0f); // birim çemberin +Z yönünde
+    PlayerShip_Spawn(&spawnPos, 0.0f); // +Z direction of the unit circle
     CHECK(PlayerShip_GetState(&state) == TRUE);
     CHECK(state.pos.x == 0.0f && state.pos.z == 0.0f);
 
-    // 120 kare tam gaz ileri
+    // 120 frames full throttle forward
     const RwReal dt = 1.0f / 60.0f;
     for (int i = 0; i < kFrames; ++i) {
         PlayerShip_Update(dt, (RwReal)i * dt, 1.0f, 0.0f);
     }
 
     CHECK(PlayerShip_GetState(&state) == TRUE);
-    std::printf("Son hız = %.3f, pos=(%.3f, %.3f, %.3f)\n",
+    std::printf("Final speed = %.3f, pos=(%.3f, %.3f, %.3f)\n",
                 state.speed, state.pos.x, state.pos.y, state.pos.z);
-    // 2 saniyede hedef hıza asimptotik olarak yaklaşır:
+    // asymptotically approaches target speed in 2 seconds:
     // v(∞) = 18 (kMaxSpeed); 2 saniyede ≈ 18*(1-e^{-1.8}) ≈ 15.07 (%84).
     Check(state.speed > kMaxSpeedExpect * 0.75f,
           "speed >= 75% of kMaxSpeed after 2 s", __LINE__);
-    // +Z yönünde ilerlemiş olmalı
+    // should have advanced in +Z direction
     Check(state.pos.z > 10.0f,
           "ship moved forward (z > 10)", __LINE__);
 
-    // Temiz kapanış
+    // Clean shutdown
     PlayerShip_Shutdown();
 
     // ======================================================================
-    // Top atışı → cannonball → kule yıkımı
+    // Cannonball → cannonball → tower destruction + HUD score
     // ======================================================================
     {
-        std::printf("\n[Sprint 1] Top atışı → kule yıkımı\n");
+        std::printf("\n[Sprint 2] Cannonball shot → tower destruction + HUD\n");
         CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
         if (pWorld == nullptr) {
             pWorld = CPhysicsWorld::Create();
         }
-        std::printf("physics dünyası: %p\n", (void*)pWorld);
+        std::printf("physics world: %p\n", (void*)pWorld);
+        RWS::HUD_Initialize();
+        Check(RWS::HUD_GetAmmo() == 175,
+              "HUD ammo starts at 175", __LINE__);
+        RWS::HUD_UseAmmo(3);
+        Check(RWS::HUD_GetAmmo() == 172,
+              "HUD ammo 175 -> 172 after UseAmmo(3)", __LINE__);
 
-        // Bir kule koy (150 hedef HP); vahşi tekne yok; top direkt kumanın
-        // üst katmanına isabet edecek.
+        // Place one tower (150 target HP); no wild boats; the cannonball will hit
+        // the top layer of the tower directly.
         RwV3d towerPos = {0.0f, 0.0f, 50.0f};
         CTowerCatapult *pTower = new CTowerCatapult();
         pTower->SetWorldPosition(towerPos);
 
-        // Top: yatay atış yukuş (pitch'siz); mesafe 50'e yakin, top düşmeksizin
-        // kuleye çarpacak kadar hızlı (cos(30°)=0.86, hız 40 → x 34 sn hız)
+        // Cannon: horizontal shot, flat trajectory (no pitch); distance ~50, fast enough
+        // that the ball reaches the tower without falling (cos(30°)=0.86, speed 40 → x 34 s velocity)
         RwV3d muzzle = {0.0f, 30.0f, -1.0f};
         RwV3d vel = {0.0f, 0.0f, 35.0f};
         SCannonballSpawnData spawnData;
@@ -99,11 +107,11 @@ int main(int argc, char **argv) {
         CCannonball *pBall = new CCannonball();
         pBall->Spawn(spawnData);
 
-        // Fizik adımlarını 90 kare ilerlet (~1.5 s — uçuş sırası)
+        // Advance physics steps 90 frames (~1.5 s — flight sequence)
         const RwReal dt = 1.0f / 60.0f;
         for (int i = 0; i < 120; ++i) {
             pWorld->Update(dt);
-            // Top konumunu her kare yazdır (debug)
+            // Print ball position each frame (debug)
             RwV3d bp = {};
             PhysicsBody_GetPosition(pBall->GetRigidBody(), &bp.x, &bp.y, &bp.z);
             const RwReal dx = bp.x - towerPos.x;
@@ -116,16 +124,25 @@ int main(int argc, char **argv) {
                 std::printf("HIT frame=%d tower pos=(%.1f,%.1f,%.1f) ball=(%.1f,%.1f,%.1f)\n",
                             i, towerPos.x, towerPos.y, towerPos.z, bp.x, bp.y, bp.z);
                 pTower->TakeDamage(150.0f);
+                if (pTower->IsDestroyed()) {
+                    RWS::HUD_RegisterTowerDestroyed();
+                }
                 pBall->OnHit(pTower, 0);
                 break;
             }
         }
 
-        // Kule yok edilmiş olmalı
+        // Tower must be destroyed
         Check(pTower->IsDestroyed() == TRUE,
               "tower destroyed after cannonball hit", __LINE__);
-        std::printf("kule yıkıldı: %s\n",
-                    pTower->IsDestroyed() == TRUE ? "YES" : "NO");
+        Check(RWS::HUD_GetTowersDestroyed() == 1,
+              "HUD tower destroyed counter == 1", __LINE__);
+        Check(RWS::HUD_GetScore() >= 500,
+              "HUD score >= 500 after tower hit", __LINE__);
+        std::printf("tower destroyed: %s   HUD_towers=%d score=%d\n",
+                    pTower->IsDestroyed() == TRUE ? "YES" : "NO",
+                    RWS::HUD_GetTowersDestroyed(),
+                    RWS::HUD_GetScore());
 
         delete pBall;
         delete pTower;

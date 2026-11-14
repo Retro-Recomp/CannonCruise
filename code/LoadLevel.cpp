@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Level Loader (LoadLevel.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\LoadLevel.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_004900c0 — CLoadLevel constructor
 //   FUN_00490670 — CLoadLevel::RequestLevel
 // ============================================================================
@@ -27,7 +27,7 @@ void CLoadLevel::HandleEvents(const RWS::CMsg& msg)
 
 // ============================================================================
 // CLoadLevel::RequestLevel (FUN_00490670)
-// ASM: 00490670 — Yeni seviyeyi talep et ve doğrula
+// ASM: 00490670 — Request and validate the new level
 // ============================================================================
 void CLoadLevel::RequestLevel(const char* pLevelName)
 {

@@ -1,10 +1,10 @@
 // ============================================================================
-// CannonCruise - GLOBAL.RWS varlık envanteri (globalassets_test.cpp)
+// CannonCruise - GLOBAL.RWS asset inventory (globalassets_test.cpp)
 //
-// Faz 4.6r-5 / GLOBAL load: tüm üst seviye chunk'lar + gömülü payload'lar
-// listelenir. Gömülü TexDictionary'ler (embeddedType=0x23) isimlerine göre
-// doğrulanır (yükleme ekranı art'ı). Envanter listesi stdout'a yazılır
-// (ctest çıktısından bakılabilir) — asset keşfi amaçlı regression/keşif testi.
+// Phase 4.6r-5 / GLOBAL load: all top-level chunks + embedded payloads
+// listed. Embedded TexDictionaries (embeddedType=0x23) are verified by name
+// (loading screen art). The inventory list is written to stdout
+// (inspectable from the ctest output) — regression/discovery test for asset discovery.
 //
 //   usage: globalassets_test <GLOBAL.RWS>
 // ============================================================================
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     pFile = RwStudioFileOpen(argv[1]);
     CHECK(pFile != nullptr);
     if (pFile == nullptr) {
-        std::printf("globalassets_test: %s açılamadı\n", argv[1]);
+        std::printf("globalassets_test: %s could not be opened\n", argv[1]);
         return 2;
     }
     RwStudioAsset asset;
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
                 "%u external resource, %u libId=0x1803FFFF\n",
                 (unsigned)index, (unsigned)embeddedCount, (unsigned)txdCount,
                 (unsigned)resourceCount, (unsigned)imageLibIdCount);
-    // GLOBAL.RWS en azından gömülü txd içerir (yükleme ekranı art'ı).
+    // GLOBAL.RWS contains at least one embedded txd (loading screen art).
     CHECK(index > 0);
     CHECK(txdCount >= 1);
     std::printf("globalassets_test: %d checks, %d failures\n", g_checks,

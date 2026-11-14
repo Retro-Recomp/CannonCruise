@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (rwaudresource.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\rwaudresource\rwaudresource.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00427f70 — RwAudResource::LoadWaveDict
 // ============================================================================
 
@@ -14,7 +14,7 @@ namespace RWS
 {
     // ========================================================================
     // RwAudResource::LoadWaveDict (FUN_00427f70)
-    // ASM: 00427f70 — Ses dosyası sözlüğü yükle (rwaID_WAVEDICT)
+    // ASM: 00427f70 — Load the sound file dictionary (rwaID_WAVEDICT)
     // ========================================================================
     void* RwAudResource::LoadWaveDict(const char* pFilename)
     {
@@ -24,8 +24,8 @@ namespace RWS
         if (!pStream) return 0;
 
         void* pWaveDict = 0;
-        // Wave Dict chunk arama (rwaID_WAVEDICT)
-        // Başarısızsa: "Wave Dictionary Invalid" assert
+        // Wave Dict chunk search (rwaID_WAVEDICT)
+        // On failure: "Wave Dictionary Invalid" assert
         RwStreamClose(pStream, 0);
 
         return pWaveDict;
@@ -35,7 +35,7 @@ namespace RWS
     {
         if (pWaveDict)
         {
-            // Dalga sözlüğünü bellekten serbest bırak
+            // Release the wave dictionary from memory
         }
     }
 }

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (memoryhandler.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\memoryhandler\memoryhandler.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004049f0 — CMemoryHandler::RwAlloc
 //   FUN_00404c80 — CMemoryHandler::RwFree
 //   FUN_00404f80 — CMemoryHandler::RwRealloc
@@ -64,7 +64,7 @@ namespace RWS
 
     // ========================================================================
     // CMemoryHandler::RwAlloc (FUN_004049f0)
-    // ASM: 004049f0 — RenderWare bellek tahsisi
+    // ASM: 004049f0 — RenderWare memory allocation
     // ========================================================================
     void* CMemoryHandler::RwAlloc(RwFreeList* fl, RwUInt32 size, RwUInt32 hint)
     {
@@ -74,7 +74,7 @@ namespace RWS
 
     // ========================================================================
     // CMemoryHandler::RwFree (FUN_00404c80)
-    // ASM: 00404c80 — RenderWare bellek serbest bırakma
+    // ASM: 00404c80 — RenderWare memory free
     // ========================================================================
     void* CMemoryHandler::RwFree(RwFreeList* fl, void* mem)
     {
@@ -85,7 +85,7 @@ namespace RWS
 
     // ========================================================================
     // CMemoryHandler::RwRealloc (FUN_00404f80)
-    // ASM: 00404f80 — RenderWare bellek yeniden boyutlandırma
+    // ASM: 00404f80 — RenderWare memory resize
     // ========================================================================
     void* CMemoryHandler::RwRealloc(RwFreeList* fl, void* mem, RwUInt32 size, RwUInt32 hint)
     {
@@ -95,7 +95,7 @@ namespace RWS
 
     // ========================================================================
     // CMemoryHandler::RwCalloc (FUN_00405140)
-    // ASM: 00405140 — Sıfırlanmış blok tahsisi
+    // ASM: 00405140 — Zeroed block allocation
     // ========================================================================
     void* CMemoryHandler::RwCalloc(RwFreeList* fl, RwUInt32 numObj, RwUInt32 sizeObj, RwUInt32 hint)
     {

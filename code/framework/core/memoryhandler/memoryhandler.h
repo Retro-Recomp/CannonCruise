@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (memoryhandler.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\memoryhandler\memoryhandler.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00406000 - FUN_00406280 (RWS::CMemoryHandler)
 // ============================================================================
 
@@ -14,20 +14,20 @@ namespace RWS
 {
     /**
      * @class CMemoryHandler
-     * @brief RenderWare motorunun bellek tahsis/serbest bırakma işlemlerini yöneten sınıf.
+     * @brief Class that manages RenderWare engine's memory allocation/free operations.
      *
-     * RenderWare, kendi bellek işlevlerini (`rwFreeList` tabanlı) dışarıdan
-     * enjekte edilebilir fonksiyon işaretçileri aracılığıyla kullanır.
-     * `CMemoryHandler`, bu işaretçileri sistem heap'ine veya özel bir havuza
-     * yönlendirerek RenderWare'in bellek tahsisini kontrol altında tutar.
+     * RenderWare uses its own memory functions (`rwFreeList` based) through
+     * externally injectable function pointers.
+     * `CMemoryHandler` routes these pointers to the system heap or to a custom pool,
+     * keeping RenderWare's memory allocation under control.
      *
-     * **Başlatma:**
+     * **Initialization:**
      * ```cpp
-     * CMemoryHandler::Initialize();  // RwEngineInit'ten ÖNCE çağrılmalıdır
+     * CMemoryHandler::Initialize();  // Must be called BEFORE RwEngineInit
      * RwEngineInit(nullptr, 0, CMemoryHandler::GetMemoryFunctions());
      * ```
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Initialize: `FUN_00406000`
      * - Shutdown: `FUN_00406060`
      * - RwAlloc: `FUN_004060c0`
@@ -40,56 +40,56 @@ namespace RWS
     {
     public:
         /**
-         * @brief RenderWare serbest liste havuzundan bellek tahsis eder.
-         * @param fl   RenderWare serbest liste (nullptr ise system malloc kullanılır).
-         * @param size Tahsis edilecek bayt sayısı.
-         * @param hint Hizalama veya tahsis ipucu bayrakları.
-         * @return void* — Tahsis edilen bellek bloğuna işaretçi.
+         * @brief Allocates memory from the RenderWare free list pool.
+         * @param fl   RenderWare free list (system malloc is used if nullptr).
+         * @param size Number of bytes to allocate.
+         * @param hint Alignment or allocation hint flags.
+         * @return void* — Pointer to the allocated memory block.
          */
         static void* RwAlloc(RwFreeList* fl, RwUInt32 size, RwUInt32 hint);
 
         /**
-         * @brief `RwAlloc()` ile tahsis edilmiş belleği serbest bırakır.
-         * @param fl  RenderWare serbest liste.
-         * @param mem Serbest bırakılacak bellek bloğu.
-         * @return void* — Her zaman nullptr.
+         * @brief Releases memory allocated with `RwAlloc()`.
+         * @param fl  RenderWare free list.
+         * @param mem Memory block to release.
+         * @return void* — Always nullptr.
          */
         static void* RwFree(RwFreeList* fl, void* mem);
 
         /**
-         * @brief Mevcut bellek bloğunu yeniden boyutlandırır.
-         * @param fl   RenderWare serbest liste.
-         * @param mem  Yeniden boyutlandırılacak blok.
-         * @param size Yeni boyut (bayt).
-         * @param hint Tahsis ipucu bayrakları.
-         * @return void* — Yeniden boyutlandırılmış blok işaretçisi.
+         * @brief Resizes the existing memory block.
+         * @param fl   RenderWare free list.
+         * @param mem  Block to resize.
+         * @param size New size (bytes).
+         * @param hint Allocation hint flags.
+         * @return void* — Pointer to the resized block.
          */
         static void* RwRealloc(RwFreeList* fl, void* mem, RwUInt32 size, RwUInt32 hint);
 
         /**
-         * @brief Sıfırlanmış bellek bloğu tahsis eder.
-         * @param fl      RenderWare serbest liste.
-         * @param numObj  Nesne sayısı.
-         * @param sizeObj Her nesnenin boyutu (bayt).
-         * @param hint    Tahsis ipucu bayrakları.
-         * @return void* — Sıfırlanmış bellek bloğuna işaretçi.
+         * @brief Allocates a zeroed memory block.
+         * @param fl      RenderWare free list.
+         * @param numObj  Number of objects.
+         * @param sizeObj Size of each object (bytes).
+         * @param hint    Allocation hint flags.
+         * @return void* — Pointer to the zeroed memory block.
          */
         static void* RwCalloc(RwFreeList* fl, RwUInt32 numObj, RwUInt32 sizeObj, RwUInt32 hint);
 
         /**
-         * @brief Bellek işleyicisini başlatır ve RenderWare bellek fonksiyonlarını kaydeder.
-         * @return TRUE ise başlatma başarılı.
+         * @brief Initializes the memory handler and registers the RenderWare memory functions.
+         * @return TRUE if initialization succeeded.
          */
         static RwBool Initialize();
 
         /**
-         * @brief Bellek işleyicisini kapatır.
+         * @brief Shuts down the memory handler.
          */
         static void Shutdown();
 
         /**
-         * @brief RenderWare motoru için bellek fonksiyon tablosunu döndürür.
-         * @return RwMemoryFunctions* — `RwEngineInit()` çağrısına geçirilecek yapıya işaretçi.
+         * @brief Returns the memory function table for the RenderWare engine.
+         * @return RwMemoryFunctions* — Pointer to the structure passed to `RwEngineInit()`.
          */
         static RwMemoryFunctions* GetMemoryFunctions();
     };

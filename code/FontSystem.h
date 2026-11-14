@@ -4,345 +4,345 @@
 // ============================================================================
 // CannonCruise - Font Metrics System (FontSystem.h)
 // Original path: D:\Projects\CannonCruisePC\code\FontSystem.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
-//   FUN_004cefd0 — FontSystemAllocBuffers (glyph vertex tamponu + 0x78 havuz)
-//   FUN_004cd660 — FontSystemInit         (yol, glif çeyrek-dörtgen tablosu)
-//   FUN_004cd9a0 — FontSystemLoad         (fonts/*.met, METRICS1 ayrıştırıcı)
-//   FUN_004cd4d0 — FontAlloc              (font nesnesi tahsisi)
-//   FUN_004cd8c0 — FontFree               (font nesnesi serbest bırakma)
-//   FUN_004cdbc0 — ParseMetrics1          (METRICS1 metin biçimi)
-//   FUN_004ce870 — ParseMetrics3          (METRICS3 vektör kontur biçimi;
+// Binary Functions:
+//   FUN_004cefd0 — FontSystemAllocBuffers (glyph vertex buffer + 0x78 pool)
+//   FUN_004cd660 — FontSystemInit         (path, glyph quad index table)
+//   FUN_004cd9a0 — FontSystemLoad         (fonts/*.met, METRICS1 parser)
+//   FUN_004cd4d0 — FontAlloc              (font object allocation)
+//   FUN_004cd8c0 — FontFree               (font object release)
+//   FUN_004cdbc0 — ParseMetrics1          (METRICS1 text format)
+//   FUN_004ce870 — ParseMetrics3          (METRICS3 vector contour format;
 //                  begin/moveto/lineto/curveto/closepath/end — PostScript
-//                  benzeri; çizim işleyicisi sub_4CCAF0, kontur raster
+//                  similar; draw handler sub_4CCAF0, contour raster
 //                  sub_4D54C0)
-//   FUN_004cc690 — FontSystem_LoadFromStream (binary stream font yükleyici
-//                  — sub_491700 zinciri; tip baytı ≥1, doku/vektör iki yol)
-//   FUN_004d11d0 — LoadContourFromStream (type-5 kontur kaydı: 0x10 başlık
-//                  + 0x18'lik hazır stroke kayıtları; flags&4 → zincir)
-//   FUN_004ce000 — FontFinalizeExtMap     (genişletilmiş kod haritası)
-//   FUN_004cee90 — FontSystemGet          (ad önbelleği: istek → düğüm)
-//   FUN_004cd580 — FontSystemTeardown     (__ioterm+62: tüm önbellek/havuz)
-//   FUN_004cef90 — FontSystemShutdown     (__ioterm+67: vertex tamponu)
+//   FUN_004cc690 — FontSystem_LoadFromStream (binary stream font loader
+//                  — sub_491700 chain; type byte ≥1, texture/vector two paths)
+//   FUN_004d11d0 — LoadContourFromStream (type-5 contour record: 0x10 header
+//                  + 0x18 prebaked stroke records; flags&4 → chain)
+//   FUN_004ce000 — FontFinalizeExtMap     (extended code map)
+//   FUN_004cee90 — FontSystemGet          (name cache: request → node)
+//   FUN_004cd580 — FontSystemTeardown     (__ioterm+62: all caches/pools)
+//   FUN_004cef90 — FontSystemShutdown     (__ioterm+67: vertex buffer)
 //
-// Not: Orijinal .met varlıkları deposuz olduğu için birim testler sentetik
-//      dosyalarla doğrular. METRICS2 (FUN_004ce0d0) analiz edildi — raster
-//      piksel taramasına dayalı format, taşınabilir port bloklu (bkz.
-//      ROADMAP.md); METRICS3 restor edildi (kontur verisi + ilerleme; kontur
-//      rasterizasyonu sub_4D54C0 Faz 4.4b).
+// Note: Since the original .met assets are not stored in the repo, unit tests verify with
+//      synthetic files. METRICS2 (FUN_004ce0d0) was analyzed — raster
+//      pixel-scan based format, portable port still blocked (see
+//      ROADMAP.md); METRICS3 restored (contour data + advance; contour
+//      rasterization sub_4D54C0 Phase 4.4b).
 // ============================================================================
 
 #include <rwcore.h>
 
 /**
- * @brief Vektör kontur noktası — binary sub_4CFE80/4CFF40/4D0040 kayıtları.
+ * @brief Vector contour point — binary sub_4CFE80/4CFF40/4D0040 records.
  *
- * Nokta türleri (binary: [esi] dword): 0 = moveto (sub_4CFE80), 1 = lineto
- * (sub_4CFF40), 2 = curveto (sub_4D0040 — PostScript sırası x1 y1 x2 y2
- * x3 y3: x/y = birinci kontrol, cx1/cy1 = ikinci kontrol, cx2/cy2 = uç
- * nokta). Binary 0x18 bayt kayıt; port bezier'i ham tutar (rasterizasyon
- * sub_4D54C0 — Faz 4.4b). ex/ey ayrılmıştır (kullanılmıyor).
+ * Point types (binary: [esi] dword): 0 = moveto (sub_4CFE80), 1 = lineto
+ * (sub_4CFF40), 2 = curveto (sub_4D0040 — PostScript order x1 y1 x2 y2
+ * x3 y3: x/y = first control, cx1/cy1 = second control, cx2/cy2 = end
+ * point). Binary 0x18-byte record; the port keeps the bezier raw (rasterization
+ * sub_4D54C0 — Phase 4.4b). ex/ey are reserved (unused).
  */
 struct CCFontPathPoint {
     RwUInt32 type;  ///< 0=moveto, 1=lineto, 2=curveto
-    RwReal   x;     ///< moveto/lineto noktası; curveto: kontrol1 X
+    RwReal   x;     ///< moveto/lineto point; curveto: control1 X
     RwReal   y;
-    RwReal   cx1;   ///< curveto: kontrol2 X
+    RwReal   cx1;   ///< curveto: control2 X
     RwReal   cy1;
-    RwReal   cx2;   ///< curveto: uç nokta X
+    RwReal   cx2;   ///< curveto: end point X
     RwReal   cy2;
-    RwReal   ex;    ///< ayrılmış (kullanılmıyor)
+    RwReal   ex;    ///< reserved (unused)
     RwReal   ey;
 };
 
 /**
- * @brief Vektör alt yol (subpath) — binary sub_4D0C90 kontur nesnesi.
+ * @brief Vector subpath — binary sub_4D0C90 contour object.
  *
- * Binary her moveto (dizi doluysa) yeni bir kontur nesnesi başlatıp
- * +0x14 zincirine dizer; port aynı semantiği pNext ile modelleyen düz
- * dinamik dizi kullanır (engine havuz/array yerine malloc).
+ * Binary: each moveto (when the array is full) starts a new contour object and
+ * chains it via +0x14; the port models the same semantics with a flat
+ * dynamic array using pNext (malloc instead of the engine pool/array).
  */
 struct CCFontContour {
-    CCFontPathPoint *points;      ///< nokta dizisi
+    CCFontPathPoint *points;      ///< point array
     RwInt32          pointCount;
     RwInt32          capacity;
-    RwBool           closed;      ///< closepath (sub_4D0220) görüldü
-    CCFontContour   *pNext;       ///< sonraki alt yol (moveto zinciri)
+    RwBool           closed;      ///< closepath (sub_4D0220) seen
+    CCFontContour   *pNext;       ///< next subpath (moveto chain)
 };
 
 /**
- * @brief Bir glifin 32 baytlık metrik kaydı (binary: +0x00..+0x1F).
+ * @brief 32-byte metric record of a glyph (binary: +0x00..+0x1F).
  *
- * CC_ida.asm sub_4CDBC0 glif satırı ("%i %i %i %i %i") alanları:
- * kod, sol, üst, sağ, alt piksel koordinatlarıdır; UV'ler doku
- * boyutlarına bölünerek (piksel merkezi +0.5) kaydedilir.
+ * CC_ida.asm sub_4CDBC0 glyph line ("%i %i %i %i %i") fields:
+ * code, left, top, right, bottom are pixel coordinates; UVs are divided by
+ * texture dimensions and stored (pixel center +0.5).
  */
 struct CCFontGlyph {
-    RwReal     aspect;    ///< +0x00 (sağ-sol)/(alt-üstü) en-boy oranı
-    RwTexture *texture;   ///< +0x04 glif doku adayı (M1'de font doku [0])
-    RwReal     u0;        ///< +0x08 sol UV
-    RwReal     v0;        ///< +0x0C üst UV
-    RwReal     u1;        ///< +0x10 sağ UV
-    RwReal     v1;        ///< +0x14 alt UV
-    void      *data;      ///< +0x18 kontur/kern verisi (M1 = 0; M3 =
-                          ///<      CCFontContour* alt yol zinciri başı —
-                          ///<      FontFree sub_4D0C20 ile serbest bırakır)
-    RwUInt8    flags;     ///< +0x1C bayrak (M1 = 0)
+    RwReal     aspect;    ///< +0x00 (right-left)/(bottom-top) aspect ratio
+    RwTexture *texture;   ///< +0x04 glyph texture candidate (font texture [0] in M1)
+    RwReal     u0;        ///< +0x08 left UV
+    RwReal     v0;        ///< +0x0C top UV
+    RwReal     u1;        ///< +0x10 right UV
+    RwReal     v1;        ///< +0x14 bottom UV
+    void      *data;      ///< +0x18 contour/kern data (M1 = 0; M3 =
+                          ///<      CCFontContour* subpath chain head —
+                          ///<      FontFree releases it via sub_4D0C20)
+    RwUInt8    flags;     ///< +0x1C flags (M1 = 0)
     RwUInt8    pad[3];
 };
 
 /**
- * @brief Font nesnesi — binary boyutu 0x144 (324 bayt), sub_4CD4D0.
+ * @brief Font object — binary size 0x144 (324 bytes), sub_4CD4D0.
  *
- * Yerleşim binary ile birebir şemalanmıştır; sub_4CD4D0 alanı başlangıç
- * değerleri (refCount=1, sizeScale=1.0f, ascii[]=0xFFFF...) korunur.
+ * Layout matches the binary 1:1; sub_4CD4D0 field initial
+ * values (refCount=1, sizeScale=1.0f, ascii[]=0xFFFF...) are preserved.
  */
 struct CCFont {
     RwUInt32   refCount;      ///< +0x00 (sub_4CD4D0: 1)
-    RwReal     lineExtent;    ///< +0x04 son glifin (alt-üstü) değeri (piksel)
-    RwReal     sizeScale;     ///< +0x08 .met boyutu / lineExtent
-    RwReal     spacing;       ///< +0x0C glifler arası ilerleme boşluğu
-                              ///<   (M1: 0 — sub_4CDBC0 satır sonunda yazar)
-    RwUInt32   glyphFlags;    ///< +0x10 (M1: |= 2 — genişletilmiş kod var)
-    RwTexture *textures[4];   ///< +0x14,+0x18,+0x1C,+0x20 (M1 yalnızca [0])
-    RwUInt16   ascii[128];    ///< +0x24..+0x123 — 0..127 kod → glif indeksi
-                              ///<   (boş = 0xFFFF; sub_4CD4D0 memset -1)
-    RwInt32    extMin;        ///< +0x124 genişletilmiş aralığın ilk kodu
-    RwInt32    extCount;      ///< +0x128 genişletilmiş aralık uzunluğu
-    RwUInt16  *extTable;      ///< +0x12C (kod - extMin) → glif indeksi
-    RwInt32    glyphCount;    ///< +0x130 ayrıştırma sırasında kapasite,
-                              ///<   bitişte etkin glif sayısı (sub_4CDBC0)
-    CCFontGlyph *glyphs;      ///< +0x134 glif dizisi
-    void      *drawHandler;   ///< +0x138 M1: sub_4CCC40 (doku), M3:
-                              ///<   sub_4CCAF0 (vektör kontur). Portta tek
-                              ///<   yolla FontSystem_DrawText (Aşama 2/3).
+    RwReal     lineExtent;    ///< +0x04 last glyph's (bottom-top) value (pixels)
+    RwReal     sizeScale;     ///< +0x08 .met size / lineExtent
+    RwReal     spacing;       ///< +0x0C advance spacing between glyphs
+                              ///<   (M1: 0 — written at end of line by sub_4CDBC0)
+    RwUInt32   glyphFlags;    ///< +0x10 (M1: |= 2 — extended code present)
+    RwTexture *textures[4];   ///< +0x14,+0x18,+0x1C,+0x20 (M1 only [0])
+    RwUInt16   ascii[128];    ///< +0x24..+0x123 — 0..127 code → glyph index
+                              ///<   (empty = 0xFFFF; sub_4CD4D0 memset -1)
+    RwInt32    extMin;        ///< +0x124 first code of the extended range
+    RwInt32    extCount;      ///< +0x128 extended range length
+    RwUInt16  *extTable;      ///< +0x12C (code - extMin) → glyph index
+    RwInt32    glyphCount;    ///< +0x130 capacity during parsing,
+                              ///<   effective glyph count at the end (sub_4CDBC0)
+    CCFontGlyph *glyphs;      ///< +0x134 glyph array
+    void      *drawHandler;   ///< +0x138 M1: sub_4CCC40 (texture), M3:
+                              ///<   sub_4CCAF0 (vector contour). The port has a single
+                              ///<   path via FontSystem_DrawText (Phase 2/3).
     RwUInt32   reserved1;     ///< +0x13C (sub_4CD4D0: 0)
     RwUInt32   reserved2;     ///< +0x140 (sub_4CD4D0: 0)
 };
 
 /**
- * @brief Metin çizim materyali — binary sub_4CCC40/sub_4D54C0 arg_10.
+ * @brief Text draw material — binary sub_4CCC40/sub_4D54C0 arg_10.
  *
- * Düz renk yolu (+0x64 bayrağı yok): baytlar +0x60..+0x63 RGBA.
- * Aydınlatma yolu (+0x64 & 1): her tepe noktası ambient + yönlü ışık ×
- * yatay degrade (invokeWideText'te invW = 1/genişlik; vektör raster'de
- * grad = yol uzunluğu/toplam) ile renklendirilir.
- * Dokulu stroke (+0x64 & 2): UV degrade — u = uStart + uDelta×grad
- * (tepe +0x10/+0x28, taban +0x40/+0x58; sub_4D54C0).
- * strokeWidth (+0x70): vektör kontur yarı genişliği (sub_4D54C0 var_84).
- * Yerleşim binary saha aralıklarıyla birebir şemalanmıştır.
+ * Solid color path (no +0x64 flag): bytes +0x60..+0x63 RGBA.
+ * Lighting path (+0x64 & 1): each apex vertex is colored with ambient + directional light x
+ * horizontal gradient (in invokeWideText invW = 1/width; in the vector raster
+ * grad = path length/total).
+ * Textured stroke (+0x64 & 2): UV gradient — u = uStart + uDelta×grad
+ * (top +0x10/+0x28, bottom +0x40/+0x58; sub_4D54C0).
+ * strokeWidth (+0x70): vector contour half width (sub_4D54C0 var_84).
+ * Layout matches the binary field ranges 1:1.
  */
 struct CCFontMaterial {
-    RwReal topAmbient[4];    ///< +0x00 (tepe vertexleri ambient RGBA)
-    RwReal uTop;             ///< +0x10 dokulu stroke: tepe U (grad 0)
+    RwReal topAmbient[4];    ///< +0x00 (top vertices ambient RGBA)
+    RwReal uTop;             ///< +0x10 textured stroke: top U (grad 0)
     RwReal vTop;             ///< +0x14
-    RwReal topLight[4];      ///< +0x18 (tepe vertexleri degrade yön/renk)
-    RwReal uTopDelta;        ///< +0x28 dokulu stroke: tepe U delta
+    RwReal topLight[4];      ///< +0x18 (top vertices gradient dir/color)
+    RwReal uTopDelta;        ///< +0x28 textured stroke: top U delta
     RwReal vTopDelta;        ///< +0x2C
-    RwReal bottomAmbient[4]; ///< +0x30 (taban vertexleri ambient RGBA)
-    RwReal uBottom;          ///< +0x40 dokulu stroke: taban U (grad 0)
+    RwReal bottomAmbient[4]; ///< +0x30 (bottom vertices ambient RGBA)
+    RwReal uBottom;          ///< +0x40 textured stroke: bottom U (grad 0)
     RwReal vBottom;          ///< +0x44
-    RwReal bottomLight[4];   ///< +0x48 (taban vertexleri degrade)
-    RwReal uBottomDelta;     ///< +0x58 dokulu stroke: taban U delta
+    RwReal bottomLight[4];   ///< +0x48 (bottom vertices gradient)
+    RwReal uBottomDelta;     ///< +0x58 textured stroke: bottom U delta
     RwReal vBottomDelta;     ///< +0x5C
-    RwUInt8  red;            ///< +0x60 düz renk
+    RwUInt8  red;            ///< +0x60 flat color
     RwUInt8  green;          ///< +0x61
     RwUInt8  blue;           ///< +0x62
     RwUInt8  alpha;          ///< +0x63
-    RwUInt8  flags;          ///< +0x64 bit0 = aydınlatma, bit1 = dokulu stroke
+    RwUInt8  flags;          ///< +0x64 bit0 = lighting, bit1 = textured stroke
     RwUInt8  pad04[3];       ///< +0x65
-    RwTexture *texture;      ///< +0x68 (binary doku durumu — glif
-                              ///<   dokuları glyph'ten gelir)
-    RwReal pad05;            ///< +0x6C (32-bit binary düzeni; 64-bit portta
-                             ///<   işaretçi genişliği kayar)
-    RwReal strokeWidth;      ///< +0x70 vektör stroke yarı genişliği (var_84)
+    RwTexture *texture;      ///< +0x68 (binary texture state — glyph
+                              ///<   textures come from the glyph)
+    RwReal pad05;            ///< +0x6C (32-bit binary layout; in the 64-bit port
+                             ///<   pointer width shifts it)
+    RwReal strokeWidth;      ///< +0x70 vector stroke half width (var_84)
 };
 
 /**
- * @brief Ad önbelleği düğümü — binary 12 bayt (havuz dword_66D5D4).
+ * @brief Name cache node — binary 12 bytes (pool dword_66D5D4).
  *
- * sub_4CEE90: font adı istendiğinde önce bu bağlı listede aranır; bulunamazsa
- * FontSystemLoad ile yüklenir ve başa eklenir.
+ * sub_4CEE90: when a font name is requested this linked list is searched first; if not found
+ * it is loaded via FontSystemLoad and prepended.
  */
 struct CCFontNode {
-    char        *pName;  ///< +0x00 strdup'lanmış istenen ad
-    CCFont      *pFont;  ///< +0x04 yüklenen font (başarısızsa düğüm kurulmaz)
-    CCFontNode  *pNext;  ///< +0x08 sonraki düğüm (baş = dword_66D5D8)
+    char        *pName;  ///< +0x00 strdup'd requested name
+    CCFont      *pFont;  ///< +0x04 loaded font (node not created on failure)
+    CCFontNode  *pNext;  ///< +0x08 next node (head = dword_66D5D8)
 };
 
 /**
- * @brief Doku okuyucu — sub_5154D0 (ad, maske → doku) karşılığı.
+ * @brief Texture reader — counterpart of sub_5154D0 (name, mask → texture).
  *
- * Varsayılan RwTextureRead rotası gerçek doku yokluğunda NULL döndürür ve
- * font yüklemesi binary'deki gibi başarısız olur; birim testler sahte
- * okuyucu enjekte eder (boyutlar UV hesabı için gerekli: binary doku
- * raster genişlik/yüksekliğini okur).
+ * The default RwTextureRead route returns NULL when the real texture is missing and
+ * font loading fails as in the binary; unit tests inject a fake
+ * reader (dimensions are needed for the UV calculation: the binary reads the texture
+ * raster width/height).
  */
 typedef RwTexture *(*FontTextureReader)(const char *pName, const char *pMask,
                                         RwInt32 *pWidth, RwInt32 *pHeight);
 
 /**
- * @brief Binary font akışı — sub_50D940/sub_50CD80/sub_50D790 karşılığı.
+ * @brief Binary font stream — counterpart of sub_50D940/sub_50CD80/sub_50D790.
  *
- * sub_4CC690 (stream font yükleyici) akış soyutlaması: çağıran bellek
- * dosya/asset stream'ini bu üç geri çağırı ile bağlar. pUser çağıranın
- * durumudur (imleç, dosya vbg.).
+ * sub_4CC690 (stream font loader) stream abstraction: the caller binds an in-memory
+ * file/asset stream via these three callbacks. pUser is the caller's
+ * state (cursor, file, etc.).
  */
 struct CCFontStream {
     void *pUser;
-    /// sub_50D940 — size bayt oku; tamamı okunduysa TRUE (EOF → FALSE).
+    /// sub_50D940 — read size bytes; TRUE if all read (EOF → FALSE).
     RwBool (*read)(CCFontStream *pSelf, void *pBuf, RwInt32 size);
-    /// sub_50CD80 — tam okuma; dönen bayt sayısı size ise TRUE.
+    /// sub_50CD80 — exact read; TRUE if the returned byte count equals size.
     RwBool (*readExact)(CCFontStream *pSelf, void *pBuf, RwInt32 size);
-    /// sub_50D790 — chunk ara/enter (type-5 kontur öncesi 0x1A1).
+    /// sub_50D790 — find/enter chunk (0x1A1 before type-5 contour).
     RwBool (*findChunk)(CCFontStream *pSelf, RwUInt32 type);
 };
 
 /**
- * @brief Binary stream font yükleyici (sub_4CC690 portu).
+ * @brief Binary stream font loader (port of sub_4CC690).
  *
- * Akış: tip etiketi 4B ((etiket>>24) >= 1), font başlığı (refCount,
+ * Stream: type tag 4B ((tag>>24) >= 1), font header (refCount,
  * lineExtent, sizeScale, spacing, glyphFlags, extMin, glyphCount,
- * extCount), extTable (extCount×2), ascii harita (0x100), glifler.
- * Font başlığındaki refCount alanı YOL SEÇER: 0 → doku yolu (her glif
- * UV+aspect+flags baytı, doku adları 0x20; glyph.texture = textures[
- * (RwInt8)flags]);≠0 → vektör yolu (her glif: atık 4B + aspect + tip;
- * tip==5 → findChunk(0x1A1) + kontur kaydı). drawHandler portta 0
- * (FontSystem_DrawText tek yol).
+ * extCount), extTable (extCount×2), ascii map (0x100), glyphs.
+ * The refCount field in the font header SELECTS THE PATH: 0 → texture path (each glyph
+ * UV+aspect+flags byte, texture names 0x20; glyph.texture = textures[
+ * (RwInt8)flags]);≠0 → vector path (each glyph: 4B waste + aspect + type;
+ * type==5 → findChunk(0x1A1) + contour record). drawHandler is 0 in the port
+ * (FontSystem_DrawText single path).
  *
- * SAPMALAR (belgeli): doku bağlamı kaydet/geri al (sub_5154C0/5154A0)
- * no-op; hazır stroke kayıtları (0x18) CCFontContour yol noktalarına
- * çevrilir (type0 → moveto, diğer → lineto; normal/uzunluk render'da
- * yeniden hesaplanır — miter yok, 3b3b sapması Aşama 3b ile aynı);
- * kontur[+0x10]/node+8 bayrak alanları okunur ama yok sayılır; doku
- * indeksi [0,3] aralığı portta doğrulanır (binary doğrulamaz).
+ * DEVIATIONS (documented): texture context save/restore (sub_5154C0/5154A0)
+ * no-op; prebaked stroke records (0x18) are converted to CCFontContour path points
+ * (type0 → moveto, others → lineto; normal/length recomputed at render
+ * time — no miter, same deviation as 3b3b Phase 3b);
+ * contour[+0x10]/node+8 flag fields are read but ignored; texture
+ * index range [0,3] is validated in the port (the binary does not validate).
  *
- * @param pStream Akış (geri çağırılar dolu; NULL → NULL).
- * @return Yüklenen font; başarısızsa NULL (font serbest bırakılır).
- * @see FUN_004cc690 (sub_491700 zinciri)
+ * @param pStream Stream (callbacks filled; NULL → NULL).
+ * @return The loaded font; NULL on failure (the font is released).
+ * @see FUN_004cc690 (sub_491700 chain)
  */
 CCFont *FontSystem_LoadFromStream(CCFontStream *pStream);
 
 /**
- * @brief Font vertex tamponu + çizim havuzunu oluşturur.
- * @return Tahsis başarılıysa TRUE.
- * @see FUN_004cefd0 (sub_4CC140 zinciri, 3. adım)
+ * @brief Creates the font vertex buffer + draw pool.
+ * @return TRUE if allocation succeeded.
+ * @see FUN_004cefd0 (sub_4CC140 chain, step 3)
  */
 RwBool FontSystemAllocBuffers(void);
 
 /**
- * @brief Font alt sistemini başlatır: "fonts/" yol tamponu, 64 çeyrek-
- * dörtgenlik indeks tablosu ve liste başları.
- * @return Başarıda TRUE.
- * @see FUN_004cd660 (sub_4CC140 zinciri, 4. adım)
+ * @brief Starts the font subsystem: "fonts/" path buffer, 64 quad
+ * index table and list heads.
+ * @return TRUE on success.
+ * @see FUN_004cd660 (sub_4CC140 chain, step 4)
  */
 RwBool FontSystemInit(void);
 
 /**
- * @brief "fonts/<ad>.met" dosyasını yükler (METRICS1).
+ * @brief Loads the "fonts/<name>.met" file (METRICS1).
  *
- * @param pFontList Noktalı virgülle ayrılmış yedek ad listesi
- *                  (binary: kopya döngüsü + strcat + ';').
- * @return Başarılı ilk adayın fontu; hiçbiri olmazsa NULL.
- * @see FUN_004cd9a0 (dword_66DCC0 yükleme geri çağrısı)
+ * @param pFontList Semicolon-separated fallback name list
+ *                  (binary: copy loop + strcat + ';').
+ * @return The font of the first successful candidate; NULL if none succeed.
+ * @see FUN_004cd9a0 (dword_66DCC0 load callback)
  */
 CCFont *FontSystemLoad(const char *pFontList);
 
 /**
- * @brief Ad ile font arar; yoksa yükler ve ad önbelleğine ekler.
- * @param pFontName Aranan font adı.
- * @return Önbellek düğümü (pFont alanı); başarısızsa NULL.
+ * @brief Looks up a font by name; loads it if absent and adds it to the name cache.
+ * @param pFontName Font name to look up.
+ * @return Cache node (pFont field); NULL on failure.
  * @see FUN_004cee90
  */
 CCFontNode *FontSystemGet(const char *pFontName);
 
 /**
- * @brief Glif metriğini kodla arar (ASCII doğrudan + genişletilmiş harita).
+ * @brief Looks up a glyph metric by code (direct ASCII + extended map).
  * @param pFont Font nesnesi (NULL olabilir).
- * @param code Unicode kod noktası (0..127 doğrudan; >=0x80 extTable).
- * @return Glif kaydı; bulunamazsa NULL.
+ * @param code Unicode code point (0..127 direct; >=0x80 extTable).
+ * @return Glyph record; NULL if not found.
  */
 const CCFontGlyph *FontSystemGetGlyph(const CCFont *pFont, RwUInt32 code);
 
 /**
- * @brief Font önbelleklerini ve havuzlarını serbest bırakır
- *        (yol tamponu, ad listesi, fontlar, genişletilmiş harita).
+ * @brief Releases the font caches and pools
+ *        (path buffer, name list, fonts, extended map).
  * @see FUN_004cd580 (__ioterm+62)
  */
 void FontSystemTeardown(void);
 
 /**
- * @brief Vertex tamponunu ve 0x78 çizim havuzunu serbest bırakır.
+ * @brief Releases the vertex buffer and the 0x78 draw pool.
  * @see FUN_004cef90 (__ioterm+67)
  */
 void FontSystemShutdown(void);
 
 /**
- * @brief Doku okuyucu değiştirir (test enjeksiyonu / sonraki fazlar).
- * @param pReader NULL = varsayılan RwTextureRead rotasına dön.
+ * @brief Replaces the texture reader (test injection / later phases).
+ * @param pReader NULL = return to the default RwTextureRead route.
  */
 void FontSystem_SetTextureReader(FontTextureReader pReader);
 
 /**
- * @brief 64 çeyrek-dörtgenlik indeks tablosuna erişim (sub_4CD660 üretir).
- * @return [64][6] RwUInt16 tablosu (binary: unk_66D2C4..0x66D5C4).
+ * @brief Access to the 64 quad index table (produced by sub_4CD660).
+ * @return [64][6] RwUInt16 table (binary: unk_66D2C4..0x66D5C4).
  */
 const RwUInt16 (*FontSystem_GetQuadIndices(void))[6];
 
 /**
- * @brief Metni glif ilerlemeleriyle ölçer (sub_4CD7E0 portu).
+ * @brief Measures text with glyph advances (port of sub_4CD7E0).
  *
- * Döngü: her ünite → glif arama; bulunamayan glif ATLANIR (ilerleme
- * eklenmez); bulunanlarda ölçek (aspect + pFont->spacing) toplanır ve
- * scale ile çarpılır.
+ * Loop: per unit → glyph lookup; missing glyphs are SKIPPED (advance
+ * not added); for found ones scale (aspect + pFont->spacing) is accumulated and
+ * multiplied by scale.
  *
- * Geniş mod: font->glyphFlags&2 ise metin UTF-16LE'dir — ünite 2 bayt
- * (düşük önce), imleç adım 2; binary imleç signed <=0 ile durur (kodlar
- * 0x8000+ ise erken çıkış — binary davranışıyla aynı).
+ * Wide mode: if font->glyphFlags&2 the text is UTF-16LE — unit is 2 bytes
+ * (low first), cursor steps 2; the binary cursor stops on signed <=0 (codes
+ * 0x8000+ cause early exit — same as the binary behavior).
  *
  * @param pFont Font nesnesi (NULL → 0).
- * @param pText NUL-sonlu dize (8-bit veya UTF-16LE — glyphFlags&2).
- * @param scale Ölçek çarpanı (binary arg_8 — piksel yüksekliği).
- * @return Toplam genişlik (piksel); pFont NULL ise 0.
+ * @param pText NUL-terminated string (8-bit or UTF-16LE — glyphFlags&2).
+ * @param scale Scale factor (binary arg_8 — pixel height).
+ * @return Total width (pixels); 0 if pFont is NULL.
  * @see FUN_004CD7E0
  */
 RwReal FontSystem_MeasureText(const CCFont *pFont, const char *pText,
                               RwReal scale);
 
 /**
- * @brief Metni Im2D dörtgenleri olarak çizer (sub_4CCC40 portu).
+ * @brief Draws text as Im2D quads (port of sub_4CCC40).
  *
- * Binary akışı (çekirdek — matris yığını/engine vcall'leri hariç,
- * bkz. aşağıdaki sapma notları):
- *  1. Karakter → glif (FontSystemGetGlyph); bulunamayan atlanır.
- *  2. Doku değişimi veya 63. çeyrek-dörtgende batch flush
- *     (RwIm2DRenderIndexedPrimitive, rwPRIMTYPETRILIST; indeksler
- *     sub_4CD660 tablosunun karşılığı: {v0,v2,v3,v0,v3,v1}).
- *  3. Çeyrek-dörtgen: V0(pen,0) V1(pen,1) V2(pen+aspect,0) V3(pen+aspect,1);
- *     UV'ler binary sırasıyla (u0,v1)(u0,v0)(u1,v1)(u1,v0).
- *  4. İlerleme: pen += aspect + pFont->spacing.
- *  5. Renk: materyal düz baytları (+0x60..63) veya aydınlatma yolu
- *     (+0x64&1) degrade ambient + ışık × (pen/genişlik).
- *  6. Dönüş: *pPosX += pen * scale (binary son fadd).
+ * Binary flow (core — excluding matrix stack/engine vcalls,
+ * see the deviation notes below):
+ *  1. Character → glyph (FontSystemGetGlyph); missing ones are skipped.
+ *  2. Texture change or batch flush on the 63rd quad
+ *     (RwIm2DRenderIndexedPrimitive, rwPRIMTYPETRILIST; indices
+ *     counterpart of the sub_4CD660 table: {v0,v2,v3,v0,v3,v1}).
+ *  3. Quad: V0(pen,0) V1(pen,1) V2(pen+aspect,0) V3(pen+aspect,1);
+ *     UVs in binary order (u0,v1)(u0,v0)(u1,v1)(u1,v0).
+ *  4. Advance: pen += aspect + pFont->spacing.
+ *  5. Color: material flat bytes (+0x60..63) or the lighting path
+ *     (+0x64&1) gradient ambient + light x (pen/width).
+ *  6. Return: *pPosX += pen * scale (binary final fadd).
  *
- * Sapma notları (Faz 4.4b'ye kadar):
- *  - Binary vertex'leri birim uzayda (y ∈ {0,1}) üretip matris yığınıyla
- *    (sub_4CC2F0/4CC4D0/4CC480, engine matris stack'i) ölçekler/çevirir;
- *    port ekran koordinatlarını doğrudan üretir (x*scale, y*scale).
+ * Deviation notes (up to Phase 4.4b):
+ *  - The binary generates vertices in unit space (y ∈ {0,1}) and scales/translates them with the matrix stack
+ *    (sub_4CC2F0/4CC4D0/4CC480, engine matrix stack);
+ *    the port generates screen coordinates directly (x*scale, y*scale).
  *  - z/rhw: binary dword_66D7A0 (kamera) — port 0.0f/1.0f.
- *  - Geniş (UTF-16LE) metin modu (glyphFlags&2) desteklenir — MeasureText
- *    ile aynı ünite çözümlemesi.
- *  - Doku'suz (METRICS3 vektör) gliflerde quad üretilmez; kontur raster
- *    sub_4D54C0 (Faz 4.4b TODO) — ilerleme yine uygulanır.
+ *  - Wide (UTF-16LE) text mode (glyphFlags&2) is supported — same unit decoding
+ *    as MeasureText.
+ *  - Textureless (METRICS3 vector) glyphs produce no quad; contour raster
+ *    sub_4D54C0 (Phase 4.4b TODO) — advance still applies.
  *
  * @param pFont     Font nesnesi.
- * @param pText     NUL-sonlu dize (8-bit veya UTF-16LE — glyphFlags&2).
- * @param scale     Ölçek (piksel yüksekliği; binary arg_8).
- * @param pPosX     Giriş: sol X; çıkış: pen*x_scale sonrası (inout).
- * @param pPosY     Sol Y (vertex y=0 üst, y=1 alt — binary birim uzay).
- * @param pMaterial Materyal (NULL → düz beyaz).
- * @return İlerleme (pen*scale) — sonraki satır/konum için zincirleme.
+ * @param pText     NUL-terminated string (8-bit or UTF-16LE — glyphFlags&2).
+ * @param scale     Scale (pixel height; binary arg_8).
+ * @param pPosX     Input: left X; output: after pen*x_scale (inout).
+ * @param pPosY     Left Y (vertex y=0 top, y=1 bottom — binary unit space).
+ * @param pMaterial Material (NULL → flat white).
+ * @return Advance (pen*scale) — chaining for the next line/position.
  * @see FUN_004CCC40 (font->drawHandler)
  */
 RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
@@ -350,10 +350,10 @@ RwReal FontSystem_DrawText(const CCFont *pFont, const char *pText,
                            const CCFontMaterial *pMaterial);
 
 /**
- * @brief Son batch'in vertex dizisine test erişimi (sub_4CCC40 portu).
- * @param pVertexCount Çıkış: son batch vertex sayısı (quad × 4); NULL olabilir.
- * @return Vertex tamponu (AllocBuffers öncesi NULL); birden fazla batch'te
- *         yalnız son batch geçerli (vertex'ler tamponda yeniden yazılır).
+ * @brief Test access to the last batch's vertex array (port of sub_4CCC40).
+ * @param pVertexCount Output: last batch vertex count (quad × 4); may be NULL.
+ * @return Vertex buffer (NULL before AllocBuffers); with multiple batches
+ *         only the last batch is valid (vertices are rewritten in the buffer).
  */
 const RwIm2DVertex *FontSystem_GetDrawVertices(RwInt32 *pVertexCount);
 

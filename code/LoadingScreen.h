@@ -1,18 +1,18 @@
 // ============================================================================
 // CannonCruise - Loading Screen (LoadingScreen.h)
-// Faz 4.6ab — GLOBAL.RWS'taki Loading.anm ortamı: parchment şeridi, dalga
-// bordürü, Hugo kayığı sağa ilerlerken "LOADING" metni (SCR.mov frames 4/7).
+// Phase 4.6ab — the Loading.anm scene in GLOBAL.RWS: parchment strip, wave
+// border, Hugo's boat drifting right while the "LOADING" text shows (SCR.mov frames 4/7).
 //
-// Global boot sonrası, dünya AddClump edilmeden ÖNCE birkaç saniye gösterilir.
-// Art (Load_NT_001/003/005, rwID_2DMAESTRO dokusu) GLOBAL boot fazında
-// yüklenmiş olur; yoksa fallback çizim (koyu zemin + bitmap metin) devreye
-// girer. CANNONCRUISE_LOADING_FRAMES=0 → her zaman atla.
+// Shown for a few seconds after global boot, BEFORE the world is AddClump'ed.
+// The art (Load_NT_001/003/005, rwID_2DMAESTRO texture) is already loaded during
+// the GLOBAL boot phase; otherwise the fallback drawing (dark background + bitmap text)
+// kicks in. CANNONCRUISE_LOADING_FRAMES=0 → always skip.
 // ============================================================================
 #pragma once
 
 #include "rwcore.h"
 
-/// Yükleme ekranını `frames` kare boyunca çizer. Esc/Space/Enter veya pencere
-/// kapanırsa erken sonlanır.
-/// @return FALSE → uygulama kapanmalı; TRUE → devam (dünya setup'ı başlar).
+/// Draws the loading screen for `frames` frames. Ends early if Esc/Space/Enter or
+/// the window closes.
+/// @return FALSE → the app should shut down; TRUE → continue (world setup begins).
 RwBool LoadingScreen_Play(int frames, int screenW, int screenH);

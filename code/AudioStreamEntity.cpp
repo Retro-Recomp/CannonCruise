@@ -35,7 +35,7 @@ RwBool CAudioStreamEntityApplyAttribute(CAudioStreamEntity *pEntity,
                                         const RwUInt8 *pValue) {
     switch (id) {
     case 0: {
-        // loc_458C22: stop (sub_458D10: +0x3c/+0x48 = 0), slot20 temizle
+        // loc_458C22: stop (sub_458D10: +0x3c/+0x48 = 0), clear slot20
         pEntity->streamHandle = 0;
         pEntity->state = 0;
         pEntity->slot20[0] = 0;
@@ -67,6 +67,6 @@ RwBool CAudioStreamEntityApplyAttribute(CAudioStreamEntity *pEntity,
         std::memcpy(&pEntity->float1, pValue, 4);
         return TRUE;
     default:
-        return FALSE; // binary: def_458C1B sessiz atlar
+        return FALSE; // binary: def_458C1B silently skips
     }
 }

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Win32 Direct3D Ocean Renderer (Ocean_W32.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\Ocean_W32.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00431910 — COcean_W32::Initialize
 //   FUN_00431bd0 — COcean_W32::RenderWaterMesh ("paTexCoords != NULL Failed", "paColors != NULL Failed")
 // ============================================================================
@@ -15,8 +15,8 @@
 #include <cstdlib>
 
 #if defined(RW_GL3) || defined(RW_D3D9)
-// rw::im3d / Im3DVertex — GL3 ve D3D9 render yolları (librw include
-// yolu gerektirir; syntax-only probe RW_*'süz derler — bkz. else dalı).
+// rw::im3d / Im3DVertex — GL3 and D3D9 render paths (requires the librw include
+// path; the syntax-only probe builds without RW_* — see the else branch).
 #include <rw.h>
 #if defined(RW_GL3)
 using OceanIm3DVertex = rw::gl3::Im3DVertex;
@@ -51,8 +51,8 @@ void COcean_W32::RenderWaterMesh(const RwV3d* pVertices, const RwTexCoords* pTex
     assert(pTexCoords != 0 && "paTexCoords != NULL Failed");
     assert(pColors != 0 && "paColors != NULL Failed");
 
-    // Grid (subdiv+1)^2 — tek TRISTRIP iki boyutlu grid'i temsil edemez;
-    // dörtgen başına 6 indeks ile TRILIST. Kenar numVertices'tan çıkarılır.
+    // Grid (subdiv+1)^2 — a single TRISTRIP cannot represent the 2D grid;
+    // TRILIST with 6 indices per quad. Side is derived from numVertices.
     const RwUInt32 side = (RwUInt32)(std::sqrt((RwReal)numVertices) + 0.5f);
     if (side < 2 || side * side != numVertices) {
         return;
@@ -80,11 +80,11 @@ void COcean_W32::RenderWaterMesh(const RwV3d* pVertices, const RwTexCoords* pTex
         }
     }
 
-    // rw::im3d doğrudan (rwstubs no-op C API'sine düşmez — RenderTestQuad
-    // im2d deseni). GL3/D3D9: Im3DVertex (pos+normal+rgba+uv); NULL: çizim yok.
+    // rw::im3d directly (does not fall back to the rwstubs no-op C API — RenderTestQuad
+    // im2d pattern). GL3/D3D9: Im3DVertex (pos+normal+rgba+uv); NULL: no drawing.
 #if defined(RW_GL3) || defined(RW_D3D9)
-    // Doku yok: arazi render'ından sızan TEXTURERASTER temizlenir (yoksa
-    // okyanus son arazi dokusuyla çarpılıp kararır).
+    // No texture: clear the TEXTURERASTER leaked from the terrain render (otherwise
+    // the ocean multiplies with the last terrain texture and darkens).
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
     OceanIm3DVertex *imVertices = (OceanIm3DVertex *)RwMalloc(
         numVertices * sizeof(OceanIm3DVertex), 0);
@@ -111,8 +111,8 @@ void COcean_W32::RenderWaterMesh(const RwV3d* pVertices, const RwTexCoords* pTex
     rw::im3d::End();
     RwFree(imVertices);
 #else
-    // NULL platform: cihaz im3D no-op — indeks buffer üretimi kanıtlanır,
-    // çizim atlanır (RW_GL3 derlemede yukarıdaki gerçek render yolu).
+    // NULL platform: device im3D no-op — index buffer generation is proven,
+    // drawing is skipped (in the RW_GL3 build the real render path above is used).
     (void)pVertices;
     (void)pTexCoords;
     (void)pColors;

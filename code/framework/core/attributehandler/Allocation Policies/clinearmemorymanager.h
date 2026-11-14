@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (clinearmemorymanager.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\attributehandler\Allocation Policies\..\clinearmemorymanager.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_004053f0 - FUN_00405600 (RWS::CLinearMemoryManager)
 // ============================================================================
 
@@ -16,14 +16,14 @@ namespace RWS
 {
     /**
      * @class CLinearMemoryManager
-     * @brief Lineer (blok) tabanlı özel bellek yöneticisi.
+     * @brief Linear (block) based custom memory manager.
      *
-     * Oyun süresince sık tahsis edilen geçici veya aynı yaşam döngüsüne sahip
-     * nesnelerin tek bir bloktan ayrılması (allocation) ve tüm havuzun bir defada
-     * serbest bırakılması (deallocation) amacıyla kullanılır. Bu sayede
-     * bellek parçalanması önlenir ve hız artar.
+     * Used for objects that are frequently allocated during gameplay — temporary or objects with the same lifetime —
+     * so that allocations are carved out of a single block and the entire pool is
+     * released in one go (deallocation). This prevents
+     * memory fragmentation and improves speed.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Alloc: `FUN_004054a0`
      * - Free: `FUN_00405520`
      * - CreatePool: `FUN_00405580`
@@ -34,47 +34,47 @@ namespace RWS
     public:
         /**
          * @struct MemoryPool
-         * @brief Tahsis edilmiş bir bellek havuzunu tanımlayan yapı.
+         * @brief Structure describing an allocated memory pool.
          */
         struct MemoryPool
         {
-            void* m_pBase;         ///< Temel bellek bloğu (malloc çıkışı)
-            void* m_pAlignedBase;  ///< 64-byte hizalanmış başlangıç (alignment)
-            void* m_pCurrent;      ///< Bir sonraki boş konum (geçerli tahsis sınırı)
-            void* m_pEnd;          ///< Havuz sonu (pAlignedBase + poolSize)
-            RwUInt32 m_AllocCount; ///< Havuzdaki aktif tahsis sayısı
+            void* m_pBase;         ///< Base memory block (malloc output)
+            void* m_pAlignedBase;  ///< 64-byte aligned start (alignment)
+            void* m_pCurrent;      ///< Next free location (current allocation boundary)
+            void* m_pEnd;          ///< End of pool (pAlignedBase + poolSize)
+            RwUInt32 m_AllocCount; ///< Number of active allocations in the pool
         };
 
-        /// @return Tekil CLinearMemoryManager örneğine işaretçi
+        /// @return Pointer to the singleton CLinearMemoryManager instance
         static CLinearMemoryManager* Instance();
-        /// @brief Yöneticiyi ve tüm havuzları yok eder
+        /// @brief Destroys the manager and all pools
         static void Delete();
 
         /**
-         * @brief Aktif bellek havuzundan blok tahsis eder.
-         * @param size Tahsis edilecek bayt sayısı.
-         * @return void* — Tahsis edilen bloğa işaretçi (havuz doluysa nullptr).
+         * @brief Allocates a block from the active memory pool.
+         * @param size Number of bytes to allocate.
+         * @return void* — Pointer to the allocated block (nullptr if the pool is full).
          */
         static void* Alloc(RwUInt32 size);
 
         /**
-         * @brief Havuzdan tahsis edilmiş belleği serbest bırakır (sayaç düşürür).
-         * @param pMem Serbest bırakılacak bellek bloğu.
-         * @return TRUE ise başarıyla bırakıldı.
+         * @brief Releases memory allocated from the pool (decrements the counter).
+         * @param pMem Memory block to release.
+         * @return TRUE if it was released successfully.
          *
-         * Not: Gerçek bellek serbest bırakma işlemi havuz yok edilirken gerçekleşir.
+         * Note: Actual memory release happens when the pool is destroyed.
          */
         static RwBool Free(void* pMem);
 
         /**
-         * @brief Yeni bir bellek havuzu oluşturur ve aktif havuz yapar.
-         * @param poolSize Havuzun toplam boyutu (bayt).
+         * @brief Creates a new memory pool and makes it the active pool.
+         * @param poolSize Total size of the pool (bytes).
          */
         static void CreatePool(RwUInt32 poolSize);
 
         /**
-         * @brief Belirtilen bellek havuzunu tamamen yok eder.
-         * @param pPool Yok edilecek havuz.
+         * @brief Destroys the given memory pool entirely.
+         * @param pPool Pool to destroy.
          */
         static void DestroyPool(MemoryPool* pPool);
 
@@ -82,10 +82,10 @@ namespace RWS
         CLinearMemoryManager();
         ~CLinearMemoryManager();
 
-        static CLinearMemoryManager* sm_pInstance; ///< Tekil örnek işaretçisi
-        static MemoryPool* sm_pActivePool;         ///< Şu anda tahsis yapılan havuz
+        static CLinearMemoryManager* sm_pInstance; ///< Singleton instance pointer
+        static MemoryPool* sm_pActivePool;         ///< Pool currently being allocated from
 
-        std::vector<MemoryPool*> m_StoragePools;   ///< Tüm havuzların listesi
+        std::vector<MemoryPool*> m_StoragePools;   ///< List of all pools
     };
 }
 

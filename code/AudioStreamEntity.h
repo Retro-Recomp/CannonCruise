@@ -5,8 +5,8 @@
 //   FUN_004587d0  factory (CClassFactory::Register "CAudioStreamEntity", size 0x54)
 //   FUN_00458960  ctor
 //   FUN_00458BD0  property apply (sub_458BD0) - vtable slot
-//   FUN_00458B60  HandleEvents (mesaj dispatch)
-//   FUN_00458D10  stop/release (m_streamHandle/m_state temizler)
+//   FUN_00458B60  HandleEvents (message dispatch)
+//   FUN_00458D10  stop/release (clears m_streamHandle/m_state)
 //   sub_40E0B0    slot detach -> clear -> loc_40BF90 register -> list attach
 //                 (payload = rec+8 inline string, flags = 0)
 //
@@ -43,10 +43,10 @@ struct CAudioStreamEntity {
     RwUInt32 reserved14;      // +0x14
     RwUInt32 subVtable;       // +0x18 PTR_LAB_005efbe0
     RwUInt32 subOne;          // +0x1c == 1 (ctor)
-    RwUInt32 slot20[2];       // +0x20 SAudioPlayStreamData* slotu (id0)
-    RwUInt32 slot28[2];       // +0x28 id1 slotu
-    RwUInt32 slot30[2];       // +0x30 id2 slotu
-    RwUInt32 loopCount;       // +0x38 id3 (dosya: 0xFFFFFFFF = -1)
+    RwUInt32 slot20[2];       // +0x20 SAudioPlayStreamData* slot (id0)
+    RwUInt32 slot28[2];       // +0x28 id1 slot
+    RwUInt32 slot30[2];       // +0x30 id2 slots
+    RwUInt32 loopCount;       // +0x38 id3 (file: 0xFFFFFFFF = -1)
     RwUInt32 streamHandle;    // +0x3c (reset on stop)
     float    float0;          // +0x40 id4 (file: 5.0f)
     float    float1;          // +0x44 id5 (file: 0.0f)

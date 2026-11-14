@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (ceventhandler.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\eventhandler\ceventhandler.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0040b090 — CEventHandler vtable setup
 //   FUN_0040be80 — CEventHandler::LinkMsg(...)
 //   FUN_0040c120 — CEventHandler::UnLinkMsg(...)
@@ -18,7 +18,7 @@
 
 namespace RWS
 {
-    // Global olay yöneticisi veri yapıları
+    // Global event manager data structures
     struct RegisteredEventInfo
     {
         std::string m_Name;
@@ -38,12 +38,12 @@ namespace RWS
     }
 
     // ========================================================================
-    // CEventHandler Constructor (priority) — CEventHandler(0) çağrısıyla kullanılır
-    // Binary: öncelik parametreli yapıcı (derleyici C2Ej ile eşleşir)
+    // CEventHandler Constructor (priority) — used with CEventHandler(0)
+    // Binary: priority-parametric constructor (matches compiler C2Ej)
     // ========================================================================
     CEventHandler::CEventHandler(RwUInt32 priority)
     {
-        (void)priority; // Öncelik henüz saklanmıyor (Faz 5: FUN eşlemesi)
+        (void)priority; // Priority is not stored yet (Phase 5: FUN mapping)
     }
 
     // ========================================================================
@@ -59,16 +59,16 @@ namespace RWS
     // ========================================================================
     void CEventHandler::HandleEvents(const CMsg& msg)
     {
-        // Alt sınıflar tarafından override edilir
+        // Overridden by derived classes
     }
 
     // ========================================================================
     // CEventHandler::LinkMsg (FUN_0040be80)
-    // ASM: 0040be80 — Bir olaya abone ol
+    // ASM: 0040be80 — Subscribe to an event
     // ========================================================================
     void CEventHandler::LinkMsg(CEventId eventId, const char* pFormat, RwUInt32 priority)
     {
-        // Ön koşul kontrolü
+        // Precondition check
         for (size_t i = 0; i < m_LinkedEvents.size(); ++i)
         {
             if (m_LinkedEvents[i].m_EventId == eventId)
@@ -96,7 +96,7 @@ namespace RWS
 
     // ========================================================================
     // CEventHandler::UnLinkMsg (FUN_0040c120)
-    // ASM: 0040c120 — Bir olaya olan aboneliği kaldır
+    // ASM: 0040c120 — Unsubscribe from an event
     // ========================================================================
     void CEventHandler::UnLinkMsg(CEventId eventId)
     {
@@ -139,7 +139,7 @@ namespace RWS
 
     // ========================================================================
     // CEventHandler::SendMsg (FUN_0040c6b0)
-    // ASM: 0040c6b0 — Olayı tüm abonelere dağıt
+    // ASM: 0040c6b0 — Dispatch the event to all subscribers
     // ========================================================================
     void CEventHandler::SendMsg(const CMsg& msg)
     {
@@ -160,13 +160,13 @@ namespace RWS
 
     // ========================================================================
     // CEventHandler::RegisterMsg (FUN_0040ca30)
-    // ASM: 0040ca30 — Yeni bir olay adı kaydet
+    // ASM: 0040ca30 — Register a new event name
     // ========================================================================
     CEventId CEventHandler::RegisterMsg(const char* pEventName, const char* pFormat)
     {
         assert(pEventName != 0);
 
-        // Olay adı zaten kayıtlı mı kontrol et
+        // Check whether the event name is already registered
         for (std::map<CEventId, RegisteredEventInfo>::iterator it = s_RegisteredEvents.begin();
              it != s_RegisteredEvents.end(); ++it)
         {
@@ -194,7 +194,7 @@ namespace RWS
 
     // ========================================================================
     // CEventHandler::UnRegisterMsg (binary: loc_40CC60)
-    // ASM: kayıtlı olay kaydını ve tüm abonelik bağlantılarını siler
+    // ASM: deletes the registered event record and all subscription links
     // ========================================================================
     void CEventHandler::UnRegisterMsg(CEventId eventId)
     {

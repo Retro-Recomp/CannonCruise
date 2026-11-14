@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Realtime Profiler (RealtimeProfiler.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\RealtimeProfiler.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_0049c000 — CRealtimeProfiler constructor
 //   FUN_0049cacf — CRealtimeProfiler::EndSample
 // ============================================================================

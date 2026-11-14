@@ -1,51 +1,51 @@
-# CannonCruise — Kod Stili Rehberi
+# CannonCruise — Code Style Guide
 
-> Faz 5.4 · Kaynak kodun mevcut konvansiyonlarını belgeler.
-> Yeni kod bu rehberi izler; eski kodla çelişen yerlerde bu rehber esastır.
+> Phase 5.4 · Documents the existing conventions of the source code.
+> New code follows this guide; where it conflicts with old code, this guide prevails.
 
-## 1. Temel kurallar
+## 1. Basic rules
 
-- **Standart:** C++14 (`CMakeLists.txt` içinde sabit).
-- **Girinti:** Boşluk kullan, **tab yok**. 4 boşluk tercih edilir
-  (framework kodu 4, bazı oyun sınıfları 2 kullanır — dosya içi tutarlılık
-  bozulmadığı sürece mevcut girintiye sadık kalınır).
-- **Kaynak kodu dosyaları:** UTF-8, LF sonlandırma.
-- **Satır sonu:** Dosyanın geri kalanıyla aynı (mevcut dosyalar LF).
+- **Standard:** C++14 (fixed in `CMakeLists.txt`).
+- **Indentation:** Use spaces, **no tabs**. 4 spaces preferred
+  (framework code uses 4, some game classes use 2 — as long as in-file consistency
+  is not broken, the existing indentation is kept).
+- **Source files:** UTF-8, LF termination.
+- **Line endings:** Same as the rest of the file (existing files are LF).
 
-## 2. Dosya başlığı
+## 2. File header
 
-Her `.cpp`/`.h` dosyası standart blokla açılır:
+Every `.cpp`/`.h` file opens with the standard block:
 
 ```cpp
 // ============================================================================
-// CannonCruise - <Bölüm> (<dosya adı>)
+// CannonCruise - <Section> (<file name>)
 // Original path: D:\Projects\CannonCruisePC\code\...
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Rewritten by reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0040b090 — CEventHandler vtable setup
 // ============================================================================
 ```
 
-## 3. İsimlendirme
+## 3. Naming
 
-| Öğe | Kural | Örnek |
+| Item | Rule | Example |
 |---|---|---|
-| Sınıf | `C` öneki, PascalCase | `CShip`, `CPhysicsWorld` |
+| Class | `C` prefix, PascalCase | `CShip`, `CPhysicsWorld` |
 | Namespace (framework) | `RWS` | `RWS::CEventHandler` |
-| Üye değişken | `m_` öneki + PascalCase; işaretçilerde `p` | `m_pClump`, `m_bInWorld` |
-| Statik üye | `sm_` öneki | `sm_pInstance` |
-| Global/statik yerel | `s_` öneki | `s_RegisteredEvents` |
-| Parametre | `p` öneki (işaretçi) + camelCase | `pClump`, `deltaTime` |
-| Yerel değişken | camelCase | `numVertices` |
-| Sabit / makro | `rw`/`iMsg` öneki, ALL_CAPS karışık | `iMsgRunningTick`, `rwID_CLUMP` |
-| Enum | `E` öneki + PascalCase | `ECannonballType` |
-| Fonksiyon | PascalCase (C API'leri `RwXxxYyy`) | `HandleEvents`, `RpClumpRender` |
+| Member variable | `m_` prefix + PascalCase; `p` for pointers | `m_pClump`, `m_bInWorld` |
+| Static member | `sm_` prefix | `sm_pInstance` |
+| Global/static local | `s_` prefix | `s_RegisteredEvents` |
+| Parameter | `p` prefix (pointer) + camelCase | `pClump`, `deltaTime` |
+| Local variable | camelCase | `numVertices` |
+| Constant / macro | `rw`/`iMsg` prefix, mixed ALL_CAPS | `iMsgRunningTick`, `rwID_CLUMP` |
+| Enum | `E` prefix + PascalCase | `ECannonballType` |
+| Function | PascalCase (C APIs `RwXxxYyy`) | `HandleEvents`, `RpClumpRender` |
 
-## 4. Stil
+## 4. Style
 
-- **Süslü parantez:** Açılış parantezi tanım satırının sonunda (K&R) —
-  oyun sınıflarında baskın stil:
+- **Braces:** Opening brace at the end of the definition line (K&R) —
+  the dominant style in game classes:
 
   ```cpp
   void CShip::Initialize(RpClump *pClump) {
@@ -53,16 +53,16 @@ Her `.cpp`/`.h` dosyası standart blokla açılır:
   }
   ```
 
-  Framework dosyalarında Allman görülebilir; yeni kod K&R kullanır.
-- **Pointer/referans starı:** Değişken adına bitişik (`RpClump *pClump`,
-  `const CMsg &msg`) — mevcut kodda bu yerleşim yaygındır.
-- **Boş satır:** Fonksiyonlar arasında bölüm ayıracı
-  (`// ---------...`) kullanılır; açıklayıcı Türkçe/İngilizce yorum serbesttir.
-- **`//` yorum** gövde için, **`/** */`** başlık dosyalarındaki API için.
+  Allman can be seen in framework files; new code uses K&R.
+- **Pointer/reference star:** Adjacent to the variable name (`RpClump *pClump`,
+  `const CMsg &msg`) — this placement is common in the current code.
+- **Blank line:** Section separator between functions
+  (`// ---------...`); explanatory Turkish/English comments are free-form.
+- **`//` comments** for bodies, **`/** */`** for the API in header files.
 
-## 5. Dokümantasyon (Doxygen)
+## 5. Documentation (Doxygen)
 
-Başlık dosyalarında her sınıf/üye `@brief` ile belgelenir:
+In header files, every class/member is documented with `@brief`:
 
 ```cpp
 /**
@@ -72,40 +72,40 @@ Başlık dosyalarında her sınıf/üye `@brief` ile belgelenir:
 void Update(RwReal deltaTime);
 ```
 
-Üretim: `doxygen Doxyfile` → `docs/html/`.
+Generation: `doxygen Doxyfile` → `docs/html/`.
 
-## 6. Tersine mühendislik kanıtları
+## 6. Reverse engineering evidence
 
-- Binary fonksiyon adresleri (`FUN_0040b090`) ve ASM referansları
-  (`00419e72 CALL ...`) kod yorumlarında **korunur** — silinmez.
-- Orijinal assert dizesi alıntıları İngilizce kalır:
+- Binary function addresses (`FUN_0040b090`) and ASM references
+  (`00419e72 CALL ...`) are **preserved** in code comments — never deleted.
+- Original assert string quotes stay in English:
   `"pRigidBody != NULL Failed"`.
-- Bilinmeyen davranış `// TODO(Faz N+): ...` ile işaretlenir.
+- Unknown behavior is marked with `// TODO(Phase N+): ...`.
 
-## 7. İşaretçi ve boş değerler
+## 7. Pointers and null values
 
-- Boş işaretçi: `0` (C++98 uyumlu; `nullptr` C++14'te mevcut olmakla
-  birlikte mevcut kod `0` kullanır).
-- `RwBool` dönüşler: `TRUE` / `FALSE` makroları.
-- Opaque Havok/RW tipleri: `void*` + başlıkta tip yorumu.
+- Null pointer: `0` (C++98 compatible; although `nullptr` exists in C++14,
+  the current code uses `0`).
+- `RwBool` returns: `TRUE` / `FALSE` macros.
+- Opaque Havok/RW types: `void*` + a type comment in the header.
 
-## 8. Derleme / doğrulama
+## 8. Build / verification
 
-Yeni kod ekledikten sonra:
+After adding new code:
 
 ```bash
 cd code
-cmake --build build -j8          # statik kütüphane + link doğrulaması
-./build/CannonCruise             # "link verification OK" beklenir
+cmake --build build -j8          # static library + link verification
+./build/CannonCruise             # "link verification OK" expected
 ```
 
-- Derleme hatasız olmalı; tanımsız sembol link'te `-force_load` ile yakalanır.
-- Test: `tests/` altındaki bağımsız testler (bkz. README).
+- The build must be error-free; undefined symbols are caught at link time with `-force_load`.
+- Tests: the independent tests under `tests/` (see README).
 
-## 9. Yasaklar
+## 9. Prohibitions
 
-- Sekme (tab) karakteri.
-- Kaynak kodda `#ifdef _WIN32` çöpü — platform ayrımı zorunlu değilse yok.
-- Binary kanıtı içeren yorumların silinmesi.
-- Gerçek SDK sürümü doğrulanmadan `#include <gerçek-sdk-başlığı>` eklemek
-  (yerel stub başlıklar gölgelenmemeli).
+- Tab character.
+- `#ifdef _WIN32` clutter in source code — none unless platform separation is required.
+- Deleting comments that contain binary evidence.
+- Adding `#include <real-sdk-header>` before the real SDK version is verified
+  (local stub headers must not be shadowed).

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Save Game Manager (SaveGameManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\SaveGameManager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0049dee0 — CSaveGameManager constructor & initialization
 //   FUN_0049e5e0 — CSaveGameManager::Save
 //   FUN_0049ed60 — CSaveGameManager::Load
@@ -42,7 +42,7 @@ RwBool CSaveGameManager::Load()
     FILE* pFile = fopen(m_szSavePath, "rb");
     if (!pFile)
     {
-        // Varsayılan değerler
+        // Default values
         m_SaveData.m_uLevelUnlocked = 1;
         m_SaveData.m_uHighScore = 0;
         m_SaveData.m_uCoins = 0;

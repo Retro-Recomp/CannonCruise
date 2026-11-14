@@ -73,10 +73,10 @@ void *CreatePhysicsWorld() { return new CPhysicsWorldBehaviour; }
 // (HandleEvents); port returns no-op. Output: .RWS spawn count artar.
 RwBool ApplyPhysicsWorld(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
-// === Stub davranış sınıfları — .RWS 0x0704 records'ını tüketir ===
-// Bu sınıfların hiçbiri ASIL oyunu koşturmaz; sadece runtime instantiation
-// sağlarlar (binary.RWS "skip" yerine "spawn"). Gerekirse ileride gerçek
-// uygulamalarıyla değiştirilir.
+// === Stub behavior classes — consumes .RWS 0x0704 records ===
+// None of these classes runs the ACTUAL game; they only provide runtime instantiation
+// ("spawn" instead of binary.RWS "skip"). If needed, real
+// implementations can replace them later.
 class CEventTriggerStub : public RWS::CEventHandler {
 public:
     CEventTriggerStub() {}
@@ -183,8 +183,8 @@ RwBool ApplyDirectorsCamera(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 void *CreateAudioGlobalMixer() { return new CAudioGlobalMixerStub; }
 RwBool ApplyAudioGlobalMixer(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
-// `Create + Apply` yardımcıları — .RWS davranış sınıflarını doğrudan
-// üret (özellere object kaydı yok); missaplies betw no-op olurlar.
+// `Create + Apply` helpers — directly create the .RWS behavior classes
+// (no object registration for the specials); misapplies become no-ops.
 void *CreateTowerCatapult() { return new CTowerCatapult(); }
 
 RwBool ApplyTowerCatapult(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
@@ -253,7 +253,7 @@ RwBool GameBehaviours_Register() {
          &ApplyDirectorsCamera},
         {"AudioGlobalMixer", sizeof(CAudioGlobalMixerStub),
          &CreateAudioGlobalMixer, &ApplyAudioGlobalMixer},
-        // Audit'te tespit edilen `.RWS` davranışları (450+ instance):
+        // `.RWS` behaviors detected in the audit (450+ instances):
         {"CTowerCatapult", sizeof(CTowerCatapult), &CreateTowerCatapult,
          &ApplyTowerCatapult},
         {"CCollisionTrigger", sizeof(CCollisionTrigger), &CreateCollisionTrigger,

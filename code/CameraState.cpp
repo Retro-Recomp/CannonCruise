@@ -192,7 +192,7 @@ RwBool CCameraState::ApplyAttribute(RwUInt32 id, RwUInt32 value) {
         m_param47 = value;
         return TRUE;
     case 0x30:
-        // id48: guard yoksa +0x12c = 1.0f (edi zaten 1.0f)
+        // id48: if no guard +0x12c = 1.0f (edi is already 1.0f)
         if (m_guard == 0) {
             m_one = 1.0f;
         }

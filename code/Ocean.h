@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Ocean Water Simulation (Ocean.h)
 // Original path: D:\Projects\CannonCruisePC\code\Ocean.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
@@ -52,8 +52,8 @@ public:
      * @param numTilesX   Number of tile partitions along the X axis.
      * @param numTilesZ   Number of tile partitions along the Z axis.
      * @param tileSize    Dimension of each individual square tile in world units.
-     * @param originX     Grid köşe X (dünya koordinatı — varsayılan 0).
-     * @param originZ     Grid köşe Z (dünya koordinatı — varsayılan 0).
+     * @param originX     Grid corner X (world coordinate — default 0).
+     * @param originZ     Grid corner Z (world coordinate — default 0).
      */
     void Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
                     RwReal originX = 0.0f, RwReal originZ = 0.0f);

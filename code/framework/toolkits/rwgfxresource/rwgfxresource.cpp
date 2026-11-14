@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (rwgfxresource.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\rwgfxresource\rwgfxresource.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_00424e30 — RwGfxResource::Load
 //   FUN_00425360 — RwGfxResource::Unload
 // ============================================================================
@@ -16,7 +16,7 @@ namespace RWS
 {
     // ========================================================================
     // RwGfxResource::Load (FUN_00424e30)
-    // ASM: 00424e30 — Türüne göre (CLUMP, TEXDICTIONARY vb.) grafik kaynağı yükle
+    // ASM: 00424e30 — Load a graphics resource by its type (CLUMP, TEXDICTIONARY etc.)
     // ========================================================================
     void* RwGfxResource::Load(const char* pFilename, const char* pType)
     {
@@ -52,7 +52,7 @@ namespace RWS
         }
         else
         {
-            // Desteklenmeyen RenderWare türü uyarısı
+            // Warning: unsupported RenderWare type
             assert(false && "CRenderwareResource::Load doesn't support this RenderWare type");
         }
 
@@ -62,7 +62,7 @@ namespace RWS
 
     // ========================================================================
     // RwGfxResource::Unload (FUN_00425360)
-    // ASM: 00425360 — Grafik kaynağını serbest bırak
+    // ASM: 00425360 — Release the graphics resource
     // ========================================================================
     void RwGfxResource::Unload(void* pResource, const char* pType)
     {
@@ -84,6 +84,6 @@ namespace RWS
 
     void RwGfxResource::RegisterHandlers()
     {
-        // Gfx stream chunk işleyicilerini kaydet
+        // Register the Gfx stream chunk handlers
     }
 }

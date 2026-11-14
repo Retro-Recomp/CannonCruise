@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Win32 Direct3D Ocean Renderer (Ocean_W32.h)
 // Original path: D:\Projects\CannonCruisePC\code\Ocean_W32.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include <rwcore.h>

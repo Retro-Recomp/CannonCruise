@@ -1,10 +1,10 @@
 // ============================================================================
-// CannonCruise - gemi .dff librw clump doğrulama (shipprobe_test.cpp)
+// CannonCruise - ship .dff librw clump verification (shipprobe_test.cpp)
 //
-// Keşif sonucu: VIKING01.RWS içindeki rwID_CLUMP payload'ları 16 bayt özel
-// başlık + devamında standart RW 3.6 clump chunk'ları (STRUCT/FRAMELIST/
-// GEOMETRYLIST + GEOMETRY'ler + ATOMIC'ler). Bu 16 baytlık başlık silinirse
-// rw::Clump::streamRead (RpClumpStreamRead) doğrudan çözümleyebilir.
+// Discovery result: the rwID_CLUMP payloads inside VIKING01.RWS have a 16-byte
+// custom header followed by standard RW 3.6 clump chunks (STRUCT/FRAMELIST/
+// GEOMETRYLIST + GEOMETRYs + ATOMICs). If this 16-byte header is removed,
+// rw::Clump::streamRead (RpClumpStreamRead) can parse it directly.
 // ============================================================================
 
 #include "rwcore.h"

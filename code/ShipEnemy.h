@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - Enemy AI Ship (ShipEnemy.h)
 // Original path: D:\Projects\CannonCruisePC\code\ShipEnemy.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "Ship.h"

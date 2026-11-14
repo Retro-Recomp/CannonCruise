@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (rwaudresource.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\rwaudresource\rwaudresource.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00409600 - FUN_004096a0 (RWS::RwAudResource)
 // ============================================================================
 
@@ -14,12 +14,12 @@ namespace RWS
 {
     /**
      * @class RwAudResource
-     * @brief Ses veritabanlarını ve sözlüklerini (`Wave Dictionary`) yükleyen sınıf.
+     * @brief Class that loads audio databases and dictionaries (`Wave Dictionary`).
      *
-     * `CResourceManager` tarafından `.rwa` veya `.wav` paketlerini yönetmek
-     * için çağrılır; altta yatan Miles Sound System yapılarına bağlanır.
+     * Called by `CResourceManager` to manage `.rwa` or `.wav` packages;
+     * it binds to the underlying Miles Sound System structures.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - LoadWaveDict: `FUN_00409600`
      * - UnloadWaveDict: `FUN_00409660`
      */
@@ -27,15 +27,15 @@ namespace RWS
     {
     public:
         /**
-         * @brief Belirtilen dosyadaki ses sözlüğünü belleğe yükler.
-         * @param pFilename Yüklenecek ses sözlüğü dosyası.
-         * @return void* — Yüklenen Wave Dictionary yapısına işaretçi.
+         * @brief Loads the audio dictionary in the given file into memory.
+         * @param pFilename Audio dictionary file to load.
+         * @return void* — Pointer to the loaded Wave Dictionary structure.
          */
         static void* LoadWaveDict(const char* pFilename);
 
         /**
-         * @brief Yüklenmiş ses sözlüğünü bellekten serbest bırakır.
-         * @param pWaveDict Yok edilecek Wave Dictionary.
+         * @brief Releases the loaded audio dictionary from memory.
+         * @param pWaveDict Wave Dictionary to destroy.
          */
         static void UnloadWaveDict(void* pWaveDict);
     };

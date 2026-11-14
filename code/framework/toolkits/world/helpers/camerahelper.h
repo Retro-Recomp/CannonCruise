@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (camerahelper.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\toolkits\world\helpers\camerahelper.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00408000 - FUN_00408200 (RWS::CameraHelper)
 // ============================================================================
 
@@ -14,12 +14,12 @@ namespace RWS
 {
     /**
      * @class CameraHelper
-     * @brief RenderWare kamera nesneleri için yardımcı araç sınıfı.
+     * @brief Helper utility class for RenderWare camera objects.
      *
-     * `CScene` ve `CWbCamera` sınıfları bu yardımcı aracılığıyla
-     * RwCamera nesnelerini oluşturur, yapılandırır ve yönetir.
+     * The `CScene` and `CWbCamera` classes use this helper
+     * to create, configure and manage RwCamera objects.
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - CreateCamera: `FUN_00408000`
      * - SetFieldOfView: `FUN_00408080`
      * - SetNearFarClip: `FUN_004080f0`
@@ -28,42 +28,42 @@ namespace RWS
     {
     public:
         /**
-         * @brief Yeni bir RenderWare kamerası oluşturur.
-         * @param width   Render hedefi genişliği (piksel).
-         * @param height  Render hedefi yüksekliği (piksel).
+         * @brief Creates a new RenderWare camera.
+         * @param width   Render target width (pixels).
+         * @param height  Render target height (pixels).
          * @param zBuffer Z-buffer etkin mi.
-         * @return RwCamera* — Oluşturulan kamera; başarısızlık durumunda nullptr.
+         * @return RwCamera* — The created camera; nullptr on failure.
          */
         static RwCamera* CreateCamera(RwInt32 width, RwInt32 height, RwBool zBuffer);
 
         /**
-         * @brief Kamerayı ve ilişkili render hedeflerini yok eder.
-         * @param pCamera Yok edilecek kamera.
+         * @brief Destroys the camera and the associated render targets.
+         * @param pCamera Camera to destroy.
          */
         static void DestroyCamera(RwCamera* pCamera);
 
         /**
-         * @brief Kameranın görüş alanını (FoV) ayarlar.
-         * @param pCamera Hedef kamera.
-         * @param fov     Dikey görüş açısı (radyan).
-         * @param width   Görünüm genişliği.
-         * @param height  Görünüm yüksekliği.
+         * @brief Sets the camera's field of view (FoV).
+         * @param pCamera Target camera.
+         * @param fov     Vertical field of view angle (radians).
+         * @param width   View width.
+         * @param height  View height.
          */
         static void SetFieldOfView(RwCamera* pCamera, RwReal fov, RwInt32 width, RwInt32 height);
 
         /**
-         * @brief Kameranın ön/arka kırpma düzlemlerini ayarlar.
-         * @param pCamera  Hedef kamera.
-         * @param nearClip Ön kırpma mesafesi.
-         * @param farClip  Arka kırpma mesafesi.
+         * @brief Sets the camera's near/far clip planes.
+         * @param pCamera  Target camera.
+         * @param nearClip Near clip distance.
+         * @param farClip  Far clip distance.
          */
         static void SetNearFarClip(RwCamera* pCamera, RwReal nearClip, RwReal farClip);
 
         /**
-         * @brief Kameranın render hedefini yeni ekran boyutuna göre günceller.
-         * @param pCamera Hedef kamera.
-         * @param width   Yeni genişlik (piksel).
-         * @param height  Yeni yükseklik (piksel).
+         * @brief Updates the camera's render target to the new screen size.
+         * @param pCamera Target camera.
+         * @param width   New width (pixels).
+         * @param height  New height (pixels).
          */
         static void UpdateScreenSize(RwCamera* pCamera, RwInt32 width, RwInt32 height);
     };

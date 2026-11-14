@@ -1,7 +1,7 @@
 // ============================================================================
 // CannonCruise - Health Debris Pickup (HealthDebris.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\HealthDebris.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 // ============================================================================
 
 #include "HealthDebris.h"

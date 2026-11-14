@@ -1,9 +1,9 @@
 // ============================================================================
-// CannonCruise - BehaviourLoader entegrasyon testi (Faz 4.6k)
-// 0x0704 create-by-name dispatch: sınıf adı → CClassFactory → create →
-// apply virtual (render/camera/audio portları) MAINMENU nesnelerinde
-// uçtan uca doğrulanır.
-// Çalıştırma: behaviourloader_test <MAINMENU.RWS>
+// CannonCruise - BehaviourLoader integration test (Phase 4.6k)
+// 0x0704 create-by-name dispatch: class name → CClassFactory → create →
+// apply virtual (render/camera/audio ports) on MAINMENU objects
+// verified end to end.
+// Usage: behaviourloader_test <MAINMENU.RWS>
 // ============================================================================
 
 #include "BehaviourLoader.h"
@@ -36,12 +36,12 @@ static float AsFloat(const RwUInt8 *pValue) {
     return f;
 }
 
-// ---- fabrika + apply adaptörleri (binary: factory + vtable slot1) ----
+// ---- factory + apply adapters (binary: factory + vtable slot1) ----
 
 static void *CreateWbRender() {
     CRenderBehaviourSub *pSub = new CRenderBehaviourSub;
     std::memset(pSub, 0, sizeof(*pSub));
-    return pSub; // apply hedefi singleton (binary: apply DAT_00635648)
+    return pSub; // apply target singleton (binary: apply DAT_00635648)
 }
 
 static RwBool ApplyWbRender(void *, RwUInt32 id, const RwUInt8 *pValue) {
@@ -60,7 +60,7 @@ static RwBool ApplyWbCamera(void *pObject, RwUInt32 id,
                             const RwUInt8 *pValue) {
     CCameraState *pCam = static_cast<CCameraState *>(pObject);
     if (CCameraStateApplyVec3(pCam, id, pValue) == TRUE) {
-        return TRUE; // VEC3 kaydı (12B kopya)
+        return TRUE; // VEC3 record (12B copy)
     }
     RwUInt32 bits = 0;
     std::memcpy(&bits, pValue, 4);
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
     CRenderBehaviourWorld::Instance()->Init();
 
-    // binary Register boyutları: 0x18 / 0x34 / 0x54
+    // binary Register sizes: 0x18 / 0x34 / 0x54
     static const BehaviourClassEntry kRender = {
         "CWbRenderBehavior", 0x18, CreateWbRender, ApplyWbRender};
     static const BehaviourClassEntry kCamera = {
@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
                     CHECK(applied == 1);
                     CRenderBehaviourWorld *pWorld =
                         CRenderBehaviourWorld::Instance();
-                    // prop id0 → +0x14 bit kopyası (dosya değeriyle)
+                    // prop id0 → +0x14 bit copy (file value)
                     RwUInt32 param0Bits = 0;
                     std::memcpy(&param0Bits, &pWorld->m_Render.m_param0, 4);
                     CHECK(param0Bits ==
@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
                     CHECK(applied == 1);
                     const CCameraState *pCam =
                         static_cast<const CCameraState *>(instances[0]);
-                    // prop0 VEC3 → m_pos (dosya değeriyle)
+                    // prop0 VEC3 → m_pos (file value)
                     const RwUInt8 *pVec = pObj->behaviours[0].props[0].value;
                     CHECK(pCam->m_pos[0] == AsFloat(pVec));
                     CHECK(pCam->m_pos[1] == AsFloat(pVec + 4));
@@ -168,19 +168,19 @@ int main(int argc, char **argv) {
                     CHECK(pAudio->float1 == 0.0f);
                     delete pAudio;
                 } else {
-                    // bilinmeyen sınıf → skip (factory NULL)
+                    // unknown class → skip (factory NULL)
                     CHECK(applied == 0);
                 }
                 ++objectIndex;
             }
-            // 4 OBJECTRECORD: 3 bilinen + 1 bilinmeyen
+            // 4 OBJECTRECORD: 3 known + 1 unknown
             CHECK(objectIndex == 4);
             CHECK(totalApplied == 3);
             RwStudioFileClose(pFile);
         }
     }
 
-    // bilinmeyen sınıf adı → NULL
+    // unknown class name → NULL
     CHECK(BehaviourLoader::Create("CNoSuchClass") == 0);
 
     BehaviourLoader::UnregisterAll();

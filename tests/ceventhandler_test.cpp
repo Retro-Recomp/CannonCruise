@@ -34,17 +34,17 @@ int main()
     CEventHandler::Initialize();
 
     // -----------------------------------------------------------------
-    // RegisterMsg: benzersiz ve tekrar eden kayıt
+    // RegisterMsg: unique and duplicate registration
     // -----------------------------------------------------------------
     const CEventId idA = CEventHandler::RegisterMsg("iMsgTestA");
     const CEventId idB = CEventHandler::RegisterMsg("iMsgTestB");
     CHECK(idA != 0);
     CHECK(idA != idB);
-    // Aynı ad ikinci kez aynı kimliği döndürmeli
+    // Same name registered a second time should return the same id
     CHECK(CEventHandler::RegisterMsg("iMsgTestA") == idA);
 
     // -----------------------------------------------------------------
-    // LinkMsg + SendMsg dağıtımı
+    // LinkMsg + SendMsg dispatch
     // -----------------------------------------------------------------
     CountingHandler* pHandler = new CountingHandler();
     pHandler->LinkMsg(idA);
@@ -56,27 +56,27 @@ int main()
     CHECK(g_lastId == idA);
     CHECK(g_lastData == &payload);
 
-    // Abone olunmayan olay çağrı üretmemeli
+    // Subscribing to an unregistered event should not produce a call
     g_calls = 0;
     CEventHandler::SendMsg(CMsg(idB, 0));
     CHECK(g_calls == 0);
 
     // -----------------------------------------------------------------
-    // UnLinkMsg: abonelik kaldırıldıktan sonra dağıtım durur
+    // UnLinkMsg: dispatch stops after the subscription is removed
     // -----------------------------------------------------------------
     pHandler->UnLinkMsg(idA);
     g_calls = 0;
     CEventHandler::SendMsg(CMsg(idA, 0));
     CHECK(g_calls == 0);
 
-    // Yeniden link
+    // Re-link
     pHandler->LinkMsg(idA);
     g_calls = 0;
     CEventHandler::SendMsg(CMsg(idA, 0));
     CHECK(g_calls == 1);
 
     // -----------------------------------------------------------------
-    // Yıkıcı tüm abonelikleri kaldırmalı (UnLinkAllProcess)
+    // Destructor removes all subscriptions (UnLinkAllProcess)
     // -----------------------------------------------------------------
     delete pHandler;
     g_calls = 0;
@@ -84,7 +84,7 @@ int main()
     CHECK(g_calls == 0);
 
     // -----------------------------------------------------------------
-    // Çoklu abone: iki handler da almalı
+    // Multiple subscribers: both handlers should receive
     // -----------------------------------------------------------------
     CountingHandler* pH1 = new CountingHandler();
     CountingHandler* pH2 = new CountingHandler();
@@ -99,7 +99,7 @@ int main()
     CEventHandler::SendMsg(CMsg(idB, 0));
     CHECK(g_calls == 0);
 
-    // Kayıtlı sistem olayı sabitleri
+    // Registered system event constants
     CHECK(RWS::iMsgRunningTick == 0x0001);
     CHECK(RWS::iMsgPhysicsUpdate == 0x0002);
 

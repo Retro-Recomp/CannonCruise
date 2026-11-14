@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - 2D Maestro Menu Behavior (MenuBehavior.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\MenuBehavior.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reconstructed via reverse engineering with Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary functions:
 //   FUN_00443050 — CMenuBehavior constructor & registration
 //   FUN_00443800 — CMenuBehavior::Update
 //   FUN_00443c20 — CMenuBehavior::Render
@@ -100,15 +100,15 @@ void CMenuBehavior::Update(RwReal deltaTime)
  * @brief Dispatches drawing calls for 2D Maestro UI canvas.
  * @see FUN_00443c20
  *
- * Video-kurgu: maestro placeholder yerine parşömen menü (SCR.mov
- * MAINMENU/OPTIONS/SOUND birebir düzeni; lang_eng.txt etiketleri).
+ * Video-scene: instead of a maestro placeholder, a parchment menu (SCR.mov
+ * MAINMENU/OPTIONS/SOUND exact layout; lang_eng.txt labels).
  */
 void CMenuBehavior::Render()
 {
-    // ekran pikseli — RenderPlatform_Initialize(1280, 720)
+    // screen pixels — RenderPlatform_Initialize(1280, 720)
     const RwReal kScreenW = 1280.0f;
     const RwReal kScreenH = 720.0f;
-    // parşömen + yanık kenar + koyu kahve mürekkep (video renkleri)
+    // parchment + burnt edge + dark brown ink (video colors)
     const RwUInt32 kParchment = 0xFFC7A05E;
     const RwUInt32 kEdge      = 0xFF1A0F08;
     const RwUInt32 kInk       = 0xFF4A2810;
@@ -126,19 +126,19 @@ void CMenuBehavior::Render()
                  RenderPlatform_HasTexture("Menu_Main") == TRUE);
     if (mainBg == TRUE)
     {
-        // Birleşik statik zemin (074 + logo kompoziti).
+        // Combined static background (074 + logo composite).
         RenderPlatform_DrawTexturedQuad(0.0f, 0.0f, kScreenW, kScreenH,
                                         "Menu_Main");
     }
     else if (textured == TRUE)
     {
-        // Gerçek gömülü art: Menu_074 (640×480 parşömen zemin) tam ekran.
+        // Actual embedded art: Menu_074 (640×480 parchment background) full screen.
         RenderPlatform_DrawTexturedQuad(0.0f, 0.0f, kScreenW, kScreenH,
                                         "Menu_074");
     }
     else
     {
-        // zemin + yanık çerçeve (dokusuz fallback)
+        // background + burnt frame (textureless fallback)
         RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, kScreenH,
                                        kParchment);
         RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, 20.0f, kEdge);
@@ -161,15 +161,15 @@ void CMenuBehavior::Render()
             textured == TRUE &&
             RenderPlatform_HasTexture("Menu_076") == TRUE)
         {
-            // Gerçek logo art (512×128 → overlay'de 2x). Not: alfalı
-            // sprite'lar Im2D'de sorunlu olabilir (Menu_Main kompoziti
-            // tercih edilir); fallback bitmap başlık korunur.
+            // Actual logo art (512×128 → 2x in overlay). Note: textures with alpha
+            // can be problematic in Im2D (prefers the Menu_Main composite);
+            // fallback bitmap title is kept.
             RenderPlatform_DrawTexturedQuad(140.0f, 70.0f, 1024.0f, 256.0f,
                                             "Menu_076");
         }
         else if (mainBg != TRUE)
         {
-            // başlık: "Hugo" + "CANNONCRUISE" (dokusuz fallback)
+            // title: "Hugo" + "CANNONCRUISE" (textureless fallback)
             ShowText_DrawBitmapText("Hugo", 150.0f, 84.0f, 5,
                                     0xB4, 0x4E, 0x08, 255);
             ShowText_DrawBitmapText("CANNONCRUISE", 140.0f, 150.0f, 7,
@@ -183,7 +183,7 @@ void CMenuBehavior::Render()
             const RwReal y = listY + (RwReal)i * rowH;
             if (i == m_selection)
             {
-                // topuz imleç (video: seçili satırın solunda gülle)
+                // round cursor (video: cannonball left of the selected row)
                 RenderPlatform_DrawOverlayQuad(ballX, y - 4.0f, 26.0f, 30.0f,
                                                kBall);
             }
@@ -193,7 +193,7 @@ void CMenuBehavior::Render()
     }
     else
     {
-        // alt ekran başlığı
+        // sub-screen title
         const char *title = "OPTIONS";
         if (m_screen == MENUSCREEN_SOUND)
         {
@@ -248,7 +248,7 @@ void CMenuBehavior::Render()
                                     : (i == 1) ? m_volEffects : m_volMusic;
                 ShowText_DrawBitmapText(label, listX, y, 3,
                                         0x4A, 0x28, 0x10, 255);
-                // 10 segmentli ses barı (video düzeni)
+                // 10-segment sound bar (video layout)
                 for (RwInt32 s = 0; s < 10; ++s)
                 {
                     RenderPlatform_DrawOverlayQuad(
@@ -273,7 +273,7 @@ void CMenuBehavior::Render()
         (void)kInk;
     }
 
-    // klavye ipuçları (video: SELECT/BACK + tuş kutuları)
+    // keyboard hints (video: SELECT/BACK + key boxes)
     RenderPlatform_DrawOverlayQuad(150.0f, 636.0f, 86.0f, 30.0f, kKeyBox);
     ShowText_DrawBitmapText("Enter", 158.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
     ShowText_DrawBitmapText("SELECT", 244.0f, 640.0f, 2, 0x4A, 0x28, 0x10,
@@ -422,7 +422,7 @@ RwBool CMenuBehavior::Back()
         m_selection = 0;
         return FALSE;
     default:
-        return TRUE; // MAIN → döngüden çık (quit sayılmaz)
+        return TRUE; // MAIN → exit the loop (not counted as quit)
     }
 }
 
@@ -444,21 +444,21 @@ void CMenuBehavior::AttachMaestro(Rt2dMaestro* pMaestro)
 
 RwBool CMenuBehavior::LoadTextures(const char* rwsPath)
 {
-    // Tek yol: direkt 0xe8 (RwStudio MAPMENU/GLOBAL'u atlar).
+    // Single path: direct 0xe8 (RwStudio skips MAPMENU/GLOBAL).
     return MenuTextures_LoadFromRws(rwsPath);
 }
 
-// Menu_Main birleşik zemin (074 + 076 logo, CPU kompozit) — hazır
-// pImage doku setinden kurar; opak sonuç C888 yolundan çizilir.
+// Menu_Main combined background (074 + 076 logo, CPU composite) — builds it from
+// the ready pImage texture set; the opaque result is drawn via the C888 path.
 static void UploadMenuMainComposite(RwTxdImage *pImage, RwBool *pAny)
 {
     if (pImage == 0 || pAny == 0)
     {
         return;
     }
-            // Menu_Main: statik birleşik zemin (074 + 076 logo, CPU
-            // kompozit). Gerekçe: C8888 alfalı sprite'lar librw Im2D'de
-            // siyah çıkıyor (bilinen quirk); birleşik doku opak→C888.
+            // Menu_Main: static combined background (074 + 076 logo, CPU
+            // composite). Rationale: C8888 alpha sprites come out black in librw
+            // Im2D (known quirk); the combined texture is opaque→C888.
             const RwTxdTexture* bg = 0;
             const RwTxdTexture* logo = 0;
             for (RwUInt32 i = 0; i < pImage->count; ++i)
@@ -476,15 +476,15 @@ static void UploadMenuMainComposite(RwTxdImage *pImage, RwBool *pAny)
             if (bg != 0 && logo != 0 && bg->pPixels != 0 &&
                 logo->pPixels != 0)
             {
-                // Menu_Main: canvas çözünürlüğünde (640×480) birleşik zemin
-                // — 1280×720 GL dokusu sorunlu; canvas boyutu kanıtlı çalışır.
+                // Menu_Main: combined background at canvas resolution (640×480)
+                // — the 1280×720 GL texture is problematic; the canvas size is proven to work.
                 const RwInt32 OW = (RwInt32)bg->width;
                 const RwInt32 OH = (RwInt32)bg->height;
                 RwUInt8* out = static_cast<RwUInt8*>(
                     std::malloc((size_t)OW * OH * 4));
                 if (out != 0)
                 {
-                    // zemin: birebir kopya (aynı boyut)
+                    // background: exact 1:1 copy (same size)
                     for (RwInt32 y = 0; y < OH; ++y)
                     {
                         std::memcpy(out + (size_t)y * OW * 4,
@@ -562,7 +562,7 @@ RwBool MenuTextures_LoadFromRws(const char* rwsPath)
     {
         return FALSE;
     }
-    // Direkt 0xe8 txd (sabit düzen; RwStudio MAPMENU/GLOBAL atlar).
+    // Direct 0xe8 txd (fixed layout; RwStudio skips MAPMENU/GLOBAL).
     FILE* f = std::fopen(rwsPath, "rb");
     if (f == 0)
     {
@@ -581,7 +581,7 @@ RwBool MenuTextures_LoadFromRws(const char* rwsPath)
                 std::malloc(sizeof(RwTxdImage)));
             if (pImage != 0)
             {
-                // decoder sayaç-sınırlı: dosya sonuna kadar güvenli.
+                // decoder is counter-limited: safe up to end of file.
                 if (RwTxdDecodeImage(buf + 0xe8, (RwUInt32)size - 0xe8,
                                      pImage) == TRUE)
                 {
@@ -598,7 +598,7 @@ RwBool MenuTextures_LoadFromRws(const char* rwsPath)
                             any = TRUE;
                         }
                     }
-                    // Menu_Main kompoziti (074+076 varsa; yoksa no-op).
+                    // Menu_Main composite (if 074+076 exist; otherwise no-op).
                     UploadMenuMainComposite(pImage, &any);
                 }
                 std::free(pImage);
@@ -619,7 +619,7 @@ RwUInt32 MenuTextures_UploadEmbeddedFromRws(const char* rwsPath)
     RwStudioFile* pFile = RwStudioFileOpen(rwsPath);
     if (pFile == 0)
     {
-        std::printf("RwsTexture: %s acilamadi\n", rwsPath);
+        std::printf("RwsTexture: %s failed to open\n", rwsPath);
         return 0;
     }
     RwUInt32 uploaded = 0;
@@ -647,7 +647,7 @@ RwUInt32 MenuTextures_UploadEmbeddedFromRws(const char* rwsPath)
             {
                 if (RwTxdDecodeImage(pBuf, got, pImage) == TRUE)
                 {
-                    std::printf("RwsTexture: %s — gömülü txd: %u doku\n",
+                    std::printf("RwsTexture: %s — embedded txd: %u textures\n",
                                 rwsPath, (unsigned)pImage->count);
                     for (RwUInt32 i = 0; i < pImage->count; ++i)
                     {
@@ -672,7 +672,7 @@ RwUInt32 MenuTextures_UploadEmbeddedFromRws(const char* rwsPath)
                 }
                 else
                 {
-                    std::printf("RwsTexture: %s — txd decode basarisiz\n",
+                    std::printf("RwsTexture: %s -- txd decode failed\n",
                                 rwsPath);
                 }
                 std::free(pImage);

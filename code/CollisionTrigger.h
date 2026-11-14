@@ -37,7 +37,7 @@ public:
   // port extension (test + no-clump path): registers AABB box phantom
   // with CPhysicsWorld singleton (derived from sphere radius).
   void InitializeWithSphere(const RwV3d *pCenter, RwReal radius);
-  // overlap turu — HandleEvents bunu çağırır; test doğrudan çağırabilir.
+  // overlap pass - HandleEvents calls this; tests may call it directly.
   void PollOverlaps();
   virtual void OnEntityEnter(void *pEntity);
   virtual void OnEntityLeave(void *pEntity);

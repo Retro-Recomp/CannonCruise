@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Speech Stream Definitions (SpeakStreamDefs.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\SpeakStreamDefs.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_0045d7b0 — CSpeakStreamDefs::Initialize
 // ============================================================================
 

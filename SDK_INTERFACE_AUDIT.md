@@ -1,116 +1,116 @@
-# Havok / RenderWare Arayüz İncelemesi
+# Havok / RenderWare Interface Audit
 
-> 9 Ekim 2026 · P0 devamı · **SDK entegrasyonu ve Windows derlemesi tamamlanmış değildir.**
+> 9 October 2026 · P0 continuation · **SDK integration and the Windows build are not complete.**
 
-## Kapsam ve yöntem
+## Scope and method
 
-- `code/` altındaki kaynak ve dokuz yerel RenderWare stub başlığı incelendi; eski `code/build/` çıktıları kullanılmadı.
-- Worker'da AppleClang 21.0.0, x86_64 kullanılabildi. `cmake`, `cl` ve `ninja` bulunamadı. Kurulum, PATH değişikliği, harici SDK erişimi veya Windows çalıştırması yapılmadı.
-- `tools/check_sdk_interfaces.py`, mevcut non-Windows CMake dışlama kurallarını modelleyerek **87 kaynak dosyasını** `-std=c++14 -fsyntax-only` ile kontrol eder. CMake çalıştırmaz, nesne/statik arşiv üretmez.
-- Buna ek olarak macOS CMake hedefinin dışladığı `Ocean_W32.cpp` doğrudan kontrol edilir; bu dosya Windows başlığı istemediğinden kontrol mümkündür. Diğer üç Windows kaynağı (`startup.cpp`, `win.cpp`, `rwreg.cpp`) atlanır.
-- Startup bildirim/çağrıları kaynak metinden alınarak küçük izole kontrollerde `rwcore.h` ile karşılaştırılır. Sahte `windows.h` kullanılmaz; **bunlar startup.cpp veya Windows/MSVC derlemesi değildir.**
-- İlk ölçüm: 87/87 non-Windows kaynak geçti; Ocean ve üç izole kontrol başarısızdı. Tam komutlar, tanılar ve kaynak SHA-256 değerleri `validation/sdk-before.json` içinde korunur.
+- The sources and the nine local RenderWare stub headers under `code/` were reviewed; the old `code/build/` outputs were not used.
+- AppleClang 21.0.0, x86_64 was available in the worker. `cmake`, `cl` and `ninja` were not found. No installation, PATH change, external SDK access or Windows run was performed.
+- `tools/check_sdk_interfaces.py` checks **87 source files** with `-std=c++14 -fsyntax-only`, modeling the current non-Windows CMake exclusion rules. It does not run CMake and does not produce objects/static archives.
+- In addition, `Ocean_W32.cpp` (excluded by the macOS CMake target) is checked directly; this file does not require the Windows header, so checking is possible. The other three Windows sources (`startup.cpp`, `win.cpp`, `rwreg.cpp`) are skipped.
+- Startup declarations/calls taken from the source text are compared against `rwcore.h` in small isolated checks. No fake `windows.h` is used; **these are not startup.cpp or a Windows/MSVC build.**
+- First measurement: 87/87 non-Windows sources passed; Ocean and the three isolated checks failed. Full commands, diagnostics and source SHA-256 values are preserved in `validation/sdk-before.json`.
 
-## 1. RenderWare: derleme engelleri
+## 1. RenderWare: build blockers
 
-### RW-01 — Im3D ve global bellek API'si eksik — AÇIK
+### RW-01 — Im3D and global memory API missing — OPEN
 
-Kanıt: `code/Ocean_W32.cpp:41–63`; yerel `code/rwcore.h` bu kullanım kümesini bildirmiyor:
+Evidence: `code/Ocean_W32.cpp:41–63`; local `code/rwcore.h` does not declare this usage set:
 
-- Tür: `RwIm3DVertex`.
-- Vertex yardımcıları: `RwIm3DVertexSetPos`, `RwIm3DVertexSetRGBA`, `RwIm3DVertexSetU`, `RwIm3DVertexSetV`.
-- Çizim: `RwIm3DTransform`, `RwIm3DRenderPrimitive`, `RwIm3DEnd`.
-- Global bellek çağrıları: `RwMalloc`, `RwFree`.
-- Sabitler: `rwRENDERSTATESHADEMODE`, `rwSHADEMODEGOURAUD`, `rwIM3D_VERTEXUV`, `rwIM3D_VERTEXRGBA`.
+- Type: `RwIm3DVertex`.
+- Vertex helpers: `RwIm3DVertexSetPos`, `RwIm3DVertexSetRGBA`, `RwIm3DVertexSetU`, `RwIm3DVertexSetV`.
+- Drawing: `RwIm3DTransform`, `RwIm3DRenderPrimitive`, `RwIm3DEnd`.
+- Global memory calls: `RwMalloc`, `RwFree`.
+- Constants: `rwRENDERSTATESHADEMODE`, `rwSHADEMODEGOURAUD`, `rwIM3D_VERTEXUV`, `rwIM3D_VERTEXRGBA`.
 
-İlk Ocean kontrolü 14 Clang hatası verdi; bazıları ilk eksik türün zincirleme sonucudur. Hata sayısı bağımsız açık sayısı olarak yorumlanmamalı.
+The first Ocean check produced 14 Clang errors; some are the cascading result of the first missing type. The error count must not be read as the number of independent gaps.
 
-`RWS::CMemoryHandler::RwFree(RwFreeList*, void*)` mevcut olsa da global `RwFree(void*)` değildir; farklı kapsam ve imza nedeniyle yerine geçirilemez. `RwAlloc` da `RwMalloc` için kanıtlanmış bir SDK uygulaması değildir.
+Although `RWS::CMemoryHandler::RwFree(RwFreeList*, void*)` exists, it is not the global `RwFree(void*)`; it cannot substitute because of the different scope and signature. `RwAlloc` is also not a proven SDK implementation for `RwMalloc`.
 
-**Gerekli karar:** Doğrulanmış SDK başlıkları mı, yalnızca derleme amaçlı ve açıkça ayrılmış bir stub katmanı mı kullanılacak? Vertex layout'u, renk paketleme, bayrak/sabit değerleri ve bellek callback ABI'si SDK/binary kanıtıyla doğrulanmadan tahmini tanımlar eklenmedi. Özellikle kaynakta kullanılan `rwIM3D_VERTEXRGBA` adının hedef SDK'da gerçekten var olduğu ayrıca kontrol edilmeli.
+**Required decision:** will verified SDK headers be used, or only a build-only, explicitly separated stub layer? Estimated definitions were not added before the vertex layout, color packing, flag/constant values and memory callback ABI were verified with SDK/binary evidence. In particular, it must be checked separately whether the name `rwIM3D_VERTEXRGBA` used in the source actually exists in the target SDK.
 
-### RW-02 — Engine kapanış bildirimlerinin dönüş tipi çakışıyor — YEREL OLARAK DÜZELTİLDİ
+### RW-02 — Engine shutdown declarations clash on return type — FIXED LOCALLY
 
-`startup.cpp` içindeki `extern void RwEngineTerm/Stop/Close(void)` bildirimleri, `rwcore.h` içindeki `RwBool` dönüşleriyle çakışıyordu. İlk izole kontrol üç gerçek Clang hatası üretti.
+The `extern void RwEngineTerm/Stop/Close(void)` declarations in `startup.cpp` clashed with the `RwBool` returns in `rwcore.h`. The first isolated check produced three real Clang errors.
 
-Üç yinelenen bildirim kaldırıldı; mevcut ortak başlık tek bildirim kaynağı oldu. Çağrılar ve kapanış sırası değiştirilmedi. Bu düzeltme yerel tutarlılığı sağlar, gerçek SDK imzasını doğrulamaz.
+The three duplicate declarations were removed; the common header became the single declaration source. Calls and the shutdown order were not changed. This fix ensures local consistency; it does not verify the real SDK signature.
 
-### RW-03 — RwVideoMode bilinmiyor — POINTER KULLANIMI DÜZELTİLDİ
+### RW-03 — RwVideoMode unknown — POINTER USAGE FIXED
 
-`startup.cpp` içindeki `CameraInit` ve `RwStartupInitialize` yalnızca `RwVideoMode*` alıyor. `rwcore.h` içine opaque forward declaration eklendi. Yapı alanı/boyutu uydurulmadı; değer oluşturma veya alan erişimi ileride gerçek SDK tanımı gerektirir.
+`CameraInit` and `RwStartupInitialize` in `startup.cpp` only take `RwVideoMode*`. An opaque forward declaration was added to `rwcore.h`. No struct field/size was made up; creating values or accessing fields will require the real SDK definition later.
 
-### RW-04 — RwEngineOpen çağrısında parametre eksik — AÇIK
+### RW-04 — Missing parameter in RwEngineOpen call — OPEN
 
-`startup.cpp`, `RwEngineOpen()` çağırıyor; ortak stub `RwEngineOpen(void* param)` bildiriyor. İzole çağrı kontrolü başarısız.
+`startup.cpp` calls `RwEngineOpen()`; the common stub declares `RwEngineOpen(void* param)`. The isolated call check fails.
 
-`nullptr` ekleyerek hatayı gizlemek yerine gerçek open-param yapısı, HWND/cihaz bağlama ve `subSystemConfig` verisinin anlamı araştırılmalı. Startup'taki adres yorumları tek başına wrapper ile SDK fonksiyonunu ayırmak için yeterli değil.
+Instead of hiding the error by adding `nullptr`, the real open-param structure, HWND/device binding and the meaning of the `subSystemConfig` data should be investigated. The address comments in the startup code are not sufficient by themselves to distinguish a wrapper from the SDK function.
 
-### RW-05 — RwEngineInit ve bağlantı bildirimleri ayrışıyor — AÇIK
+### RW-05 — RwEngineInit and link declarations diverge — OPEN
 
-- `rwcore.h`: `RwEngineInit(void*, RwInt32, RwMemoryFunctions*)`, `extern "C"` içinde.
-- `startup.cpp`: `RwEngineInit(void*, RwUInt32, RwUInt32)`, ayrı yerel bildirim.
-- `memoryhandler.h` örneği callback tablosunu üçüncü argümana geçirirken startup farklı sözleşme varsayıyor.
+- `rwcore.h`: `RwEngineInit(void*, RwInt32, RwMemoryFunctions*)`, inside `extern "C"`.
+- `startup.cpp`: `RwEngineInit(void*, RwUInt32, RwUInt32)`, a separate local declaration.
+- The `memoryhandler.h` example passes the callback table as the third argument while startup assumes a different contract.
 
-İzole `RwEngineInit(memFuncs, 0, 0)` kontrolü Clang'da **geçti** (`validation/startup-init.json`). Bu, iki imzanın eşdeğer olduğu anlamına gelmez: derlenebilen ayrı overload, yanlış/missing dış sembol riskini ortadan kaldırmaz. Ayrıca `RwEngineSetSubSystem` ve `RwEngineSetVideoMode` yalnızca startup'ta bildiriliyor; SDK sözleşmesi ve C/C++ linkage tek yerde toplanmalı.
+The isolated `RwEngineInit(memFuncs, 0, 0)` check **passed** in Clang (`validation/startup-init.json`). This does not mean the two signatures are equivalent: a separately compilable overload does not eliminate the wrong/missing external symbol risk. Also, `RwEngineSetSubSystem` and `RwEngineSetVideoMode` are declared only in startup; the SDK contract and C/C++ linkage should be gathered in a single place.
 
-## 2. RenderWare: link ve ABI kapıları
+## 2. RenderWare: link and ABI gates
 
-Yerel başlıklar bildirim sağlar; gerçek SDK fonksiyon uygulamaları değildir. Statik kaynak kontrolü, `RwRenderStateGet`, matrix/camera erişimleri, plugin callback'leri ve stream işlevlerinin gerçek imza/layout/sabitlerini doğrulamaz.
+Local headers provide declarations; they are not real SDK function implementations. Static source checking does not verify the real signatures/layouts/constants of `RwRenderStateGet`, matrix/camera accessors, plugin callbacks and stream functions.
 
-Özellikle `RwMemoryFunctions`, `RwGlobals`, `RwFreeList`, `RwFrame`, Im2D/Im3D düzenleri; enum/chunk sabitleri; calling convention, struct packing, x86 pointer boyutu ve CRT eşleşmesi SDK entegrasyonu öncesinde karşılaştırılmalı. Yerel başlıkların gerçek SDK'yı include sırasıyla gölgelemesi engellenmeli.
+In particular, the `RwMemoryFunctions`, `RwGlobals`, `RwFreeList`, `RwFrame`, Im2D/Im3D layouts; enum/chunk constants; calling convention, struct packing, x86 pointer size and CRT match must be compared before SDK integration. Local headers must not shadow the real SDK via include order.
 
-Kaynak taramasında startup içinde bildirilen ve çağrılan, fakat tanımı görülmeyen wrapper adayları:
+Wrapper candidates declared and called in startup, but with no definition visible in the source scan:
 
 - `HavokInit`, `FileSystemInit`, `TextureCacheInit`, `RwStartEngine`, `CameraInit`.
 - `RwEngineSetConfig`, `SetLightAmbient`, `RenderPipelineInit`, `GameManagerInit`.
 - `CameraShutdown`, `RenderPipelineShutdown`, `SubSystemShutdown`, `TextureCacheShutdown`, `GameManagerShutdown`, `ResourceShutdown`, `GeneralShutdown`.
-- Win32 döngüsünde `InitEngine`, `CleanupEngine`, `Idle`, `ResizeCameraRasters`, global `GetTime`.
+- In the Win32 loop: `InitEngine`, `CleanupEngine`, `Idle`, `ResizeCameraRasters`, global `GetTime`.
 
-`CMenuGetTimeDelegate::GetTime()` global Win32 `GetTime()` ile aynı sembol değildir. Bu liste kaynak taraması sonucudur; **linker tarafından üretilmiş tam unresolved-symbol listesi değildir**. EXE hedefi ve gerçek link koşusu hâlâ yoktur.
+`CMenuGetTimeDelegate::GetTime()` is not the same symbol as the global Win32 `GetTime()`. This list is the result of a source scan; **it is not the complete unresolved-symbol list produced by the linker**. The EXE target and a real link run are still pending.
 
-## 3. Havok: kullanılan yerel arayüz ve davranış açıkları
+## 3. Havok: local interface in use and behavior gaps
 
-### HK-01 — Dünya yaşam döngüsü ve SDK bağlantısı yok — AÇIK
+### HK-01 — No world lifecycle or SDK link — OPEN
 
-`CPhysicsWorld` içindeki `m_pHavokWorld` private `void*`; constructor sıfırlıyor, mevcut sınıfta dünyayı oluşturan veya bu üyeye dünya atayan yol yok. `Update()` içindeki `stepDeltaTime` yorum satırı. Gerçek Havok başlık include'u veya aktif `hkp*` tür çağrısı görülmedi. Yorumlardaki isimler Havok sürümünün kanıtı değildir.
+`m_pHavokWorld` inside `CPhysicsWorld` is private `void*`; the constructor zeroes it, and there is no path in the current class that creates the world or assigns one to this member. The `stepDeltaTime` call in `Update()` is commented out. No real Havok header include or active `hkp*` type call is seen. The names in comments are not proof of the Havok version.
 
-### HK-02 — Body/phantom işlemleri yalnızca vektör kaydı — AÇIK
+### HK-02 — Body/phantom operations are only vector records — OPEN
 
-- `AddRigidBody` / `RemoveRigidBody` / `RigidBodyExistsInWorld`: `std::vector<void*>` üyeliği.
-- `AddPhantom` / `RemovePhantom`: diğer vektörde üyelik.
-- SDK dünyasına entity ekleme/çıkarma, refcount, ownership, lock/thread kuralları ve collision filtreleri uygulanmıyor.
-- `CPhysicsEntity::SetRigidBody` yalnızca pointer atıyor; `AddToWorld` / `RemoveFromWorld` yerel kayıt katmanına gidiyor.
-- `SetPosition`, `GetPosition`, `SetLinearVelocity`, `GetLinearVelocity` yalnızca assert yapıyor. Özellikle getter'lar çıkış vektörünü doldurmuyor; geçerli fizik sonucu kabul edilemez.
+- `AddRigidBody` / `RemoveRigidBody` / `RigidBodyExistsInWorld`: membership in a `std::vector<void*>`.
+- `AddPhantom` / `RemovePhantom`: membership in another vector.
+- Entity add/remove into the SDK world, refcount, ownership, lock/thread rules and collision filters are not applied.
+- `CPhysicsEntity::SetRigidBody` only assigns a pointer; `AddToWorld` / `RemoveFromWorld` go to the local record layer.
+- `SetPosition`, `GetPosition`, `SetLinearVelocity`, `GetLinearVelocity` only assert. In particular, the getters do not fill the output vector; valid physics results cannot be accepted.
 
-### HK-03 — Fizik event bağlantısı eksik — AÇIK
+### HK-03 — Physics event wiring missing — OPEN
 
-`CPhysicsWorldBehaviour::HandleEvents` mesaj kimliğini sınamadan her teslim edilen mesajda `Update(1/60)` çağırıyor; constructor'da fizik mesaj aboneliği yok. Fizik adımı zaten no-op olduğu için bu durum şimdilik simülasyon ilerletmiyor. Event ID/abonelik sözleşmesi kanıtlanmadan yeni bir ID uydurulmadı.
+`CPhysicsWorldBehaviour::HandleEvents` calls `Update(1/60)` on every delivered message without testing the message ID; there is no physics message subscription in the constructor. Because the physics step is already a no-op, this does not currently advance the simulation. No new ID was made up until the event ID/subscription contract is proven.
 
-### HK-04 — Yerel allocator pointer maskesi — DÜZELTİLDİ / TEST EDİLDİ
+### HK-04 — Local allocator pointer mask — FIXED / TESTED
 
-Eski `~(alignment - 1)` işlemi `RwUInt32` genişliğinde kalıyordu. x64'te yüksek pointer bitlerini sıfırlayabiliyordu. Örnek: `0x100000018` adresini 16'ya hizalarken eski ifade `0x20`, geniş maske `0x100000020` veriyor; izole compile-time assert ile doğrulandı.
+The old `~(alignment - 1)` operation stayed at `RwUInt32` width. On x64 it could zero the high pointer bits. Example: when aligning the `0x100000018` address to 16, the old expression gives `0x20`, the wide mask gives `0x100000020`; verified with an isolated compile-time assert.
 
-- Maske complement işleminden önce `uintptr_t` genişliğine taşındı.
-- Tahsis boyutu toplama taşması kontrolü eklendi; toplama `size_t` ile yapılıyor.
-- Mevcut 16-byte sözleşmesi korundu; Release'te de desteklenmeyen hizalama `nullptr` döndürüyor.
-- `Initialize/Shutdown` hâlâ no-op. Bu değişiklik Havok callback kaydı veya fizik entegrasyonu değildir.
-- Yanıltıcı allocator ve dünya açıklamaları mevcut davranışa göre düzeltildi.
+- The mask was moved to `uintptr_t` width before the complement operation.
+- An allocation size add overflow check was added; the addition is done in `size_t`.
+- The existing 16-byte contract was preserved; unsupported alignment returns `nullptr` in Release as well.
+- `Initialize/Shutdown` are still no-ops. This change is not a Havok callback registration or physics integration.
+- Misleading allocator and world descriptions were fixed to match the actual behavior.
 
-`tests/havok_memory_manager_test.cpp`: 0, 1, 15, 16, 17, 4096 ve 1048576 bayt tahsis; hizalama; ayrılmış alanı yazma/serbest bırakma; null-free; Release'te geçersiz hizalama kontrolleri. **Debug ve Release, ASan+UBSan ile geçti.** 32-bit taşma testi test dosyasında mevcut, fakat x64 koşusunda çalışmadı; Windows/x86 koşusunda doğrulanmalı.
+`tests/havok_memory_manager_test.cpp`: allocation of 0, 1, 15, 16, 17, 4096 and 1048576 bytes; alignment; writing/freeing the allocated area; null-free; invalid alignment checks in Release. **Debug and Release passed with ASan+UBSan.** The 32-bit overflow test exists in the test file, but did not run on the x64 run; it must be verified on a Windows/x86 run.
 
-İlk test koşusu bir yorum düzenleme hatasını yakaladı (`validation/allocator-tests.json`); hata düzeltildi ve başarılı tekrar `validation/allocator-tests-fixed.json` dosyasına yazıldı. Ara kaynak taraması değişen kaynaklarla karışık sonuç üretmemesi için durduruldu; `sdk-after.json` oluşmadı. Başarısızlık kanıtları silinmedi.
+The first test run caught a comment-editing error (`validation/allocator-tests.json`); the error was fixed and the successful re-run was written to `validation/allocator-tests-fixed.json`. The interim source scan was stopped so it would not produce mixed results with changed sources; `sdk-after.json` was not created. Failure evidence was not deleted.
 
-## 4. Yeniden çalıştırma
+## 4. Re-running
 
-Clang önkontrolü (depo kökünde, araç önceden kullanılabilir olmalı):
+Clang pre-check (at the repo root, the tool must be available beforehand):
 
 ```sh
 python3 tools/check_sdk_interfaces.py --output validation/sdk-next.json
 ```
 
-Mevcut raporun üzerine yazmaz. Açık Ocean/Open engelleri nedeniyle **nonzero çıkış beklenir**; bu durum başarı olarak sunulmamalı. Script CMake kaynak kapsamını modellemektedir; CMake değişirse eşlemesi ayrıca güncellenmelidir.
+Does not overwrite the existing report. Because of the open Ocean/Open blockers, **a nonzero exit is expected**; this must not be presented as success. The script models the CMake source scope; if CMake changes, its mapping must be updated separately.
 
-SDK bağımsız allocator testi için örnek (depo kökü; yeni çıktı adları kullanın):
+Example for the SDK-independent allocator test (repo root; use new output names):
 
 ```sh
 mkdir -p build/sdk-audit-tests
@@ -118,23 +118,23 @@ clang++ -std=c++14 -Wall -Wextra -Werror -fsanitize=address,undefined -Icode \
   tests/havok_memory_manager_test.cpp code/HavokMemoryManager.cpp \
   -o build/sdk-audit-tests/havok-memory-next-debug
 ./build/sdk-audit-tests/havok-memory-next-debug
-# Release için aynı komuta -DNDEBUG -O2 ve farklı çıktı adı ekleyin.
+# For Release, add -DNDEBUG -O2 and a different output name to the same command.
 ```
 
-## 5. Son doğrulama sonucu
+## 5. Final validation result
 
-`validation/sdk-final.json` son kaynaklarla yeniden çalıştırıldı; kayıtlı kaynak hash'leri mevcut dosyalarla eşleşiyor:
+`validation/sdk-final.json` was re-run with the latest sources; recorded source hashes match the current files:
 
-- **87/87** non-Windows kaynak syntax kontrolünden geçti. Uyarısız derleme iddiası yok: `AnimController.cpp:43` tamsayıdan pointer'a dönüşüm; `SceneManager.cpp:81` format argümanı uyarıları sürüyor ve bu değişikliklerde ele alınmadı.
-- **Ocean: başarısız.** RW-01 açık.
-- **İzole startup kontrolleri: 2/3 geçti.** Dönüş tipi çakışmaları ve opaque video türü düzeldi; Open çağrısı başarısız olmaya devam ediyor.
-- Önkontrol genel sonucu **nonzero**; Windows kapısı tamamlanmadı. Üç Windows kaynağı kontrol dışında.
-- `validation/allocator-tests-fixed.json`: Debug ve Release derleme/çalıştırma çıkışları sıfır; ASan+UBSan tanısı yok. Bu logdaki test ve kaynak hash'leri de mevcut dosyalarla eşleşiyor.
-- Belge bağlantıları ve kod blokları ayrıca kontrol edildi. CMake yapılandırması, statik oyun kütüphanesi, Windows/MSVC, SDK link ve oyun çalışma zamanı testleri yapılmadı.
+- **87/87** non-Windows sources passed the syntax check. No warning-free build is claimed: the warnings at `AnimController.cpp:43` (integer to pointer conversion) and `SceneManager.cpp:81` (format argument) remain and were not addressed in these changes.
+- **Ocean: failed.** RW-01 open.
+- **Isolated startup checks: 2/3 passed.** The return type clashes and the opaque video type were fixed; the Open call continues to fail.
+- **Pre-check overall result nonzero**; the Windows gate is not complete. Three Windows sources are outside the check.
+- `validation/allocator-tests-fixed.json`: Debug and Release compile/run outputs are zero; no ASan+UBSan diagnostics. The test and source hashes in this log also match the current files.
+- Document links and code blocks were also checked. No CMake configuration, static game library, Windows/MSVC, SDK link or game runtime tests were performed.
 
-## 6. Sonraki kabul kapıları
+## 6. Next acceptance gates
 
-1. RenderWare sürümü ve kullanılacak lisanslı SDK/derleme-stub stratejisini netleştir; RW-01, RW-04 ve RW-05'i doğrulanmış sözleşmeyle kapat.
-2. Windows makinesinde [BUILDING.md](BUILDING.md) reçetesini çalıştır; `configure.log`, Debug/Release logları, araç sürümleri ve Win32/SDK seçimini kaydet. macOS'ta MSVC çalıştırılmış gibi raporlama yapma.
-3. Havok backend seçimi, dünya/body ownership ve olay sözleşmesini belirle; sessiz no-op fiziği çalışan simülasyon sayma.
-4. Daha sonra EXE/link kapısı, gerçek SDK ABI karşılaştırması ve tek sahne çalışma zamanı doğrulaması.
+1. Clarify the RenderWare version and the licensed SDK/build-stub strategy to be used; close RW-01, RW-04 and RW-05 with a verified contract.
+2. Run the [BUILDING.md](BUILDING.md) recipe on a Windows machine; record `configure.log`, Debug/Release logs, tool versions and the Win32/SDK selection. Do not report as if MSVC had been run on macOS.
+3. Determine the Havok backend choice, world/body ownership and event contract; do not count silent no-op physics as running simulation.
+4. Later: the EXE/link gate, real SDK ABI comparison and single-scene runtime validation.

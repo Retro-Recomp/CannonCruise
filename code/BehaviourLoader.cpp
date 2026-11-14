@@ -10,7 +10,7 @@
 #include <cstring>
 
 namespace {
-const RwInt32 kMaxClasses = 32; // .RWS'deki 25+ davranış kaydına yer açıldı
+const RwInt32 kMaxClasses = 32; // room for 25+ behavior records in the .RWS
 BehaviourClassEntry s_Entries[kMaxClasses];
 RwInt32 s_EntryCount = 0;
 } // namespace

@@ -2,180 +2,180 @@
 #define CANNONCRUISE_RENDERPLATFORM_H
 
 // ============================================================================
-// CannonCruise - Render Platformu (RenderPlatform.h)
-// Faz 4.6n: librw tabanlı sahne platformu — engine running iken dünya +
-// kamera + ışık kurar; kare başlangıç/bitiş zinciri (clear → BeginUpdate →
-// uygulama çizimi → EndUpdate → ShowRaster) ve Im2D test karesi sağlar.
+// CannonCruise - Render Platform (RenderPlatform.h)
+// Phase 4.6n: librw-based scene platform -- while the engine is running it builds the world +
+// camera + light; the frame begin/end chain (clear -> BeginUpdate ->
+// application drawing -> EndUpdate -> ShowRaster) and an Im2D test quad.
 //
-// Bağlantı: librw C++ API (rw::World/rw::Camera/rw::Light — rw_librw.cpp
-// gibi). Stub C API (rwstubs.cpp) KULLANILMAZ — oradaki kamera/world
-// fonksiyonları no-op'tur. NULL platformda tüm device çağrıları no-op
-// (headless smoke); GL3 platformda gerçek piksel üretir (ShowRaster,
-// frameBuffer nil ise atlanır).
+// Connection: librw C++ API (rw::World/rw::Camera/rw::Light -- like rw_librw.cpp).
+// The stub C API (rwstubs.cpp) is NOT used -- the camera/world functions
+// there are no-ops. All device calls are no-ops on the NULL platform
+// (headless smoke); the GL3 platform produces real pixels (ShowRaster,
+// skipped if frameBuffer is nil).
 //
-// Kare döngüsü binary karşılığı: sub_4189E0 (MainLoop) / FUN_0041C380
-// (Idle) / sub_41CEB0 (Render — Begin/EndUpdate çift sarmalı).
+// Binary counterpart of the frame loop: sub_4189E0 (MainLoop) / FUN_0041C380
+// (Idle) / sub_41CEB0 (Render -- double Begin/EndUpdate wrapping).
 // ============================================================================
 
 #include "rwcore.h"
 
 /**
- * @brief Platformu kurar (engine Init/Open/Start ÇAĞRILMIŞ OLMALI).
+ * @brief Sets up the platform (engine Init/Open/Start MUST HAVE BEEN CALLED).
  *
- * Dünya (BBox ±500 — binary physics AABB), perspektif kamera (near 0.1,
- * far 5000, viewWindow 1×1), ambient + directional ışık oluşturur ve
- * dünyaya ekler. Tekrar çağrı TRUE döner (idempotent).
+ * World (BBox ±500 -- binary physics AABB), perspective camera (near 0.1,
+ * far 5000, viewWindow 1x1), creates ambient + directional lights and
+ * adds them to the world. A repeated call returns TRUE (idempotent).
  *
- * @param width  Raster genişliği (bilgi amaçlı — RCCCameraView raster
- *               alanları; GL3'te gerçek framebuffer boyutu).
- * @param height Raster yüksekliği.
- * @return TRUE kuruldu/zaten kuruldu; FALSE engine çalışmıyor veya
- *         tahsis hatası.
+ * @param width  Raster width (informational -- RCCCameraView raster
+ *               fields; real framebuffer size in GL3).
+ * @param height Raster height.
+ * @return TRUE set up/already set up; FALSE engine not running or
+ *         allocation error.
  */
 RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height);
 
-/// Platform kurulu mu (tekil world/kamera).
+/// Is the platform set up (single world/camera)?
 RwBool RenderPlatform_IsInitialized(void);
 
-/// Dünya (NULL değilse geçerli).
+/// World (valid if not NULL).
 void *RenderPlatform_GetWorld(void);
 
-/// Kamera (NULL değilse geçerli).
+/// Camera (valid if not NULL).
 void *RenderPlatform_GetCamera(void);
 
 /**
- * @brief Kare başlangıcı: clear (IMAGE|Z) → CameraBeginUpdate →
- * RenderPipeline_Reset + SetViewWindowFromCamera (kamera viewWindow +
- * frame LTM — RCCCameraView şeması).
+ * @brief Frame begin: clear (IMAGE|Z) -> CameraBeginUpdate ->
+ * RenderPipeline_Reset + SetViewWindowFromCamera (camera viewWindow +
+ * frame LTM -- RCCCameraView schema).
  *
- * @param pClearCol Temizleme rengi (NULL → opak siyah).
- * @return TRUE kare başladı; FALSE platform kurulu değil.
+ * @param pClearCol Clear color (NULL -> opaque black).
+ * @return TRUE frame started; FALSE platform not set up.
  */
 RwBool RenderPlatform_BeginFrame(const RwRGBA *pClearCol);
 
-/// Kare bitişi: CameraEndUpdate → (frameBuffer varsa) ShowRaster.
+/// Frame end: CameraEndUpdate -> (if frameBuffer exists) ShowRaster.
 void RenderPlatform_EndFrame(void);
 
 /**
- * @brief Im2D test karesi — RenderPipeline matris yığını (ScaleXY +
- * TranslateXY) ile üst matris uygulanarak ekran-uzay dörtgen çizilir.
+ * @brief Im2D test quad -- drawn by applying the RenderPipeline matrix
+ * stack's top matrix (ScaleXY + TranslateXY) to a screen-space quad.
  *
- * Vertex düzeni: RwIm2DVertex (x,y,z,rhw,RGBA,u,v) — gl3::Im2DVertex
- * ile aynı bayt yerleşimi (GL3 geçişinde uyumlu). z = im2d::GetNearZ.
+ * Vertex layout: RwIm2DVertex (x,y,z,rhw,RGBA,u,v) — gl3::Im2DVertex
+ * same byte layout (compatible with the GL3 transition). z = im2d::GetNearZ.
  *
- * @param cx,cy  Merkez (view-window birimi — üst matris öncesinde).
- * @param halfW,halfH Yarı boyut (view-window birimi).
- * @param argb   Çizim rengi (0xAARRGGBB).
- * @return TRUE çizildi; FALSE platform kurulu değil.
+ * @param cx,cy  Center (view-window units -- before the top matrix).
+ * @param halfW,halfH Half size (view-window units).
+ * @param argb   Draw color (0xAARRGGBB).
+ * @return TRUE drawn; FALSE platform not set up.
  */
 RwBool RenderPlatform_RenderTestQuad(RwReal cx, RwReal cy,
                                      RwReal halfW, RwReal halfH,
                                      RwUInt32 argb);
 
 /**
- * @brief Sahneyi yok eder (kamera/ışık/dünya destroy). Engine
- * lifecycle'i SAHİBİ DEĞİLDİR — çağırıcı (test/main) stop/close/term
- * eder. Tekrar çağrı güvenlidir.
+ * @brief Destroys the scene (camera/light/world destroy). Engine
+ * lifecycle is NOT OWNED -- the caller (test/main) does stop/close/term.
+ * A repeated call is safe.
  */
 void RenderPlatform_Terminate(void);
 
 /**
- * @brief Kamera yerleşimi (deneme/görsel doğrulama — Faz 4.6 görsel).
+ * @brief Camera placement (trial/visual verification -- Phase 4.6 visual).
  *
- * Kamera frame matrisini orthonormal (at/right/up) kurar ve updateObjects
- * ile LTM'i senkronlar. Platform kurulu değilse no-op.
+ * Builds the camera frame matrix orthonormal (at/right/up) and syncs
+ * the LTM via updateObjects. No-op if the platform is not set up.
  *
- * @param position Kamera konumu (3 float).
- * @param lookAt   Hedef nokta (3 float — at vektörü buraya bakar).
+ * @param position Camera position (3 float).
+ * @param lookAt   Target point (3 float -- the at vector looks here).
  */
 void RenderPlatform_SetCameraPose(const RwReal position[3],
                                   const RwReal lookAt[3]);
 
 /**
- * @brief Clump'ı platform dünyasına ekler (render + world sahipliği
- * ATOMIC/CLUMP düzeyinde — clump destroy çağıranın görevi).
+ * @brief Adds the clump to the platform world (render + world ownership
+ * at the ATOMIC/CLUMP level -- clump destroy is the caller's job).
  *
- * Faz 4.6o: WorldGeometry_CreateClump çıktısı buraya bağlanır.
+ * Phase 4.6o: the WorldGeometry_CreateClump output is wired in here.
  *
  * @param pClump rw::Clump* (NULL → FALSE).
- * @return TRUE eklendi; FALSE platform kurulu değil veya NULL.
+ * @return TRUE added; FALSE platform not set up or NULL.
  */
 RwBool RenderPlatform_AddClump(void *pClump);
 
 /**
- * @brief Dünya render'ı — BeginFrame ile EndFrame ARASINDA çağrılır
+ * @brief World render -- called BETWEEN BeginFrame and EndFrame
  * (world->render(); NULL platform no-op).
  */
 void RenderPlatform_RenderScene(void);
 
 /**
- * @brief Im2D overlay geçişi başlat — render state'leri 2D'ye hazırlar
- *        (doku yok, Z test/write kapalı, vertex alpha + srcalpha blend).
- *        BeginFrame ile EndFrame ARASINDA, Im2D çiziminden ÖNCE çağrılır;
- *       3D sahne derinlik yazmışsa ZTEST Im2D'yi elerdi.
+ * @brief Start Im2D overlay pass -- prepares render states for 2D
+ *        (no texture, Z test/write off, vertex alpha + srcalpha blend).
+ *        Called BETWEEN BeginFrame and EndFrame, BEFORE Im2D drawing;
+ *        if the 3D scene wrote depth, ZTEST would cull the Im2D quads.
  */
 void RenderPlatform_BeginOverlay2D(void);
 
 /**
- * @brief Im2D overlay geçişi bitir —3D render state'lerini geri yükler.
+ * @brief Finish Im2D overlay pass -- restores the 3D render states.
  */
 void RenderPlatform_EndOverlay2D(void);
 
 /**
- * @brief Piksel koordinatlı dolu Im2D quad (ekran uzayı; CShowText deseni).
- *        x,y sol-üst köşe; w,h piksel; argb renk. kamera raster'ından
- *        ekran boyutunu alır. BeginOverlay2D sonrası çağrılır.
+ * @brief Filled Im2D quad in pixel coordinates (screen space; CShowText pattern).
+ *        x,y top-left corner; w,h pixels; argb color. Takes the screen
+ *        size from the camera raster. Called after BeginOverlay2D.
  */
 void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
                                     RwUInt32 argb);
 
 /**
- * @brief Bir sonraki EndFrame'de framebuffer'ı PNG olarak kaydettirir
- *        (swap öncesi; GL3). Tek seferlik — yazıldıktan sonra temizlenir.
- *        Headless/NULL platformda no-op. path=nullptr isteği iptal eder.
+ * @brief Registers the framebuffer to be saved as a PNG on the next EndFrame
+ *        (before swap; GL3). One-time -- cleared after writing.
+ *        No-op on the headless/NULL platform. path=nullptr cancels the request.
  */
 void RenderPlatform_RequestScreenshot(const char *path);
 
 /**
- * @brief Gömülü txd dokusu yükler (TxdDecode RGBA → librw Image→Raster→
- *        Texture). Aynı isim varsa eskisi destroy edilir. NULL'da no-op.
- * @return TRUE (yüklendi).
+ * @brief Loads an embedded txd texture (TxdDecode RGBA -> librw Image->Raster->
+ *        Texture). If the same name exists, the old one is destroyed. No-op on NULL.
+ * @return TRUE (loaded).
  */
 RwBool RenderPlatform_UploadTexture(const char *name, RwInt32 width,
                                     RwInt32 height, const RwUInt8 *rgbaPixels,
                                     RwInt32 pitch);
 
-/** @brief Yüklü doku var mı (isimle)? */
+/** @brief Is a texture loaded (by name)? */
 RwBool RenderPlatform_HasTexture(const char *name);
 
 /**
- * @brief Yüklü dokuyu opak işaretçi olarak döndürür (librw rw::Texture*).
- *        3D malzemeler için (örn. placeholder tekne). Doku yoksa nullptr.
- *        NULL'da nullptr. Dönen işaretçi RenderPlatform_ClearTextures
- *        çağrılana kadar geçerlidir.
+ * @brief Returns the loaded texture as an opaque pointer (librw rw::Texture*).
+ *        For 3D materials (e.g. placeholder ship). nullptr if absent.
+ *        nullptr on NULL. The returned pointer is valid until
+ *        RenderPlatform_ClearTextures is called.
  */
 void *RenderPlatform_GetTexture(const char *name);
 
 /**
- * @brief Dokulu Im2D quad (UV 0..1; beyaz tint). BeginOverlay2D sonrası
- *        çağrılır; TEXTURERASTER'ı kurup sonra sıfırlar. Doku yoksa çizmez.
+ * @brief Textured Im2D quad (UV 0..1; white tint). Called after BeginOverlay2D;
+ *        sets TEXTURERASTER then clears it. Does not draw if the texture is missing.
  */
 void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
                                      const char *texName);
 
-/** @brief Tüm yüklenmiş dokuları destroy eder (menü teardown/terminate). */
+/** @brief Destroys all loaded textures (menu teardown/terminate). */
 void RenderPlatform_ClearTextures(void);
 
 /**
- * @brief Seviye TexDictionary'yi kurar (0xe8 txd → librw dict + current).
- *        RwsPipeline_Load ÖNCESİ çağrılır — geometri malzemeleri stream
- *        anında isimle çözülür. Eski dict varsa destroy edilir (pipeline
- *        unload SONRASI çağır: malzemeler ham işaretçi tutar).
- * @return TRUE (dict kuruldu; en az bir doku).
+ * @brief Sets up the level TexDictionary (0xe8 txd -> librw dict + current).
+ *        Call BEFORE RwsPipeline_Load -- geometry materials resolve at
+ *        stream time by name. The old dict is destroyed if present (call
+ *        AFTER pipeline unload: materials hold raw pointers).
+ * @return TRUE (dict set up; at least one texture).
  */
 RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath);
 
-/** @brief Dünya dict'ini destroy eder (pipeline unload sonrası/terminate). */
+/** @brief Destroys the world dict (after pipeline unload/terminate). */
 void RenderPlatform_ClearWorldDictionary(void);
 
 #endif // CANNONCRUISE_RENDERPLATFORM_H

@@ -1,9 +1,9 @@
 // ============================================================================
 // CannonCruise - Show Text Manager (ShowTextManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\ShowTextManager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004b5e90 — CShowTextManager constructor & registration
 //   FUN_004b64a0 — CShowTextManager::FormatString
 // ============================================================================

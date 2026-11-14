@@ -4,7 +4,7 @@
 // ============================================================================
 // CannonCruise - RenderWare Studio Framework (cresourcemanager.h)
 // Original path: D:\Projects\CannonCruisePC\code\framework\core\resourcemanager\cresourcemanager.h
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered and rewritten by analyzing with Ghidra and CC.asm.
 // Binary ref: FUN_00405000 - FUN_004052e0 (RWS::CResourceManager)
 // ============================================================================
 
@@ -16,47 +16,47 @@ namespace RWS
 {
     /**
      * @struct CResource
-     * @brief Kayıtlı bir oyun kaynağını (asset) tanımlayan veri yapısı.
+     * @brief Data structure describing a registered game resource (asset).
      *
-     * `CResourceManager::RegisterResource()` tarafından oluşturulur ve
-     * kaynak tablosuna eklenir. Tip, ad, yol, ham veri işaretçisi,
-     * referans sayacı ve bayrakları içerir.
+     * Created by `CResourceManager::RegisterResource()` and
+     * added to the resource table. Contains the type, name, path, raw data pointer,
+     * reference count and flags.
      *
-     * **Kaynak tipleri (m_Type):**
-     * - `"CTextureResource"` — Doku kaynağı
-     * - `"CWorldGeometryResource"` — BSP dünya geometrisi
-     * - `"CPathFindingResource"` — Yol bulma haritası
-     * - `"CAudioResource"` — Ses dosyası
+     * **Resource types (m_Type):**
+     * - `"CTextureResource"` — Texture resource
+     * - `"CWorldGeometryResource"` — BSP world geometry
+     * - `"CPathFindingResource"` — Pathfinding map
+     * - `"CAudioResource"` — Audio file
      */
     struct CResource
     {
-        std::string m_Type;     ///< Kaynak tipi dizesi (örn. "CTextureResource")
-        std::string m_Name;     ///< İnsan okunabilir kaynak adı
-        std::string m_Path;     ///< Dosya sistemi yolu
-        void*       m_pData;    ///< Yüklenmiş kaynak verisi (tipe özel dönüşüm gerekir)
-        RwUInt32    m_RefCount; ///< Referans sayacı (0 → serbest bırakılabilir)
-        RwUInt32    m_Flags;    ///< Kaynak bayrakları (yüklü, kalıcı vb.)
+        std::string m_Type;     ///< Resource type string (e.g. "CTextureResource")
+        std::string m_Name;     ///< Human-readable resource name
+        std::string m_Path;     ///< File system path
+        void*       m_pData;    ///< Loaded resource data (requires type-specific cast)
+        RwUInt32    m_RefCount; ///< Reference count (0 → can be released)
+        RwUInt32    m_Flags;    ///< Resource flags (loaded, persistent etc.)
 
-        /// @brief Varsayılan yapıcı — tüm alanları sıfırlar
+        /// @brief Default constructor — zeroes all fields
         CResource() : m_pData(0), m_RefCount(0), m_Flags(0) {}
     };
 
     /**
      * @class CResourceManager
-     * @brief Oyun kaynaklarını (asset) merkezi olarak yönetir.
+     * @brief Manages game resources (assets) centrally.
      *
-     * CannonCruise'da dokular, dünya geometrileri ve ses kaynakları bu
-     * yönetici aracılığıyla yüklenir ve paylaşılır. Referans sayacı
-     * mekanizmasıyla aynı kaynağın birden fazla nesne tarafından kullanılmasına
-     * izin verilir; sayaç sıfıra düştüğünde kaynak bellekten kaldırılır.
+     * Textures, world geometries and audio resources in CannonCruise
+     * are loaded and shared through this manager. A reference count
+     * mechanism allows the same resource to be used by multiple objects;
+     * when the count drops to zero, the resource is removed from memory.
      *
-     * **Kullanım akışı:**
-     * 1. `Initialize()` — Uygulama başında
-     * 2. `RegisterResource()` — Kaynak yüklendiğinde
-     * 3. `FindResource()` — Kaynak kullanılacağında
-     * 4. `UnRegisterResource()` / `UnRegisterAll()` — Sahne kapatılırken
+     * **Usage flow:**
+     * 1. `Initialize()` — At application startup
+     * 2. `RegisterResource()` — When a resource is loaded
+     * 3. `FindResource()` — When a resource is about to be used
+     * 4. `UnRegisterResource()` / `UnRegisterAll()` — When the scene is closed
      *
-     * **Binary referansları:**
+     * **Binary references:**
      * - Instance: `FUN_00405000`
      * - FindResource: `FUN_00405080`
      * - RegisterResource: `FUN_004050f0`
@@ -65,27 +65,27 @@ namespace RWS
     class CResourceManager
     {
     public:
-        /// @return Tekil CResourceManager örneğine işaretçi
+        /// @return Pointer to the singleton CResourceManager instance
         static CResourceManager* Instance();
-        /// @brief Kaynak yöneticisini başlatır
+        /// @brief Initializes the resource manager
         static void Initialize();
-        /// @brief Kaynak yöneticisini kapatır, tüm kaynakları serbest bırakır
+        /// @brief Shuts down the resource manager, releasing all resources
         static void Shutdown();
 
         /**
-         * @brief Belirtilen kimlik ve tiple kayıtlı kaynağı bulur.
-         * @param pResId    Kaynak kimliği dizesi.
-         * @param pStrType  Kaynak tipi dizesi (isteğe bağlı filtre).
-         * @return void* — Kaynak verisi işaretçisi; bulunamazsa nullptr.
+         * @brief Finds the resource registered with the given id and type.
+         * @param pResId    Resource id string.
+         * @param pStrType  Resource type string (optional filter).
+         * @return void* — Pointer to the resource data; nullptr if not found.
          */
         static void* FindResource(const char* pResId, const char* pStrType = 0);
 
         /**
-         * @brief `FindResource()` için uyumluluk sarmalayıcısı.
-         * @param pResId   Kaynak kimliği.
-         * @param pStrType Kaynak tipi dizesi.
-         * @param pSize    İsteğe bağlı boyut çıkış işaretçisi (kullanılmıyor).
-         * @return void* — Kaynak verisi işaretçisi.
+         * @brief Compatibility wrapper for `FindResource()`.
+         * @param pResId   Resource id.
+         * @param pStrType Resource type string.
+         * @param pSize    Optional size output pointer (unused).
+         * @return void* — Pointer to the resource data.
          */
         static void* Find(const char* pResId, const char* pStrType = 0, RwUInt32* pSize = 0)
         {
@@ -93,32 +93,32 @@ namespace RWS
         }
 
         /**
-         * @brief Yeni bir kaynağı yöneticiye kaydeder.
-         * @param pResId   Benzersiz kaynak kimliği.
-         * @param pStrType Kaynak tipi dizesi.
-         * @param pStrName İnsan okunabilir kaynak adı.
-         * @param pData    Kaynak veri işaretçisi.
-         * @return TRUE ise kayıt başarılı.
+         * @brief Registers a new resource with the manager.
+         * @param pResId   Unique resource id.
+         * @param pStrType Resource type string.
+         * @param pStrName Human-readable resource name.
+         * @param pData    Pointer to the resource data.
+         * @return TRUE if registration succeeded.
          */
         static RwBool RegisterResource(const char* pResId, const char* pStrType,
                                        const char* pStrName, void* pData);
 
         /**
-         * @brief Belirtilen kaynağın kaydını kaldırır.
-         * @param pResId Kaydı kaldırılacak kaynak kimliği.
+         * @brief Unregisters the given resource.
+         * @param pResId Resource id whose registration should be removed.
          */
         static void UnRegisterResource(const char* pResId);
 
-        /// @brief Tüm kayıtlı kaynakları kaldırır
+        /// @brief Removes all registered resources
         static void UnRegisterAll();
 
     private:
         CResourceManager();
         ~CResourceManager();
 
-        static CResourceManager* sm_pInstance; ///< Tekil örnek işaretçisi
+        static CResourceManager* sm_pInstance; ///< Singleton instance pointer
 
-        std::map<std::string, CResource> m_Resources; ///< ResId → CResource eşleştirme tablosu
+        std::map<std::string, CResource> m_Resources; ///< ResId → CResource mapping table
     };
 }
 

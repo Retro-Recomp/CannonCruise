@@ -1,16 +1,16 @@
 // ============================================================================
 // CannonCruise - Scene Manager (SceneManager.cpp)
 // Original path: D:\Projects\CannonCruisePC\code\SceneManager.cpp
-// Tersine mühendislik ile Ghidra ve CC.asm analiz edilerek yeniden yazılmıştır.
+// Reverse-engineered via Ghidra and CC.asm analysis.
 //
-// Binary Fonksiyonları:
+// Binary Functions:
 //   FUN_004a1190 — CSceneManager constructor & event registration ("iMsgChangeScene", "iMsgPreSceneDestroy", "iMsgPostSceneDestroy")
 //   FUN_004a2120 — CSceneManager::ChangeScene ("You must provide a scene name...", "%sStreams\\%s.RWS")
 //   FUN_004a3090 — CSceneManager::Update
 // ============================================================================
 
 #include "SceneManager.h"
-#include "RwsAssets.h"   // .RWS asset yol çözücü (merkezi)
+#include "RwsAssets.h"   // .RWS asset path resolver (central)
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -78,9 +78,9 @@ RwBool CSceneManager::ChangeScene(const char* pSceneName)
     m_pCurrentScene = new CScene();
     assert(m_pCurrentScene != 0 && "Scene not created");
 
-    // Binary formatı "%sStreams\\%s.RWS" (FUN_004a2120). Önek ("") eskiden
-    // elle veriliyordu; artık göreli derinlik/env merkezi çözülür
-    // (RwsAssets_Resolve) — build yerleşimine göre Streams/ kökünü bulur.
+    // Binary format "%sStreams\\%s.RWS" (FUN_004a2120). The prefix ("") used to be
+    // given manually; now the relative depth/env is resolved centrally
+    // (RwsAssets_Resolve) — locates the Streams/ root based on the build layout.
     char szStreamPath[512] = {0};
     char szStreamName[128];
     snprintf(szStreamName, sizeof(szStreamName), "Streams/%s.RWS", pSceneName);

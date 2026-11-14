@@ -1,8 +1,8 @@
 // ============================================================================
-// CannonCruise - .RWS asset payload dökücü (assetdump_test.cpp)
+// CannonCruise - .RWS asset payload dumper (assetdump_test.cpp)
 //
-// Keşif aracı: Streams/*.RWS içindeki rwID_CLUMP / wbID_WORLDGEOMETRY vs.
-// payload'unu <outfile>'a yazar (kolayca librw clump reader ile çözülebilir).
+// Discovery tool: rwID_CLUMP / wbID_WORLDGEOMETRY etc. inside Streams/*.RWS
+// payloads written to <outfile> (can be decoded with the librw clump reader).
 //
 //   usage: assetdump_test <file.RWS> <assetIndex> <outfile>
 // ============================================================================
@@ -42,14 +42,14 @@ int main(int argc, char **argv) {
         }
     }
     if (found == FALSE) {
-        std::fprintf(stderr, "asset [%u] bulunamadi (toplam %u)\n", want, idx);
+        std::fprintf(stderr, "asset [%u] not found (total %u)\n", want, idx);
         RwStudioFileClose(pFile);
         return 2;
     }
     const RwUInt32 len = (asset.embeddedType != 0) ? asset.embeddedLength
                                                    : asset.resourceLength;
     if (len == 0) {
-        std::fprintf(stderr, "asset [%u] payload yok\n", want);
+        std::fprintf(stderr, "asset [%u] has no payload\n", want);
         RwStudioFileClose(pFile);
         return 2;
     }
@@ -62,14 +62,14 @@ int main(int argc, char **argv) {
         ? RwStudioAssetReadEmbedded(pFile, &asset, pBuf, len)
         : RwStudioAssetReadResource(pFile, &asset, pBuf, len);
     if (got != len) {
-        std::fprintf(stderr, "okuma basarisiz: %u/%u bayt\n", got, len);
+        std::fprintf(stderr, "read failed: %u/%u bytes\n", got, len);
         std::free(pBuf);
         RwStudioFileClose(pFile);
         return 2;
     }
     FILE *f = std::fopen(argv[3], "wb");
     if (f == nullptr) {
-        std::fprintf(stderr, "output acilamadi\n");
+        std::fprintf(stderr, "output could not be opened\n");
         std::free(pBuf);
         RwStudioFileClose(pFile);
         return 2;
