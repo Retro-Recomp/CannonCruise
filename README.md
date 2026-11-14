@@ -6,7 +6,7 @@ analizleri (`CC.asm`, `CC_ida.asm`) temel alınarak C++14 ile yeniden yazılmakt
 
 **Durum:** Aktif geliştirme — Faz 4 (derleme/link) doğrulandı: macOS/Clang'de
 `CannonCruiseLib` + link doğrulama hedefi; Windows'ta VS 18 (2026) ile Win32
-derlemesi ve ctest 32/32 geçti (NULL ve D3D9 platformları). D3D9'da gerçek
+derlemesi ve ctest 33/33 geçti (NULL ve D3D9 platformları). D3D9'da gerçek
 pencere ile oyun render edildiği görsel olarak doğrulandı (ada + okyanus +
 sonra VIEW kamerası); GLOBAL.RWS içerikleri çözüldü ve LOADING ekranı orijinal
 art'larla (parchament, dalga bordürü, Hugo) çalışıyor.
@@ -102,7 +102,7 @@ LinkMsg/SendMsg/yaşam döngüsü), `cclassfactory` (Register/Create/Shutdown),
 Faz 4.6s), `fmvscene_test` (FMV geçiş grafiği, 8 tanımlayıcı),
 `globalassets_test` (GLOBAL.RWS envanteri: gömülü txd + harici resource),
 `globaldump_test` (GLOBAL gömülü txd → PNG dökümü). Tüm paket
-**ctest 32/32** ile çalışır. Tek testi
+**ctest 33/33** ile çalışır. Tek testi
 sanitizer ile elle de derleyebilirsiniz:
 
 ```bash

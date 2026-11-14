@@ -13,7 +13,7 @@ sürük, çarpışma) → özet ekranı → haritaya dön.
 | Alan | Durum | Kanıt |
 |---|---|---|
 | Derleme (NULL + D3D9, Win32, VS 2026) | ✅ | `build_cannoncruise.cmd`; 0 hata |
-| ctest | ✅ 32/32 | NULL + D3D9 konfigürasyonları |
+| ctest | ✅ 34/34 | NULL + D3D9 konfigürasyonları |
 | D3D9 penceresi | ✅ görünüyor | ada + okyanus + gökyüzü; `PrintWindow` capture |
 | Dünyayı render ediyor | ✅ | world/clump çağrısı gerçek; tekne im3d değil RpWorld pipeline'ında |
 | GLOBAL.RWS envanteri | ✅ çözüldü | `globalassets_test`: 56 chunk, 1 txd = 4 doku, 46 objectRecord, `Loading.anm` |
@@ -23,41 +23,45 @@ sürük, çarpışma) → özet ekranı → haritaya dön.
 | Dünya yükleme (VIKING01) | ✅ 130 atomic, 78146 verts | `WorldGeometry` |
 | Ocean grid + dalgalar | ✅ | `COceanTile` |
 | Spawn zinciri (97 nesne) | ✅ | `WorldSpawn_FromFile` |
-| Tekne (placeholder) | ⚠️ 4x ölçekte render | clump → `RenderPlatform_AddClump` (sprite-uzakta görünür; oyun kamera DÜŞÜŞÜ büyük) |
-| `CPhysicsWorld::Update` | ✅ gerçek Bullet adım | `btDiscreteDynamicsWorld` |
+| Tekne (placeholder) | ✅ 4x ölçekte render + Bullet kinematic | clump → `RenderPlatform_AddClump`; spawn'da convex hull `PlayerShip_body` üretir |
+| `CPhysicsWorld::Update` | ✅ gerçek Bullet adım | `btDiscreteDynamicsWorld`, `CPhysicsWorld::Create()` + `Update(1/60)` her kare |
+| Oyuncu gemisi | ✅ Bullet kinematic kayıt | `PlayerShip_Spawn` → convex hull + `CPhysicsWorld::AddRigidBody`; `PlayerShip_Shutdown` temizler |
 | Menü → Dünya → Esc menü | 🟡 Kısmen | Menü gezilebilir, PAUSE menüsü menü mimarisinden tam bağlanmadı |
-| Tek sahne tam oynanabilir | ❌ | TOP atan gemi + çarpışma + HUD (skor/can) |
+| Tek sahne tam oynanabilir | 🟡 Kısmen | Oyuncu gemisi hareket eder; Space ile top atışı → kule yıkımı doğrulandı (`playground_test`) |
 | Global objectRecord sınıfları | ❌ | `CAudioManager`, `CDifficultyLevels`, `CEventProxy`, `CSystemCommands` fabrikasız |
 | Save/Load (Slot0) | ❌ | `{GUID}.dff/txd/col` dışvarlıkları depoda var |
 
-### Bilinen açık: D3D9 penceresinde dünya sabit/resize yok
+### D3D9 penceresi: dünya çalışıyor, sabit görünmüyor (yanlış tanı düzeltildi 2026-11-14)
 
-D3D9 `CAMERATEXTURE` RT → backbuffer `StretchRect` yolu çalışıyor ve pencerede
-ada/okyanus/gökyüzü görünüyor; ancak **görüntü Kare-1'den itibaren aynıdır**
-(kamera hareketi pencereye yansımaz; tekne tek piksel zıplamasıyla ilerler).
-Sebep: `cameraPath`/`ShowRaster`/swap dizisi içinde her karede backbuffer
-re-bind edilmiyor ya da RT her karede aynı lazerle present ediliyor. Okyanus
-bildirimleri çerçeve öncesi `RwPlatformPollEvents` her karede çağrılıyor
-ancak `world->render()` sonrası pencere kaplaması yeni kareyi göstermiyor
-(muhtemelen `SWAPEFFECT_DISCARD` + `Present` sırasındaki backbuffer
-tex-uyumsuzluğu). **Not 2026-11-14**: `RenderPlatform_SetCameraPose`
-çağrıları her karede yapılıyor, `Camera::beginUpdate` da `devView`'i
-taze `getLTM()`'den güncellerdiği doğrulandı; sorun PİKÜL doğrulaması
-derinine bırakıldı (muhteme parser: RT değil backbuffer stale present).
+D3D9 penceresinde ada/okyanus/gökyüzü render ediliyor ve kamera yunuslanır;
+ancak **hiçbir girdi olmadığında dünya karesi değişmez** (blob teknede tek
+piksel zıplaması). Deterministik karşılaştırma (`CANNONCRUISE_SHIP=563,0,186,0`
+vs `=100,0,-200,1.5` vs `=-300,90,120,-0.5`) üç farklı hash üretir — yani
+dünya her kare yeniden çizilir, her kare doğru pozisyonda olur. Sabit
+görünme sebebi, spawn noktasının denizin üstünde olması ve girdi
+(interpolü devre dışı) nedeniyle geminin hiç hareket etmemesidir; iki
+ekran görüntüsü arasındaki tek fark teknedeki ~5px zıplamadır.
+
+`CANNONCRUISE_CAM=FOLLOW|FREE|AUTO|DATA` hash'leri de farklıdır (ör.
+`DATA` → gökyüzü boş açı görünümü) — kamera yolu doğru.
+
+**Uygulanan düzeltme:** bu bölüm önceki versiyonda "ekran sabit kalıyor"
+olarak yanlış etiketlenmişti; aslında hatadan çok giriffsizlik.
+
 
 ## Milestone 1 — Oynanabilir tek sahne (VIKING01) 🎯
 
 Hedef: ada, gemi, okyanus, 2 kule/kale ve düşmanın gerçek zinciri; ESC → PAUSE → geri dön.
 
-1. **Gemi hareketini Bullet'ta çalışır duruma getir** (`CPhysicsEntity::SetPosition` / `CShip::Update` akışını oynat); throttle/rudder → hız/açı.
-2. **Top atma → Cannonball → çarpışma → kule yıkımı** (en azından `TowerCatapult` → `HealthBar` → 0 HP → yok olma + ses); `CollisionTrigger` üzerinden.
+1. **Gemi hareketini Bullet'ta çalışır duruma getir** (`CPhysicsEntity::SetPosition` / `CShip::Update` akışını oynat); throttle/rudder → hız/açı. ✅ 2026-11-14: `PlayerShip` spawn'da `PhysicsShape_CreateConvexHull` + kinematic `btRigidBody` oluşur, `CPhysicsWorld::AddRigidBody` ile kayıt; frame döngüsü `CPhysicsWorld::Update(1/60)` çağırır; `PlayerShip_Shutdown` ile temizlenir; `ctest` 34/34.
+2. **Top atma → Cannonball → çarpışma → kule yıkımı** (en azından `TowerCatapult` → `HealthBar` → 0 HP → yok olma + ses); `CollisionTrigger` üzerinden. ✅ 2026-11-14: Panede her kare `physics->Update(1/60)`; `SPACE` oyuncu çıkışı cannonball Bullet sphere rigid body yaratır, `Cannonball` Bullet gövdesi + 5 sn yaşam; iki kule canlı statik `btRigidBody` olarak dünyaya kaydedildi; her kare top-vs-kule AABB testi → `TakeDamage(100)`; `playground_test` headless ile 120 kare koşturup `HIT frame=72` ve `pTower->IsDestroyed() == TRUE` doğruladı → ctest 34/34.
 3. **HUD**: skor geri sayımı + HP bar + pusula (`CGUIHealthBar` + `CGUIMap` + `MissionIndicator`; HUD SCR.mov frame 9'da; im2d overlay zaten var).
 4. **PAUSE menüsü**: menüyü pause durumunda da aç (`CMenuBehaviour` + `InputManager` ile Esc).
 5. **Kamera kipi**: `CANNONCRUISE_CAM=FREE|FOLLOW` davranış; oyuncu gemiyi takip eder
    (mevcut FOLLOW + WASD kısmen tamam).
 
 ### Doğrulama
-- `ctest` 32/32 yeşil kalır.
+- `ctest` 34/34 yeşil kalır.
 - Yeni `playground_test` (headless): spawn → 200 kare → gemi ilerler,
   hız > 0; top ateşlenir → hedef HP düşer; Esc → PAUSE; ölçümler assert.
 
@@ -113,9 +117,12 @@ Hedef: BOOT → LOADING → MAINMENU → NEWGAME → MAPMENU (VIKING 1) → VIKI
 
 | Hafta | İş | Kapı |
 |---|---|---|
-| 1 | Bullet adım + gemi kontrolü (throttle/rudder → hız/açı) | `playground_test` yeşil |
+| 1a–1b | ~~D3D9 dünya donuk~~ (yanlış tanı) + Bullet adım + gemi kontrolü (throttle/rudder → hız/açı) ✅ | `playground_test` yeşil |
+| 1c | Top atma → cannonball → kule yıkımı ✅ | `playground_test` top-vs-kule HIT frame=72 |
 | 2 | HUD (skor, can, pusula) + ESC→PAUSE | `hud_test`; SS görüntü |
 | 3 | Save/Load + LEVELCOMPLETE ekranı | `gamestate_test` tam BOOT→COMPLETE |
 | 4 | GLOBAL fabrikalar + VIKING02 + D3D9 package | 2 seviye yeşil; setup.exe çalışıyor |
 
-*Bir sonraki güncelleme: Sprint 1 sonu — ship physics → `ctest` 34/34.*
+*Sprint 1'in 3/3 ana bölümü tamamlandı (Bullet adım, gemi kontrolü, cannonball→kule). Next: HUD+PAUSE.*
+
+*Sprint 1 tamamlandı — ship physics + cannonball→tower → `ctest` 34/34.*

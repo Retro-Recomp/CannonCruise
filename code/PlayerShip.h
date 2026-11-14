@@ -31,6 +31,11 @@ struct PlayerShipState {
 /// Tekneyi sahneye koyar. pPos null ise (0,0,0) kullanılır.
 void PlayerShip_Spawn(const RwV3d *pPos, RwReal yaw);
 
+/// Spawnten yaratılan kinematic rigid body'yi PhysicsWorld'den çıkarıp
+/// bellekten temizler (uygulama kapanırken Bullet'ın dtor'daki boş-vector
+/// assertion'ını önlemek için).
+void PlayerShip_Shutdown(void);
+
 /// throttle/rudder -> kinematik adım. waveT dalga fazı (sn).
 void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
                        RwReal throttle, RwReal rudder);

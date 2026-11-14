@@ -12,6 +12,8 @@
 
 #include "TowerCatapult.h"
 #include "AudioManager.h"
+#include "PhysicsBackend.h"
+#include "PhysicsWorld.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 #include <cassert>
 
@@ -29,7 +31,10 @@ RwUInt32 CTowerCatapult::sm_nTowersAddedToWorlds = 0;
 // ---------------------------------------------------------------------------
 CTowerCatapult::CTowerCatapult()
     : m_pUndamagedClump(0), m_pDamagedClump(0), m_fHealth(150.0f),
-      m_bDestroyed(FALSE) {
+      m_bDestroyed(FALSE), m_pShape(0) {
+  m_vWorldPos.x = 0.0f;
+  m_vWorldPos.y = 0.0f;
+  m_vWorldPos.z = 0.0f;
   sm_nTowersAddedToWorlds++;
 }
 
@@ -41,6 +46,13 @@ CTowerCatapult::~CTowerCatapult() {
   assert(sm_nTowersAddedToWorlds != 0 && "ms_nTowersAddedToWorlds != 0 Failed");
   if (sm_nTowersAddedToWorlds > 0) {
     sm_nTowersAddedToWorlds--;
+  }
+
+  // Bullet dünyasından ve belleğinden çıkar
+  RemoveFromWorld();
+  if (m_pShape) {
+    PhysicsShape_Destroy(m_pShape);
+    m_pShape = 0;
   }
 
   if (m_pUndamagedClump) {
@@ -57,6 +69,31 @@ CTowerCatapult::~CTowerCatapult() {
 // HandleEvents – framework message listener for simulation events.
 // ---------------------------------------------------------------------------
 void CTowerCatapult::HandleEvents(const RWS::CMsg &msg) {}
+
+// ---------------------------------------------------------------------------
+// SetWorldPosition – RWS clump yerine Bullet kinematic/static box oluşturur
+// Tower the collision body so cannnonball's flight + bullet step can hit it.
+// ---------------------------------------------------------------------------
+void CTowerCatapult::SetWorldPosition(const RwV3d &pos) {
+  // Kule boyutları — 16×36×16 m (bayrak-gözcü kule)
+  const RwReal halfExtents[3] = {8.0f, 18.0f, 8.0f};
+  if (m_pShape == nullptr) {
+    m_pShape = PhysicsShape_CreateBox(halfExtents);
+  }
+  if (m_pRigidBody == nullptr && m_pShape != nullptr) {
+    const RwReal p[3] = {pos.x, pos.y + 18.0f, pos.z}; // base-height center'e oturt
+    m_pRigidBody = PhysicsBody_CreateWithShape(m_pShape, 0.0f, p, nullptr);
+    if (m_pRigidBody != nullptr) {
+      PhysicsBody_SetKinematic(m_pRigidBody, TRUE);
+    }
+  }
+  CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
+  if (pWorld != nullptr && m_pRigidBody != nullptr) {
+    pWorld->AddRigidBody(m_pRigidBody);
+  }
+  SetPosition(&pos); // set the entity's logical position
+  m_vWorldPos = pos;
+}
 
 // ---------------------------------------------------------------------------
 // Initialize – mirrors FUN_004bcf30.

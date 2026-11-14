@@ -16,6 +16,9 @@
 #include "CameraState.h"
 #include "Ocean.h"
 #include "PhysicsBackend.h"
+#include "PhysicsWorld.h"
+#include "TowerCatapult.h"
+#include "Cannonball.h"
 #include "RenderPlatform.h"
 #include "Rt2dMaestro.h"
 #include "Rt2dMaestroStream.h"
@@ -352,6 +355,9 @@ int main(int argc, char **argv) {
     // -- MAPMENU selection set up with single load (reload + RemoveClump +
     // double-spawn not needed). (4.6r-4 MAPMENU)
     COcean *pOcean = nullptr; // quit-cleanup notification (setup below)
+    // Sprint 1 — oyuncunun top'u için test kuleleri + cannonball kayıtları
+    std::vector<CTowerCatapult *> s_towers;
+    std::vector<CCannonball *> s_cannonballs;
 
     // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL load -> FMV
     // chain (JINGLE) -> MAINMENU -> world). INTRO1-3/FMV {GUID} files not
@@ -1217,6 +1223,31 @@ int main(int argc, char **argv) {
                             "(%.1f, %.1f, %.1f) yaw=%.2f\n",
                             (double)shipPos.x, (double)shipPos.y,
                             (double)shipPos.z, (double)shipYaw);
+                // Sprint 1 — iki Bullet-işlevlisini icra eden kule bırak:
+                // yükselebilen "catapult kulesi" adayı ile vurulmayı test eder.
+                // Vatikan körfezi tarafına: mavi ada girişinde iki kale
+                // kule'sinin bulunduğu yer.
+                {
+                    WorldGeometryBounds bb2;
+                    if (WorldGeometry_GetLastBounds(&bb2) == TRUE) {
+                        const RwReal tcx = (bb2.min[0] + bb2.max[0]) * 0.5f;
+                        const RwReal tcz = (bb2.min[2] + bb2.max[2]) * 0.5f;
+                        const RwReal span = (bb2.max[0] - bb2.min[0]) > (bb2.max[2] - bb2.min[2])
+                            ? (bb2.max[0] - bb2.min[0])
+                            : (bb2.max[2] - bb2.min[2]);
+                        RwV3d t1 = {tcx + span * 0.18f, 0.0f, tcz + span * 0.10f};
+                        RwV3d t2 = {tcx - span * 0.18f, 0.0f, tcz + span * 0.05f};
+                        CTowerCatapult *pT1 = new CTowerCatapult();
+                        CTowerCatapult *pT2 = new CTowerCatapult();
+                        pT1->SetWorldPosition(t1);
+                        pT2->SetWorldPosition(t2);
+                        s_towers.push_back(pT1);
+                        s_towers.push_back(pT2);
+                        std::printf("CannonCruise: spawned 2 towers at "
+                                    "(%.1f,%.1f,%.1f) and (%.1f,%.1f,%.1f)\n",
+                                    t1.x, t1.y, t1.z, t2.x, t2.y, t2.z);
+                    }
+                }
             }
         }
     }
@@ -1247,9 +1278,94 @@ int main(int argc, char **argv) {
             break;
         }
         if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
+            // Fizik adımı: gerçek dinamikler (bujinin/cannonball + gemi)
+            // Bullet'ta çalışır. Kare başına 1/60 s (oynayan frame hızı 60Hz).
+            {
+                CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
+                if (pWorld != nullptr) {
+                    pWorld->Update(1.0f / 60.0f);
+                }
+            }
             RenderPlatform_RenderScene();
+            // Sprint 1 — oyuncu ' ' ile top atışı yapsın; tekne ilerisi ok;
+            // cannonball Bullet ile kayırılıyor. Kuleye isabet → hasar alır.
             if (RwPlatformKeyDown(' ')) {
+                PlayerShipState ss;
+                if (PlayerShip_GetState(&ss) == TRUE) {
+                    RwV3d fwd = {std::sin(ss.yaw), 0.25f, std::cos(ss.yaw)};
+                    RwReal len = std::sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
+                    if (len > 0.0f) {
+                        fwd.x /= len; fwd.y /= len; fwd.z /= len;
+                    }
+                    RwV3d firePos = {ss.pos.x + fwd.x * 6.0f,
+                                     ss.pos.y + 2.5f,
+                                     ss.pos.z + fwd.z * 6.0f};
+                    SCannonballSpawnData spawnData;
+                    std::memset(&spawnData, 0, sizeof(spawnData));
+                    spawnData.m_Pos = firePos;
+                    spawnData.m_Vel = {fwd.x * 55.0f, fwd.y * 55.0f, fwd.z * 55.0f};
+                    spawnData.m_Type = CANNONBALL_STANDARD;
+                    spawnData.m_uOwnerID = 1;
+                    CCannonball *pBall = new CCannonball();
+                    if (pBall != nullptr) {
+                        pBall->Spawn(spawnData);
+                        s_cannonballs.push_back(pBall);
+                        std::printf("CannonCruise: fired cannonball from "
+                                    "(%.1f,%.1f,%.1f) vel=(%.1f,%.1f,%.1f)%s\n",
+                                    firePos.x, firePos.y, firePos.z,
+                                    spawnData.m_Vel.x, spawnData.m_Vel.y,
+                                    spawnData.m_Vel.z,
+                                    spawnData.m_uOwnerID == 1 ? "" : "");
+                    }
+                }
                 audioMgr.PlaySound("Audio_CannonFire");
+            }
+            // Sprint 1 — top ↔ kule çarpışması: mermi konumuyla
+            // kule merkezini sphere-AABB yanyana ARADAN mesafe (broadphase).
+            {
+                const RwReal ballRadius = 0.8f;
+                const RwReal towerHalf = 18.0f;
+                const RwReal towerHalfSpace = 8.0f;
+                for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                    CTowerCatapult *pT = s_towers[ti];
+                    if (pT->IsDestroyed()) continue;
+                    const RwV3d &tp = pT->GetWorldPosition();
+                    // kule kolu +-8 m enkesiti, merkez y=18 (base 0 + 18)
+                    for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
+                        CCannonball *pB = s_cannonballs[bi];
+                        void *pBody = pB->GetRigidBody();
+                        if (pBody == nullptr) continue;
+                        RwV3d bp;
+                        PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                        const RwReal dx = bp.x - tp.x;
+                        const RwReal dy = bp.y - (tp.y + 18.0f);
+                        const RwReal dz = bp.z - tp.z;
+                        const RwReal ax = std::fabs(dx) - (towerHalfSpace + ballRadius);
+                        const RwReal ay = std::fabs(dy) - (towerHalf + ballRadius);
+                        const RwReal az = std::fabs(dz) - (towerHalfSpace + ballRadius);
+                        if (ax < 0 && ay < 0 && az < 0) {
+                            std::printf("CannonCruise: HIT tower #%zu at "
+                                        "(%.1f,%.1f,%.1f) (ball=(%.1f,%.1f,%.1f))\n",
+                                        ti, tp.x, tp.y, tp.z,
+                                        bp.x, bp.y, bp.z);
+                            pT->TakeDamage(100.0f); // 100 zarar → 150 HP'den 50 kalır
+                            // Cannonball hasar vurduktan sonra yok olur
+                            pB->OnHit(pT, 0);
+                        }
+                    }
+                }
+            }
+            // Sprint 1 — ölmüş top'ları listeden temizle
+            {
+                for (auto it = s_cannonballs.begin();
+                     it != s_cannonballs.end();) {
+                    if (!(*it)->IsAlive()) {
+                        delete *it;
+                        it = s_cannonballs.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
             }
             if (RwPlatformKeyDown('T')) {
                 speakMgr.PlaySpeak(2, 0);
@@ -1432,6 +1548,11 @@ int main(int argc, char **argv) {
 
     audioMgr.StopAllVoices();
     speakMgr.StopSpeak();
+    for (auto *t : s_towers) { delete t; }
+    s_towers.clear();
+    for (auto *b : s_cannonballs) { delete b; }
+    s_cannonballs.clear();
+    PlayerShip_Shutdown(); // PhysicsWorld dtor assert'i için rigid body temizliği
     delete pOcean; // COcean::Shutdown + tile cleanup
     RwPlatformSetMouseCapture(FALSE); // cursor back
 

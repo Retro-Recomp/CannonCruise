@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "PhysicsEntity.h"
+#include "PhysicsWorld.h"
+#include "PhysicsBackend.h"
 #include <rpworld.h>
 #include <rwcore.h>
 
@@ -104,11 +106,22 @@ public:
     return sm_nCannonBallsAddedToWorlds;
   }
 
+  /**
+   * @brief TRUE when the cannonball is still in the physics world (lifetime
+   * timer not expired, not removed by OnHit).
+   */
+  RwBool IsAlive() const {
+    if (m_pRigidBody == 0) return FALSE;
+    CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
+    return pWorld? pWorld->RigidBodyExistsInWorld(m_pRigidBody) : FALSE;
+  }
+
 private:
   RpClump *m_pClump;          ///< RenderWare Clump model for 3D visual representation.
   ECannonballType m_eType;    ///< Projectile ammo type.
   RwReal m_fLifeTimer;        ///< Remaining lifespan timer in seconds before auto-removal.
   RwUInt32 m_uOwnerID;        ///< ID of firing owner entity to prevent self-collision.
+  void *m_pShape;             ///< Bullet sphere shape (owned)
 
   static RwUInt32 sm_nCannonBallsAddedToWorlds; ///< Global counter of active cannonballs.
 };

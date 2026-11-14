@@ -13,6 +13,8 @@
 #include "Cannonball.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 #include "AudioManager.h"
+#include "PhysicsBackend.h"
+#include "PhysicsWorld.h"
 #include <cassert>
 
 // Register CCannonball with RenderWare Studio's reflection class factory
@@ -23,13 +25,14 @@ RwUInt32 CCannonball::sm_nCannonBallsAddedToWorlds = 0;
 
 // ---------------------------------------------------------------------------
 // Constructor – mirrors FUN_0046c2a0.
-// Initializes state variables and increments the world-wide cannonball counter.
+// Initializes state variables, increments the world-wide cannonball counter.
 // ---------------------------------------------------------------------------
 CCannonball::CCannonball()
     : m_pClump(0),
       m_eType(CANNONBALL_STANDARD),
       m_fLifeTimer(0.0f),
-      m_uOwnerID(0)
+      m_uOwnerID(0),
+      m_pShape(0)
 {
     sm_nCannonBallsAddedToWorlds++;
 }
@@ -44,6 +47,14 @@ CCannonball::~CCannonball()
     if (sm_nCannonBallsAddedToWorlds > 0)
     {
         sm_nCannonBallsAddedToWorlds--;
+    }
+
+    // Bullet dünyasından ve belleğinden çıkar
+    RemoveFromWorld();
+    if (m_pShape)
+    {
+        PhysicsShape_Destroy(m_pShape);
+        m_pShape = 0;
     }
 
     if (m_pClump)
@@ -63,15 +74,31 @@ void CCannonball::HandleEvents(const RWS::CMsg& msg)
 
 // ---------------------------------------------------------------------------
 // Spawn – mirrors FUN_0046d1e0.
-// Injects the cannonball into the physical simulation at the specified muzzle
-// position, imparts launch velocity, activates a 5-second lifetime limit,
-// adds it to the Havok/CPhysicsEntity world, and fires the launch sound effect.
+// Bullet küresel gövde (mass 10 kg) yaratıp dünyanın Bullet fazında
+// kaydedip; ilk velocity'yi verir, 5 sn lifetime yapar, ses çalar.
 // ---------------------------------------------------------------------------
 void CCannonball::Spawn(const SCannonballSpawnData& spawnData)
 {
     m_eType = spawnData.m_Type;
     m_uOwnerID = spawnData.m_uOwnerID;
     m_fLifeTimer = 5.0f; // Default 5.0 seconds maximum flight time
+
+    // Bullet küre şekli — top büyüklüğünde ~0.8 m yarıçap
+    if (m_pShape == 0) {
+        m_pShape = PhysicsShape_CreateSphere(0.8f);
+    }
+    if (m_pShape != 0 && m_pRigidBody == 0) {
+        const RwReal pos[3] = {spawnData.m_Pos.x, spawnData.m_Pos.y,
+                               spawnData.m_Pos.z};
+        m_pRigidBody = PhysicsBody_CreateWithShape(m_pShape, 10.0f, pos,
+                                                    nullptr);
+        if (m_pRigidBody != 0) {
+            PhysicsBody_SetKinematic(m_pRigidBody, FALSE);
+            PhysicsBody_SetLinearVelocity(m_pRigidBody, spawnData.m_Vel.x,
+                                          spawnData.m_Vel.y,
+                                          spawnData.m_Vel.z);
+        }
+    }
 
     SetPosition(&spawnData.m_Pos);
     SetLinearVelocity(&spawnData.m_Vel);

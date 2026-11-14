@@ -4,6 +4,8 @@
 
 #include "PlayerShip.h"
 #include "RenderPlatform.h"
+#include "PhysicsWorld.h"
+#include "PhysicsBackend.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -18,6 +20,9 @@ namespace {
 
 PlayerShipState s_ship = {};
 RwBool s_active = FALSE;
+void *s_pShipBody = nullptr;
+void *s_pShipShape = nullptr;
+const RwReal kShipScale = 4.0f;    ///< placeholder ölçek (oyun dünyası metre)
 
 const RwReal kMaxSpeed = 18.0f;    ///< tam gaza hedef hız (birim/sn)
 const RwReal kReverseSpeed = -9.0f;///< tam geri gaza hedef hız
@@ -177,6 +182,51 @@ void PlayerShip_Spawn(const RwV3d *pPos, RwReal yaw) {
     s_ship.throttle = 0.0f;
     s_ship.rudder = 0.0f;
     s_active = TRUE;
+    // Hull'u convex hull shape olarak kur — mass=0 kinematic gövde,
+    // collisions tetiklenir (Cannonball & EnemyShip'leri için gerekli).
+    if (s_pShipShape == nullptr) {
+        const RwReal hull[9][3] = {
+            {0.0f, 1.1f, 5.2f}, {-1.35f, 1.0f, 2.1f}, {1.35f, 1.0f, 2.1f},
+            {-1.7f, 1.0f, -3.6f}, {1.7f, 1.0f, -3.6f}, {0.0f, 1.15f, -3.7f},
+            {0.0f, -0.75f, 3.6f}, {-0.95f, -0.75f, -3.1f}, {0.95f, -0.75f, -3.1f},
+        };
+        RwReal scaled[9][3];
+        for (int i = 0; i < 9; ++i) {
+            scaled[i][0] = hull[i][0] * kShipScale;
+            scaled[i][1] = hull[i][1] * kShipScale;
+            scaled[i][2] = hull[i][2] * kShipScale;
+        }
+        s_pShipShape = PhysicsShape_CreateConvexHull(&scaled[0][0], 9,
+                                                      3 * sizeof(RwReal));
+    }
+    if (s_pShipBody == nullptr && s_pShipShape != nullptr) {
+        const RwReal pos[3] = {s_ship.pos.x, s_ship.pos.y, s_ship.pos.z};
+        s_pShipBody = PhysicsBody_CreateWithShape(s_pShipShape, 0.0f, pos,
+                                                   nullptr);
+        if (s_pShipBody != nullptr) {
+            PhysicsBody_SetKinematic(s_pShipBody, TRUE);
+            CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
+            if (pWorld != nullptr) {
+                pWorld->AddRigidBody(s_pShipBody);
+            }
+        }
+    }
+}
+
+void PlayerShip_Shutdown(void) {
+    CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
+    if (s_pShipBody != nullptr) {
+        if (pWorld != nullptr) {
+            pWorld->RemoveRigidBody(s_pShipBody);
+        }
+        PhysicsBody_Destroy(s_pShipBody);
+        s_pShipBody = nullptr;
+    }
+    if (s_pShipShape != nullptr) {
+        PhysicsShape_Destroy(s_pShipShape);
+        s_pShipShape = nullptr;
+    }
+    s_active = FALSE;
 }
 
 void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
@@ -207,6 +257,11 @@ void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
     const RwReal wave = std::sin(s_ship.pos.x * 0.05f + waveT * 2.0f) * 1.5f +
                         std::cos(s_ship.pos.z * 0.08f + waveT * 1.5f) * 1.0f;
     s_ship.pos.y = kWaterY + 0.8f + wave;
+    // Bullet — kinematic gövde pozisyonu el ile entegrasyona uy
+    if (s_pShipBody != nullptr) {
+        PhysicsBody_SetPosition(s_pShipBody, s_ship.pos.x, s_ship.pos.y,
+                                s_ship.pos.z);
+    }
 }
 
 RwBool PlayerShip_GetState(PlayerShipState *pOut) {

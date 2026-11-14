@@ -46,6 +46,24 @@ public:
   void Initialize(RpClump *pUndamagedClump, RpClump *pDamagedClump = 0);
 
   /**
+   * @brief Sets the world position of the tower and registers a static box
+   *        collider with the Havok/Bullet simulation (mass = 0).
+   * @param pos  World-space position (y is base height; y = 30 works for
+   *             island tower sitting on rock).
+   */
+  void SetWorldPosition(const RwV3d &pos);
+
+  /**
+   * @brief Returns the world-space position stored at SetWorldPosition().
+   */
+  const RwV3d &GetWorldPosition() const { return m_vWorldPos; }
+
+  /**
+   * @brief TRUE when the tower has been destroyed (health <= 0).
+   */
+  RwBool IsDestroyed() const { return m_bDestroyed; }
+
+  /**
    * @brief Inflicts damage to the fortification; triggers DestroyTower() at zero HP.
    * @param damage  Health deduction amount.
    */
@@ -55,6 +73,11 @@ public:
    * @brief Initiates destruction sequence, playing collapse audio and swapping mesh.
    */
   void DestroyTower();
+
+  /**
+   * @brief BBox halves for collision checks (width/depth/height).
+   */
+  static RwV3d GetHalfExtents() { return {8.0f, 18.0f, 8.0f}; }
 
   /**
    * @brief Queries total number of active catapult towers in the simulation.
@@ -67,6 +90,8 @@ private:
   RpClump *m_pDamagedClump;   ///< Destroyed/collapsed tower 3D clump.
   RwReal m_fHealth;           ///< Hit point durability (default 150.0).
   RwBool m_bDestroyed;        ///< TRUE once destroyed.
+  void *m_pShape;             ///< Bullet box shape (owned)
+  RwV3d m_vWorldPos;          ///< stored world position (default (0,0,0))
 
   static RwUInt32 sm_nTowersAddedToWorlds; ///< Global counter of active towers in simulation.
 };

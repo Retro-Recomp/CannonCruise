@@ -421,6 +421,15 @@ target_include_directories(shipplayer_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DI
 target_link_libraries(shipplayer_test PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME shipplayer_test COMMAND shipplayer_test)
 
+# Sprint 1 - oyuncu gemisi Bullet dünyasında yaşıyor: hız + ilerleme asserts
+add_executable(playground_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/playground_test.cpp
+)
+target_include_directories(playground_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
+target_link_libraries(playground_test PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
+add_test(NAME playground_test COMMAND playground_test)
+
 # InputManager test - Focus stack, button edge trigger detection ve ShipPlayerInputProxy
 add_executable(inputmanager_test
     ${CMAKE_CURRENT_SOURCE_DIR}/inputmanager_test.cpp
