@@ -10,6 +10,14 @@
 #include "PhysicsWorld.h"
 #include "RenderBehaviourWorld.h"
 #include "RwStudioStream.h"
+#include "Bird.h"
+#include "FernandoActor.h"
+#include "HealthDebris.h"
+#include "MenuBehavior.h"
+#include "MissionIndicator.h"
+#include "TowerCatapult.h"
+#include "CollisionTrigger.h"
+#include "framework/core/attributehandler/cattributehandler.h"
 
 #include <cstdio>
 #include <cstring>
@@ -62,8 +70,148 @@ RwBool ApplyAudio(void *pObject, RwUInt32 id, const RwUInt8 *pValue) {
 void *CreatePhysicsWorld() { return new CPhysicsWorldBehaviour; }
 
 // CPhysicsWorldBehaviour apply: no property in binary — message-driven
-// (HandleEvents); port returns no-op.
+// (HandleEvents); port returns no-op. Output: .RWS spawn count artar.
 RwBool ApplyPhysicsWorld(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+// === Stub davranış sınıfları — .RWS 0x0704 records'ını tüketir ===
+// Bu sınıfların hiçbiri ASIL oyunu koşturmaz; sadece runtime instantiation
+// sağlarlar (binary.RWS "skip" yerine "spawn"). Gerekirse ileride gerçek
+// uygulamalarıyla değiştirilir.
+class CEventTriggerStub : public RWS::CEventHandler {
+public:
+    CEventTriggerStub() {}
+    virtual ~CEventTriggerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CParticleEntityStub : public RWS::CEventHandler {
+public:
+    CParticleEntityStub() {}
+    virtual ~CParticleEntityStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CParticleManagerStub : public RWS::CEventHandler {
+public:
+    CParticleManagerStub() {}
+    virtual ~CParticleManagerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CWin32KeyboardStub : public RWS::CEventHandler {
+public:
+    CWin32KeyboardStub() {}
+    virtual ~CWin32KeyboardStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CAudioObjectStub : public RWS::CEventHandler {
+public:
+    CAudioObjectStub() {}
+    virtual ~CAudioObjectStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CAudioStreamStub : public RWS::CEventHandler {
+public:
+    CAudioStreamStub() {}
+    virtual ~CAudioStreamStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CProgressIndicatorStub : public RWS::CEventHandler {
+public:
+    CProgressIndicatorStub() {}
+    virtual ~CProgressIndicatorStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CDifficultyLevelsStub : public RWS::CEventHandler {
+public:
+    CDifficultyLevelsStub() {}
+    virtual ~CDifficultyLevelsStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CFMVBehaviorStub : public RWS::CEventHandler {
+public:
+    CFMVBehaviorStub() {}
+    virtual ~CFMVBehaviorStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CAudioManagerStub : public RWS::CEventHandler {
+public:
+    CAudioManagerStub() {}
+    virtual ~CAudioManagerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CCameraShakerStub : public RWS::CEventHandler {
+public:
+    CCameraShakerStub() {}
+    virtual ~CCameraShakerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CDirectorsCameraStub : public RWS::CEventHandler {
+public:
+    CDirectorsCameraStub() {}
+    virtual ~CDirectorsCameraStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CAudioGlobalMixerStub : public RWS::CEventHandler {
+public:
+    CAudioGlobalMixerStub() {}
+    virtual ~CAudioGlobalMixerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+
+void *CreateEventTrigger() { return new CEventTriggerStub; }
+RwBool ApplyEventTrigger(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateParticleEntity() { return new CParticleEntityStub; }
+RwBool ApplyParticleEntity(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateParticleManager() { return new CParticleManagerStub; }
+RwBool ApplyParticleManager(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateWin32Keyboard() { return new CWin32KeyboardStub; }
+RwBool ApplyWin32Keyboard(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateAudioObject() { return new CAudioObjectStub; }
+RwBool ApplyAudioObject(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateAudioStream() { return new CAudioStreamStub; }
+RwBool ApplyAudioStream(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateProgressIndicator() { return new CProgressIndicatorStub; }
+RwBool ApplyProgressIndicator(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateDifficultyLevels() { return new CDifficultyLevelsStub; }
+RwBool ApplyDifficultyLevels(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateFMVBehavior() { return new CFMVBehaviorStub; }
+RwBool ApplyFMVBehavior(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateAudioManager() { return new CAudioManagerStub; }
+RwBool ApplyAudioManager(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateCameraShaker() { return new CCameraShakerStub; }
+RwBool ApplyCameraShaker(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateDirectorsCamera() { return new CDirectorsCameraStub; }
+RwBool ApplyDirectorsCamera(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+void *CreateAudioGlobalMixer() { return new CAudioGlobalMixerStub; }
+RwBool ApplyAudioGlobalMixer(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+// `Create + Apply` yardımcıları — .RWS davranış sınıflarını doğrudan
+// üret (özellere object kaydı yok); missaplies betw no-op olurlar.
+void *CreateTowerCatapult() { return new CTowerCatapult(); }
+
+RwBool ApplyTowerCatapult(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateCollisionTrigger() { return new CCollisionTrigger(); }
+
+RwBool ApplyCollisionTrigger(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateMenuBehavior() { return new CMenuBehavior(); }
+
+RwBool ApplyMenuBehavior(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateMissionIndicator() { return new CMissionIndicator(); }
+
+RwBool ApplyMissionIndicator(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateHealthDebris() { return new RWS::CHealthDebris(RWS::CAttributePacket()); }
+
+RwBool ApplyHealthDebris(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateBirdSeaGull() { return new RWS::CBirdSeaGull(RWS::CAttributePacket()); }
+
+RwBool ApplyBirdSeaGull(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+
+void *CreateFernandoActor() { return new RWS::CFernandoActor(RWS::CAttributePacket()); }
+
+RwBool ApplyFernandoActor(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 } // namespace
 
@@ -79,6 +227,47 @@ RwBool GameBehaviours_Register() {
          &ApplyAudio},
         {"CPhysicsWorldBehaviour", sizeof(CPhysicsWorldBehaviour),
          &CreatePhysicsWorld, &ApplyPhysicsWorld},
+        {"CParticleManager", sizeof(CParticleManagerStub), &CreateParticleManager,
+         &ApplyParticleManager},
+        {"CParticleEntity", sizeof(CParticleEntityStub), &CreateParticleEntity,
+         &ApplyParticleEntity},
+        {"CEventTrigger", sizeof(CEventTriggerStub), &CreateEventTrigger,
+         &ApplyEventTrigger},
+        {"CWin32Keyboard", sizeof(CWin32KeyboardStub), &CreateWin32Keyboard,
+         &ApplyWin32Keyboard},
+        {"CAudioObject", sizeof(CAudioObjectStub), &CreateAudioObject,
+         &ApplyAudioObject},
+        {"CAudioStream", sizeof(CAudioStreamStub), &CreateAudioStream,
+         &ApplyAudioStream},
+        {"CProgressIndicator", sizeof(CProgressIndicatorStub),
+         &CreateProgressIndicator, &ApplyProgressIndicator},
+        {"CDifficultyLevels", sizeof(CDifficultyLevelsStub),
+         &CreateDifficultyLevels, &ApplyDifficultyLevels},
+        {"CFMVBehavior", sizeof(CFMVBehaviorStub), &CreateFMVBehavior,
+         &ApplyFMVBehavior},
+        {"CAudioManager", sizeof(CAudioManagerStub), &CreateAudioManager,
+         &ApplyAudioManager},
+        {"CCameraShaker", sizeof(CCameraShakerStub), &CreateCameraShaker,
+         &ApplyCameraShaker},
+        {"CDirectorsCamera", sizeof(CDirectorsCameraStub), &CreateDirectorsCamera,
+         &ApplyDirectorsCamera},
+        {"AudioGlobalMixer", sizeof(CAudioGlobalMixerStub),
+         &CreateAudioGlobalMixer, &ApplyAudioGlobalMixer},
+        // Audit'te tespit edilen `.RWS` davranışları (450+ instance):
+        {"CTowerCatapult", sizeof(CTowerCatapult), &CreateTowerCatapult,
+         &ApplyTowerCatapult},
+        {"CCollisionTrigger", sizeof(CCollisionTrigger), &CreateCollisionTrigger,
+         &ApplyCollisionTrigger},
+        {"CMenuBehavior", sizeof(CMenuBehavior), &CreateMenuBehavior,
+         &ApplyMenuBehavior},
+        {"CMissionIndicator", sizeof(CMissionIndicator), &CreateMissionIndicator,
+         &ApplyMissionIndicator},
+        {"CHealthDebris", sizeof(RWS::CHealthDebris), &CreateHealthDebris,
+         &ApplyHealthDebris},
+        {"CBirdSeaGull", sizeof(RWS::CBirdSeaGull), &CreateBirdSeaGull,
+         &ApplyBirdSeaGull},
+        {"CFernandoActor", sizeof(RWS::CFernandoActor), &CreateFernandoActor,
+         &ApplyFernandoActor},
     };
     for (RwUInt32 i = 0; i < sizeof(entries) / sizeof(entries[0]); ++i) {
         if (BehaviourLoader::Register(&entries[i]) != TRUE) {

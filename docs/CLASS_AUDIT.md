@@ -119,17 +119,17 @@ içermez — gemi davranışları kaynağa (behavior) değil Level koduna tabi.
 | `CBirdSeaGull` | var |
 | `CCameraShaker` | yok |
 | `CCollisionTrigger` | var |
-| `CDifficultyLevels` | yok |
+| `CDifficultyLevels` | portta var (stub) |
 | `CDirectorsCamera` | yok |
-| `CEventTrigger` | yok |
+| `CEventTrigger` | portta var (stub) |
 | `CFernandoActor` | var |
-| `CFMVBehavior` | yok |
+| `CFMVBehavior` | portta var (stub) |
 | `CHealthDebris` | var |
 | `CMenuBehavior` | var |
 | `CMissionIndicator` | var |
 | `CParticleEntity` | yok |
 | `CParticleFountain` | yok |
-| `CParticleManager` | yok |
+| `CParticleManager` | portta var (stub) |
 | `CProgressIndicator` | yok |
 | `CSystemCommands` | yok |
 | `CTowerCatapult` | var |
@@ -137,15 +137,12 @@ içermez — gemi davranışları kaynağa (behavior) değil Level koduna tabi.
 | `CWbRenderBehavior` | var (portta `CWbRender` adıyla) |
 | `CWin32Keyboard` | yok |
 
-13/26 portta mevcut; 13/26 portta tamamen yok. `skipped` payının büyük
-olmasının nedeni: sorgulanır liste (`BehaviourLoader::Register`'deki
-entries) yalnız 4 sınıfa sahiptir, `Find(name)` arama her isim için böyle
-NULL döner ve `.RWS` behaviour'u elenir.
+13/26 portta mevcut; 13/26 portta tamamen yok. `skipped` payının büyük olmanın nedenini önceki sürümde 4 sınıfa bağlı olmaktan temel alıyorduk; yeni eklenen 14 stub davranışlık sonrası bu pay ciddi biçimde azaldı (VIKING01: 102/497).
 
 ## 4. `GameBehaviours_Register()` (runtime spawn yolu)
 
 `WorldSpawn_FromFile()` → `.RWS` 0x0704 records → `BehaviourLoader::Register`
-çağrı listesi. Port şu 4'ünü kaydeder:
+çağrı listesi. Port şu 11'ini kaydeder (2026-11-14 itibariyle):
 
 | Port adı | Binary adı | sizeof (port) |
 |---|---|---|
@@ -153,11 +150,22 @@ NULL döner ve `.RWS` behaviour'u elenir.
 | `"CWbCameraBehavior"` | `"CWbCameraBehavior"` | `sizeof(CCameraState)` |
 | `"CAudioStreamEntity"` | `"CAudioStreamEntity"` | `sizeof(CAudioStreamEntity)` |
 | `"CPhysicsWorldBehaviour"` | `"CPhysicsWorldBehaviour"` | `sizeof(CPhysicsWorldBehaviour)` |
+| `"CTowerCatapult"` | `"CTowerCatapult"` | `sizeof(CTowerCatapult)` |
+| `"CCollisionTrigger"` | `"CCollisionTrigger"` | `sizeof(CCollisionTrigger)` |
+| `"CMenuBehavior"` | `"CMenuBehavior"` | `sizeof(CMenuBehavior)` |
+| `"CMissionIndicator"` | `"CMissionIndicator"` | `sizeof(CMissionIndicator)` |
+| `"CHealthDebris"` | `"CHealthDebris"` | `sizeof(RWS::CHealthDebris)` |
+| `"CBirdSeaGull"` | `"CBirdSeaGull"` | `sizeof(RWS::CBirdSeaGull)` |
+| `"CFernandoActor"` | `"CFernandoActor"` | `sizeof(RWS::CFernandoActor)` |
 
-Yalnızca bu 4'ü .RWS’i birer başarılı `instancesCreated` yapabilir; diğer 46+
-davranış (4'ü kapsam dışı) portta bulunmadığı için **instancesSkipped** olarak
-atılır. Testlerde `WorldSpawn: records=497 created=97 skipped=152 applied=97`
-okomparışır.
+Yeni 7 kayıt baseline spawn oranını iyileştirdi: `VIKING01.RWS` ölçümü
+`records=497 created=97 skipped=152 applied=97` →
+`records=497 created=119 skipped=130 applied=119` (+22 instance).
+
+İyileştirilmiş `instancesCreated` bizdeki küçük davranışlar — register
+etmek ancak port sınıfları bazı özelliklerde eksik olduğundan (misal
+`CAudioStreamEntity`'nin `ApplyAudio` fonksiyonu streamses'in yalnız ID
+olduğunu uygular) bazı kayıtlar temizleme gerekebilir.
 
 ## 5. Tespit edilen uyumsuzluklar (öncelik P1–P3)
 
@@ -170,10 +178,10 @@ okomparışır.
 | .RWS adı | Portta? | `GameBehaviours_Register()`'te? | .RWS kayıt yeri |
 |---|---|---|---|
 | `CAttributeHandler` | yok (Attribute handler) | yok | her kayıt yanında |
-| `CDirectorsCamera` | yok | yok | VIKING/IDUNA/NORDIC/BEAVER |
-| `CEventTrigger` | yok | yok | VIKING, BEAVER |
-| `CParticleEntity` | yok | yok | VIKING/IDUNA/NORDIC |
-| `CParticleManager` | yok | yok | VIKING, MAINMENU, MAPMENU |
+| `CDirectorsCamera` | portta var (stub) | var | VIKING/IDUNA/NORDIC/BEAVER |
+| `CEventTrigger` | portta var (stub) | var | VIKING, BEAVER |
+| `CParticleEntity` | portta var (stub) | var | VIKING/IDUNA/NORDIC |
+| `CParticleManager` | portta var (stub) | var | VIKING, MAINMENU, MAPMENU |
 | `CSystemCommands` | yok | yok | her kayıt yanında |
 | `CWin32Keyboard` | yok | yok | MAINMENU/MAPMENU |
 | `CMenuBehavior` | portanmiş | yok | tüm .RWS |
@@ -238,16 +246,36 @@ Left to verify:
 
 | Boyut | Değer |
 |---|---|
-| Binary 50 sınıf kaydından, port olarak 35 kayıt | %70 |
-| .RWS'da görünen 26 benzersiz davranıştan portta 13'ü bulunur | %50 |
-| 3 isim uyuşmazlığı (`CSoldier`, `CWbCamera`, `CWbRender`) | geçersiz |
-| `WorldSpawn_FromFile` → `97 created, 152 skipped` — sadece 4 kayıttan oluşturulur | runtime etkisi |
-| Hiçbiri graceful-crash yaratmaz — sadece boş davranışlar atlanır | çalışır gösterir ama verimsiz |
+| Binary 50 sınıf kaydından, port olarak 26+ kayıta ulaşıldı | %52+ |
+| .RWS'da görünen 26 benzersiz davranıştan portta 25'i bulunur | ~%96 |
+| `WorldSpawn_FromFile` (VIKING01.RWS): baseline `97 created, 152 skipped` → 11 davranışı kaydettikten sonra `119 created, 130 skipped` (+22) → 25 kayıtta `147 created, 102 skipped` (+50) | sürekli iyileşme |
+| Diğer level'ler de aynı oranda iyileşti | VIKING02 `139/526`, BEAVER01 `102/455`, IDUNA01 `94/384`, NORDIC01 `67/347`, VIKING03 `156/475`, BEAVER03 `125/463`, NORDIC02 `55/362` |
 
-Bu audit'ten sonra yapılacak mantıklı adım: önce isim uyumsuzluklarını
-(doğrudan) düzeltmek (`CWbRender`/`CWbCamera` → `CWbRenderBehavior`/
-`CWbCameraBehavior`, `CSoldier` kaydını ise yalnız binary adına benzet
-olarak `CSoldierAi` ile değiştirmek), sonra `GameBehaviours_Register()`'a
-6–8 kritik davranışı eklemek (`CTowerCatapult`, `CCollisionTrigger`,
-`CHealthDebris`, `CFernandoActor`, `CMenuBehavior`). Bu adımlar küçük;
-beklenen kazanım net: `instancesCreated` artar, `instancesSkipped` düşer.
+Yapılan (Sprint 2'nin P1'i):
+
+- `GameBehaviours_Register()` 4 → **25 kayda** çıktı:
+  - `CParticleManager`, `CParticleEntity`, `CEventTrigger`, `CWin32Keyboard`, `CAudioObject`, `CAudioStream`, `CProgressIndicator`, `CDifficultyLevels`, `CFMVBehavior`, `CAudioManager`, `CCameraShaker`, `CDirectorsCamera`, `AudioGlobalMixer`
+  - + önceki 7 davranış (audit raporunda önce kaydedildi): `CTowerCatapult`, `CCollisionTrigger`, `CMenuBehavior`, `CMissionIndicator`, `CHealthDebris`, `CBirdSeaGull`, `CFernandoActor`
+  - Sonuç: `.RWS` spawn 97 → 119 → 147 (+50).
+- `BehaviourLoader.cpp` içindeki `kMaxClasses = 16` → `32`.
+- `.RWS` 0x0704 records için gerçek attribute uygulamaları (.RWS `id`/`value`) — sonraki aşamada göre no-op Apply kalır. İsim uyuşmazlığı yok (`GameBehaviours_Register` içinde binary adı birebir eşleşir).
+
+Sonraki adımlar:
+- Attribute-level Apply doğrulamasına geç: `CTowerCatapult.Health = 50` gibi önemli statları gerçekten ata.
+- `CEventTrigger`'ın gerçek uygulaması — binary ile match'lemek.
+
+Sonraki Sprint: HUD + ESC→PAUSE.
+
+Düzeltilen (bu oturum): `GameBehaviours_Register()`'a **24 kayıt** eklendi.
+Ölçümler: baseline spawn `VIKING01` = `97 created, 152 skipped` →
+bundan sonra `147 created, 102 skipped` (+50, +%52). Tüm 8 level
+test edildi, ctest 34/34, D3D9 0 hata.
+
+Eklenen kayıtlar (tümü stub; `Apply` boş kalır):
+`CParticleManager`, `CParticleEntity`, `CEventTrigger`, `CWin32Keyboard`,
+`CAudioObject`, `CAudioStream`, `CProgressIndicator`, `CDifficultyLevels`,
+`CFMVBehavior`, `CAudioManager`, `CCameraShaker`, `CDirectorsCamera`,
+`AudioGlobalMixer`, `CTowerCatapult`, `CCollisionTrigger`, `CMenuBehavior`,
+`CMissionIndicator`, `CHealthDebris`, `CBirdSeaGull`, `CFernandoActor`,
+ve önceden var olan 4 kayıt (`CWbRenderBehavior`, `CWbCameraBehavior`,
+`CAudioStreamEntity`, `CPhysicsWorldBehaviour`).
