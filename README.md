@@ -77,7 +77,8 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Belgeler
 
-- [ROADMAP.md](ROADMAP.md) — fazlar, doğrulama kapıları, güncel durum
+- [ROADMAP_NEXT.md](ROADMAP_NEXT.md) — güncel yol haritası (nerede olduğumuz + bu hafta ne)
+- [ROADMAP.md](ROADMAP.md) — tarihsel faz günlüğü (Faz 1–4.6ab)
 - [ROADMAP_MACOS.md](ROADMAP_MACOS.md) — macOS port yol haritası
 - [BUILDING.md](BUILDING.md) — Windows/MSVC derleme reçetesi ve bağımlılık envanteri
 - [SDK_INTERFACE_AUDIT.md](SDK_INTERFACE_AUDIT.md) — RenderWare/Havok arayüz denetimi
