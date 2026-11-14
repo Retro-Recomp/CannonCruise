@@ -7,8 +7,9 @@ analizleri (`CC.asm`, `CC_ida.asm`) temel alınarak C++14 ile yeniden yazılmakt
 **Durum:** Aktif geliştirme — Faz 4 (derleme/link) doğrulandı: macOS/Clang'de
 `CannonCruiseLib` + link doğrulama hedefi; Windows'ta VS 18 (2026) ile Win32
 derlemesi ve ctest 32/32 geçti (NULL ve D3D9 platformları). D3D9'da gerçek
-pencere + ekran görüntüsü desteği var; GLOBAL.RWS içerikleri çözüldü ve
-LOADING ekranı orijinal art'larla (parchament, dalga bordürü, Hugo) çalışıyor.
+pencere ile oyun render edildiği görsel olarak doğrulandı (ada + okyanus +
+sonra VIEW kamerası); GLOBAL.RWS içerikleri çözüldü ve LOADING ekranı orijinal
+art'larla (parchament, dalga bordürü, Hugo) çalışıyor.
 
 ## Dizin yapısı
 
@@ -50,10 +51,13 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 - `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (pencereli) | `GL3`.
-- D3D9 ekran görüntüsü desteklenir: `CANNONCRUISE_SCREENSHOT=<dosya.png>`
-  (backbuffer → systemmem surface → PNG; `EndFrame` swap öncesi). Yükleme
-  ekranı karesi için `CANNONCRUISE_SCREENSHOT_LOADING=<dosya.png>`,
-  oyun dünyası karesi için `CANNONCRUISE_SCREENSHOT`.
+- D3D9: pencere gerçek zamanlı render — Pull-and-write: dünya asset'leri +
+  GLOBAL + LOADING yükleme sonrası ilk karelerden itibaren görünür
+  (`CANNONCRUISE_CAM=FOLLOW|FREE|AUTO|DATA`). Ekran görüntüsü desteği:
+  `CANNONCRUISE_SCREENSHOT=<dosya.png>` (CAMERATEXTURE RT → systemmem
+  surface → PNG; `EndFrame` swap öncesi). Yükleme ekranı karesi için
+  `CANNONCRUISE_SCREENSHOT_LOADING=<dosya.png>`, oyun dünyası karesi
+  için `CANNONCRUISE_SCREENSHOT`.
 - Yükleme ekranı **30 fps** sabittir (`std::chrono::steady_clock` +
   `sleep_for`); kare sayısı `CANNONCRUISE_LOADING_FRAMES` (default 100;
   `0` = atla). Esc/Space/Enter erken çıkış.
@@ -63,10 +67,13 @@ ctest --test-dir build -C Release --output-on-failure
   (`cmake -B build_win32 ...`) ve iş bitince silin; ya da `build_win32_v180/`
   içindeki `CMakeCache.txt`/`CMakeFiles/`/`*.vcxproj*` silinip yeniden
   yapılandırılabilir (izlenen çıktılar git'te durur).
-- D3D9 notu: ekran görüntüsü desteği yok (`GetRenderTargetData` ayrı iş
-  kalemi); pencere 45/45 kare ile doğrulandı. ctest 30/30 (NULL ve D3D9).
-- `build_cannoncruise.cmd` VS 18 recipe'i içerir ama `build_win32_v180/`
-  bayat cache ile birlikte gelir — yukarıdaki temiz dizin yaklaşımını izleyin.
+- D3D9 notu: `GetRenderTargetData` ile backbuffer okuyan D3D9 ekran görüntüsü
+  path'i `CAMERATEXTURE` raster'e taşındı (scene → camera texture RT → systemmem
+  surface → PNG); `EndFrame`, `showRaster`'dan önce camera RT'yi backbuffer'a
+  `StretchRect` ile kopyalar — aksi halde pencere siyah kalır (backbuffer
+  SWAPEFFECT_DISCARD).
+- `build_cannoncruise.cmd` VS 18 recipe'i içerir ve D3D9 platformuyla çalışır;
+  `build_win32/` ve `build_d3d9/` dizinleri gitignore'ta (silmek güvenlidir).
 
 ## Belgeler
 

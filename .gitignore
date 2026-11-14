@@ -2,6 +2,8 @@
 build/
 code/build/
 code/build-gl3/
+code/build_win32/
+code/build_d3d9/
 code/build_win32_x86/
 code/build_win32_d3d9/
 code/build_win32_v180/

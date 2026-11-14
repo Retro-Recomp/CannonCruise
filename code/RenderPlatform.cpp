@@ -104,8 +104,16 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
     // raster'ı pencereye kopyalar. NULL platformda raster yok (no-op).
     // D3D9 NOTU: bu raster'lar yoksa clear()/beginUpdate() null çerçeve
     // çözümler → 0xC0000005 (2026-10-15).
-    s_pCamera->frameBuffer =
-        rw::Raster::create(width, height, 0, rw::Raster::CAMERA);
+#if defined(RW_D3D9)
+        // D3D9: CAMERATEXTURE raster (CAMERA texture'ı nil kalır — D3D9'da
+        // RT-bind edge case'i; bkz. EndFrame screenshot path). GL3/NULL:
+        // CAMERA kalır.
+        s_pCamera->frameBuffer =
+            rw::Raster::create(width, height, 0, rw::Raster::CAMERATEXTURE);
+#else
+        s_pCamera->frameBuffer =
+            rw::Raster::create(width, height, 0, rw::Raster::CAMERA);
+#endif
     s_pCamera->zBuffer =
         rw::Raster::create(width, height, 0, rw::Raster::ZBUFFER);
     if (s_pCamera->frameBuffer == nullptr ||
@@ -176,7 +184,33 @@ void RenderPlatform_EndFrame(void) {
         return;
     }
     s_pCamera->endUpdate();
-    // Ekran görüntüsü isteği (swap öncesi) — GL3 framebuffer → PNG;
+#if defined(RW_D3D9)
+    // D3D9: scene renders into the camera texture RT (CAMERATEXTURE
+    // raster) — copy it into the backbuffer so showRaster's Present()
+    // shows it. SWAPEFFECT_DISCARD backbuffer contents are undefined,
+    // so without this the window stays black.
+    {
+        IDirect3DDevice9 *pDev = rw::d3d::d3ddevice;
+        if (pDev != nullptr) {
+            rw::d3d::D3dRaster *pNat = GETD3DRASTEREXT(s_pCamera->frameBuffer);
+            if (pNat != nullptr && pNat->texture != nullptr) {
+                IDirect3DTexture9 *pTex = (IDirect3DTexture9 *)pNat->texture;
+                IDirect3DSurface9 *pRT = nullptr;
+                if (SUCCEEDED(pTex->GetSurfaceLevel(0, &pRT))) {
+                    IDirect3DSurface9 *pBack = nullptr;
+                    if (SUCCEEDED(pDev->GetBackBuffer(0, 0,
+                                                      D3DBACKBUFFER_TYPE_MONO,
+                                                      &pBack))) {
+                        pDev->StretchRect(pRT, nullptr, pBack, nullptr,
+                                          D3DTEXF_LINEAR);
+                        pBack->Release();
+                    }
+                    pRT->Release();
+                }
+            }
+        }
+    }
+#endif
     // D3D9'da backbuffer → systemmem surface → RGBA → PNG.
     if (s_screenshotPath[0] != '\0' && s_pCamera->frameBuffer != nullptr) {
 #ifdef RW_GL3
@@ -188,36 +222,38 @@ void RenderPlatform_EndFrame(void) {
             std::printf("Screenshot: %s\n", s_screenshotPath);
         }
 #elif defined(RW_D3D9)
-        // CAMERA raster lock'u render-target'ta çalışmaz; backbuffer'ı
-        // sistem belleğine kopyalayıp RGBA→PNG yazarız. EndScene sonrası,
-        // Present öncesi çağrılır (EndFrame'de s_pCamera->endUpdate() sonrası).
+        // CAMERA raster'ı CAMERATEXTURE olduğu için surface'i var; RT'den
+        // systemmem yüzeyine kopyala ve PNG yap (backbuffer DISCARD güvenilmez).
         IDirect3DDevice9 *pDev = rw::d3d::d3ddevice;
-        if (pDev == nullptr) {
-            std::fprintf(stderr, "Screenshot: d3ddevice yok\n");
+        rw::d3d::D3dRaster *pNat = pDev ? GETD3DRASTEREXT(s_pCamera->frameBuffer) : nullptr;
+        if (pDev == nullptr || pNat == nullptr || pNat->texture == nullptr) {
+            std::fprintf(stderr, "Screenshot: d3ddevice/texture null\n");
         } else {
-            IDirect3DSurface9 *pBack = nullptr;
-            if (SUCCEEDED(pDev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO,
-                                              &pBack))) {
-                D3DSURFACE_DESC desc;
-                if (SUCCEEDED(pBack->GetDesc(&desc)) &&
-                    (desc.Format == D3DFMT_X8R8G8B8 ||
-                     desc.Format == D3DFMT_A8R8G8B8)) {
+            IDirect3DTexture9 *pTex = (IDirect3DTexture9 *)pNat->texture;
+            D3DSURFACE_DESC desc;
+            if (FAILED(pTex->GetLevelDesc(0, &desc))) {
+                std::fprintf(stderr, "Screenshot: GetLevelDesc failed\n");
+            } else if (desc.Format != D3DFMT_X8R8G8B8 &&
+                       desc.Format != D3DFMT_A8R8G8B8) {
+                std::fprintf(stderr,
+                             "Screenshot: unsupported format 0x%x\n",
+                             (unsigned)desc.Format);
+            } else {
+                IDirect3DSurface9 *pRT = nullptr;
+                if (SUCCEEDED(pTex->GetSurfaceLevel(0, &pRT))) {
                     IDirect3DSurface9 *pSys = nullptr;
                     if (SUCCEEDED(pDev->CreateOffscreenPlainSurface(
                             desc.Width, desc.Height, desc.Format,
                             D3DPOOL_SYSTEMMEM, &pSys, nullptr))) {
-                        if (SUCCEEDED(pDev->GetRenderTargetData(pBack,
-                                                                pSys))) {
+                        if (SUCCEEDED(pDev->GetRenderTargetData(pRT, pSys))) {
                             D3DLOCKED_RECT lr;
                             if (SUCCEEDED(pSys->LockRect(&lr, nullptr,
                                                           D3DLOCK_READONLY))) {
                                 const int w = (int)desc.Width;
                                 const int h = (int)desc.Height;
-                                rw::Image *pImg =
-                                    rw::Image::create(w, h, 32);
+                                rw::Image *pImg = rw::Image::create(w, h, 32);
                                 if (pImg != nullptr) {
                                     pImg->allocate();
-                                    if (pImg->pixels != nullptr) {
                                     for (int y = 0; y < h; ++y) {
                                         const RwUInt8 *src =
                                             (const RwUInt8 *)lr.pBits +
@@ -235,7 +271,6 @@ void RenderPlatform_EndFrame(void) {
                                     rw::writePNG(pImg, s_screenshotPath);
                                     std::printf("Screenshot: %s\n",
                                                 s_screenshotPath);
-                                    }
                                     pImg->destroy();
                                 }
                                 pSys->UnlockRect();
@@ -243,13 +278,8 @@ void RenderPlatform_EndFrame(void) {
                         }
                         pSys->Release();
                     }
-                } else {
-                    std::fprintf(stderr,
-                                 "Screenshot: desteklenmeyen backbuffer "
-                                 "formatı 0x%x\n",
-                                 (unsigned)desc.Format);
+                    pRT->Release();
                 }
-                pBack->Release();
             }
         }
 #endif

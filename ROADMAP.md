@@ -1759,13 +1759,22 @@ loop:
   geçişi + unload zinciri çökmesiz, `tests/CMakeLists.txt`'e kayıtlı.
 - **ctest 30/30** (NULL ve D3D9, Windows).
 
-#### D3D9 doğrulama
+#### D3D9 doğrulama (revize 2026-11-14)
 
-- D3D9 pencere 45/45 kare; GLOBAL 4 texture upload D3D9'da OK. Ekran
-  görüntüsü D3D9'da desteklenmiyor (`IDirect3DDevice9::GetRenderTargetData`
-  → systemmem → PNG — ayrı iş kalemi; değişmedi).
-- Açık kalan Faz 4/5 kalemleri (14 Kasım 2026 sonrası): gerçek tekne modeli
-  ({GUID}.dff), global objectRecord fabrikaları; ayrıca bkz. Faz 4.6ab.
+- **Sorun**: pencere siyah kaldı/boş göründü — `showRaster` yalnızca
+  `Present()` çağırır, camera raster'ı yazılmaz; SWAPEFFECT_DISCARD ile
+  backbuffer içeriği tanımsız olduğundan pencere hiçbir şey gösteremiyordu.
+- **Teşhis**: `RenderPlatform_EndFrame` içinde camera'yı `CAMERATEXTURE`
+  raster'a çevirdik (D3D9'da `CAMERA` texture'ı nil kalır → bind'de default
+  render-target seçiliyordu); scene artık camera texture'ına (RT) yazılıyor.
+- **Fix**: `EndFrame`, `showRaster()` öncesi `GetSurfaceLevel → StretchRect`
+  ile camera RT'yi 640x480 backbuffer'a kopyaladıktan sonra present — artık
+  pencere ada/okyanus/doğa render'ı görüyor (doğrulandı).
+- Ekran görüntüsü: aynı camera texture'ını `GetSurfaceLevel →
+  CreateOffscreenPlainSurface(SYSTEMMEM) → GetRenderTargetData → LockRect →
+  RGBA → rw::Image → rw::writePNG`; yalnız `X8R8G8B8`/`A8R8G8B8`.
+- Açık kalan Faz 4/5 kalemleri: gerçek tekne modeli ({GUID}.dff), global
+  objectRecord fabrikaları; ayrıca bkz. Faz 4.6ab.
 
 
 ### Faz 4.6ab — LOADING ekranı + D3D9 screenshot + GLOBAL envanter — TAMAM (2026-11-14)
@@ -1789,14 +1798,19 @@ txd'sinde zaten çözüldü ve `MenuTextures_UploadEmbeddedFromRws` ile
 D3D9'da **4/4 OK** yükleniyor; `Loading.anm` depodan çözülebilir
 (`Rt2dMaestro_LoadFromRwsFile` uyumlu: rwID_2DMAESTRO anchor taraması).
 
-#### D3D9 ekran görüntüsü — TAMAM
+#### D3D9 ekran görüntüsü — TAMAM (revize 2026-11-14)
 
 `RenderPlatform_EndFrame` içindeki GL3-only screenshot kısmı D3D9 için de
-uygulandı: `GetBackBuffer → CreateOffscreenPlainSurface(SYSTEMMEM) →
-GetRenderTargetData → LockRect → RGBA → rw::Image → rw::writePNG`.
-Yalnızca `X8R8G8B8`/`A8R8G8B8`; swap öncesi backbuffer okunur (endUpdate
-sonrası, showRaster öncesi). NULL platformda kullanılmaz; GL3 yolu aynen
-korundu. `CANNONCRUISE_SCREENSHOT` her kare için geçerli.
+uygulandı; ilk deneme (`GetBackBuffer → GetRenderTargetData → LockRect →
+RGBA → PNG`) backbuffer DISCARD olduğu için başarısız/eski kare veriyordu.
+Artık camera raster `CAMERATEXTURE`; scene camera texture RT'ye yazılıyor;
+`EndFrame` içinde `showRaster()` öncesi `StretchRect` ile backbuffer'a
+kopyalanıp present yapılıyor (pencere render'ı görünüyor) ve
+screenshot aynı texture'ı systemmem surface'e `RenderTargetData` ile çekiyor:
+`pDev->StretchRect | GetSurfaceLevel → CreateOffscreenPlainSurface →
+GetRenderTargetData → LockRect → RGBA → rw::writePNG`.
+Yalnız `X8R8G8B8`/`A8R8G8B8` desteklenir. GL3 yolu aynen korundu.
+`CANNONCRUISE_SCREENSHOT` her kare için geçerli.
 
 #### LOADING ekranı (Faz 4.6r SCR.mov frame 4) — TAMAM (2026-11-14 rev)
 

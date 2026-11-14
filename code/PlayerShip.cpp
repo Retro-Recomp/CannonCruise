@@ -3,18 +3,15 @@
 // ============================================================================
 
 #include "PlayerShip.h"
+#include "RenderPlatform.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 
 #if defined(RW_GL3) || defined(RW_D3D9)
-// rw::im3d / Im3DVertex — GL3 ve D3D9 render yolları.
+// librw retain-mode API (Clump/Geometry/Atomic) — Im3D yolu D3D9'da boş
+// döndürdüğü için tekne artık RpWorld pipeline'ı üzerinden çizilir.
 #include <rw.h>
-#if defined(RW_GL3)
-using ShipIm3DVertex = rw::gl3::Im3DVertex;
-#else
-using ShipIm3DVertex = rw::d3d::Im3DVertex;
-#endif
 #endif
 
 namespace {
@@ -27,6 +24,117 @@ const RwReal kReverseSpeed = -9.0f;///< tam geri gaza hedef hız
 const RwReal kSpeedLerp = 0.9f;    ///< hız yakınsama katsayısı (1/sn)
 const RwReal kTurnRate = 0.55f;    ///< rad/sn (tam rudder + tam hız)
 const RwReal kWaterY = 0.0f;       ///< su seviyesi
+
+#if defined(RW_GL3) || defined(RW_D3D9)
+// Tek kullanımlık tekne clump'ı (lazy create, tek sefer world'e eklenir).
+rw::Clump *s_pShipClump = nullptr;
+rw::Frame *s_pShipFrame = nullptr;
+RwBool s_shipClumpAdded = FALSE;
+
+const RwV3d kShipLocal[13] = {
+    {0.0f, 1.1f, 5.2f},   // 0  burun
+    {-1.35f, 1.0f, 2.1f}, // 1
+    {1.35f, 1.0f, 2.1f},  // 2
+    {-1.7f, 1.0f, -3.6f}, // 3
+    {1.7f, 1.0f, -3.6f},  // 4
+    {0.0f, 1.15f, -3.7f}, // 5
+    {0.0f, -0.75f, 3.6f}, // 6
+    {-0.95f, -0.75f, -3.1f}, // 7
+    {0.95f, -0.75f, -3.1f},  // 8
+    {-0.16f, 1.1f, 0.5f},   // 9  direk sol-alt
+    {0.16f, 1.1f, 0.5f},    // 10 direk sağ-alt
+    {-0.16f, 4.8f, 0.5f},   // 11 direk sol-üst
+    {0.16f, 4.8f, 0.5f},    // 12 direk sağ-üst
+};
+const RwUInt32 kShipHullTris[][3] = {
+    {0, 1, 2},             // güverte burun
+    {0, 3, 1}, {0, 2, 4},  // güverte orta (dolgu)
+    {0, 5, 3}, {0, 4, 5},  // güverte kıç
+    {0, 6, 1}, {1, 6, 7},  // iskele gövde
+    {1, 7, 3},
+    {0, 2, 6}, {2, 8, 6},  // sancak gövde
+    {2, 4, 8},
+    {3, 7, 8}, {3, 8, 4},  // kıç ayna altı
+};
+const RwUInt32 kShipMastTris[][3] = {
+    {9, 11, 12}, {9, 12, 10},
+};
+
+void ShipFrame_SetPose(rw::Frame *pFrame, const PlayerShipState &s) {
+    rw::Matrix *pMat = &pFrame->matrix;
+    const RwReal cy = std::cos(s.yaw), sy = std::sin(s.yaw);
+    pMat->right = rw::makeV3d(cy, 0.0f, -sy);
+    pMat->up = rw::makeV3d(0.0f, 1.0f, 0.0f);
+    pMat->at = rw::makeV3d(sy, 0.0f, cy);
+    pMat->pos = rw::makeV3d(s.pos.x, s.pos.y, s.pos.z);
+    pFrame->updateObjects();
+}
+
+RwBool ShipClump_Create(void) {
+    const RwUInt32 hullCount = sizeof(kShipHullTris) / sizeof(kShipHullTris[0]);
+    const RwUInt32 mastCount = sizeof(kShipMastTris) / sizeof(kShipMastTris[0]);
+    const RwUInt32 numTris = hullCount + mastCount;
+    rw::Geometry *pGeo = rw::Geometry::create(13, numTris,
+                                              rw::Geometry::POSITIONS |
+                                                  rw::Geometry::PRELIT);
+    if (pGeo == nullptr) {
+        return FALSE;
+    }
+    rw::MorphTarget *mt = &pGeo->morphTargets[0];
+    for (RwUInt32 i = 0; i < 13; ++i) {
+        mt->vertices[i].set(kShipLocal[i].x, kShipLocal[i].y, kShipLocal[i].z);
+    }
+    for (RwUInt32 i = 0; i < numTris; ++i) {
+        rw::Triangle &tri = pGeo->triangles[i];
+        if (i < hullCount) {
+            tri.v[0] = kShipHullTris[i][0];
+            tri.v[1] = kShipHullTris[i][1];
+            tri.v[2] = kShipHullTris[i][2];
+        } else {
+            tri.v[0] = kShipMastTris[i - hullCount][0];
+            tri.v[1] = kShipMastTris[i - hullCount][1];
+            tri.v[2] = kShipMastTris[i - hullCount][2];
+        }
+        tri.matId = 0;
+    }
+    // Gövde: koyu ahşap; direk/yelken: kırık beyaz
+    rw::RGBA wood = {96, 64, 32, 255};
+    rw::RGBA sail = {233, 228, 214, 255};
+    for (RwUInt32 i = 0; i < 13; ++i) {
+        pGeo->colors[i] = (i >= 9) ? sail : wood;
+    }
+    rw::Material *pMat = rw::Material::create();
+    if (pMat == nullptr) {
+        pGeo->destroy();
+        return FALSE;
+    }
+    pGeo->matList.appendMaterial(pMat);
+    pMat->destroy();
+    pGeo->calculateBoundingSphere();
+    pGeo->unlock();
+
+    rw::Atomic *pAtomic = rw::Atomic::create();
+    rw::Frame *pFrame = rw::Frame::create();
+    if (pAtomic == nullptr || pFrame == nullptr) {
+        if (pAtomic) pAtomic->destroy();
+        pGeo->destroy();
+        return FALSE;
+    }
+    pAtomic->setGeometry(pGeo, 0);
+    pGeo->destroy();
+    s_pShipClump = rw::Clump::create();
+    if (s_pShipClump == nullptr) {
+        pAtomic->destroy();
+        if (pFrame) pFrame->destroy();
+        return FALSE;
+    }
+    pAtomic->setFrame(pFrame);
+    s_pShipFrame = pFrame;
+    ShipFrame_SetPose(s_pShipFrame, s_ship);
+    s_pShipClump->addAtomic(pAtomic);
+    return TRUE;
+}
+#endif // RW_GL3 || RW_D3D9
 
 } // namespace
 
@@ -85,101 +193,19 @@ void PlayerShip_Render() {
     if (s_active != TRUE) {
         return;
     }
-    // Yerel uzay gövde: burun +z, kıç -z, omurga aşağı.
-    // 0 burun ucu  1 iskele burun  2 sancak burun
-    // 3 iskele kıç  4 sancak kıç  5 ayna (kıç orta)
-    // 6 omurga burun  7 omurga iskele  8 omurga sancak
-    // 9-12 direk (dikdörtgen, 2 üçgen)
-    const RwV3d local[13] = {
-        {0.0f, 1.1f, 5.2f},   // 0  burun
-        {-1.35f, 1.0f, 2.1f}, // 1
-        {1.35f, 1.0f, 2.1f},  // 2
-        {-1.7f, 1.0f, -3.6f}, // 3
-        {1.7f, 1.0f, -3.6f},  // 4
-        {0.0f, 1.15f, -3.7f}, // 5
-        {0.0f, -0.75f, 3.6f}, // 6
-        {-0.95f, -0.75f, -3.1f}, // 7
-        {0.95f, -0.75f, -3.1f},  // 8
-        {-0.16f, 1.1f, 0.5f},   // 9  direk sol-alt
-        {0.16f, 1.1f, 0.5f},    // 10 direk sağ-alt
-        {-0.16f, 4.8f, 0.5f},   // 11 direk sol-üst
-        {0.16f, 4.8f, 0.5f},    // 12 direk sağ-üst
-    };
-    const RwUInt32 hullTris[][3] = {
-        {0, 1, 2},             // güverte burun
-        {0, 3, 1}, {0, 2, 4},  // güverte orta (dolgu)
-        {0, 5, 3}, {0, 4, 5},  // güverte kıç
-        {0, 6, 1}, {1, 6, 7},  // iskele gövde
-        {1, 7, 3},
-        {0, 2, 6}, {2, 8, 6},  // sancak gövde
-        {2, 4, 8},
-        {3, 7, 8}, {3, 8, 4},  // kıç ayna altı
-    };
-    const RwUInt32 mastTris[][3] = {
-        {9, 11, 12}, {9, 12, 10},
-    };
-
-    const RwReal sy = std::sin(s_ship.yaw);
-    const RwReal cy = std::cos(s_ship.yaw);
-    RwV3d v[13];
-    for (RwUInt32 i = 0; i < 13; ++i) {
-        const RwReal lx = local[i].x;
-        const RwReal lz = local[i].z;
-        v[i].x = s_ship.pos.x + lx * cy + lz * sy;
-        v[i].y = s_ship.pos.y + local[i].y;
-        v[i].z = s_ship.pos.z - lx * sy + lz * cy;
-    }
-
 #if defined(RW_GL3) || defined(RW_D3D9)
-    // Im3D: Transform tepeleri device state'e yükler; çizim indekslerle
-    // yapılır (Ocean_W32 deseni). GL3/D3D9: Im3DVertex.
-    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
-    ShipIm3DVertex verts[64]; // 13 hull + 2 direk üçgeni = 45 tepe (pay bırak)
-    RwUInt16 indices[64];
-    const RwUInt32 hullCount = sizeof(hullTris) / sizeof(hullTris[0]);
-    const RwUInt32 mastCount = sizeof(mastTris) / sizeof(mastTris[0]);
-    RwUInt32 k = 0;
-    for (RwUInt32 t = 0; t < hullCount; ++t) {
-        for (RwUInt32 j = 0; j < 3; ++j) {
-            ShipIm3DVertex &vx = verts[k];
-            vx.setX(v[hullTris[t][j]].x);
-            vx.setY(v[hullTris[t][j]].y);
-            vx.setZ(v[hullTris[t][j]].z);
-            vx.setNormalX(0.0f);
-            vx.setNormalY(1.0f);
-            vx.setNormalZ(0.0f);
-            vx.setColor(96, 64, 32, 255);  // gövde: koyu ahşap
-            vx.setU(0.0f);
-            vx.setV(0.0f);
-            indices[k] = (RwUInt16)k;
-            ++k;
+    // RpWorld pipeline'ı (default MATFx) — Im3D D3D9'da çizilmedi.
+    if (s_pShipClump == nullptr) {
+        if (ShipClump_Create() != TRUE) {
+            return;
         }
     }
-    for (RwUInt32 t = 0; t < mastCount; ++t) {
-        for (RwUInt32 j = 0; j < 3; ++j) {
-            ShipIm3DVertex &vx = verts[k];
-            vx.setX(v[mastTris[t][j]].x);
-            vx.setY(v[mastTris[t][j]].y);
-            vx.setZ(v[mastTris[t][j]].z);
-            vx.setNormalX(0.0f);
-            vx.setNormalY(0.0f);
-            vx.setNormalZ(1.0f);
-            vx.setColor(233, 228, 214, 255);  // direk/yelken: kırık beyaz
-            vx.setU(0.0f);
-            vx.setV(0.0f);
-            indices[k] = (RwUInt16)k;
-            ++k;
+    if (s_shipClumpAdded == FALSE) {
+        if (RenderPlatform_AddClump(s_pShipClump) == TRUE) {
+            s_shipClumpAdded = TRUE;
         }
     }
-    rw::im3d::Transform(verts, (int)k, nullptr, rw::im3d::EVERYTHING);
-    rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, indices, (int)k);
-    rw::im3d::End();
-#else
-    // NULL platform: indeks/köşe üretimi doğrulandı, cihaz draw no-op.
-    (void)v;
-    (void)hullTris;
-    (void)mastTris;
-    (void)sy;
-    (void)cy;
+    // Pose'u her frame güncelle (frame matrix; RpWorld LTM bunu kullanır)
+    ShipFrame_SetPose(s_pShipFrame, s_ship);
 #endif
 }
