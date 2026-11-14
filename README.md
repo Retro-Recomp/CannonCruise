@@ -6,9 +6,9 @@ analizleri (`CC.asm`, `CC_ida.asm`) temel alınarak C++14 ile yeniden yazılmakt
 
 **Durum:** Aktif geliştirme — Faz 4 (derleme/link) doğrulandı: macOS/Clang'de
 `CannonCruiseLib` + link doğrulama hedefi; Windows'ta VS 18 (2026) ile Win32
-derlemesi ve ctest 30/30 geçti (NULL ve D3D9 platformları). Çalışma zamanı
-doğrulaması kısmi (D3D9 penceresi açılıyor, 45/45 kare; screenshot D3D9'da
-henüz yok).
+derlemesi ve ctest 32/32 geçti (NULL ve D3D9 platformları). D3D9'da gerçek
+pencere + ekran görüntüsü desteği var; GLOBAL.RWS içerikleri çözüldü ve
+LOADING ekranı orijinal art'larla (parchament, dalga bordürü, Hugo) çalışıyor.
 
 ## Dizin yapısı
 
@@ -50,6 +50,13 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 - `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (pencereli) | `GL3`.
+- D3D9 ekran görüntüsü desteklenir: `CANNONCRUISE_SCREENSHOT=<dosya.png>`
+  (backbuffer → systemmem surface → PNG; `EndFrame` swap öncesi). Yükleme
+  ekranı karesi için `CANNONCRUISE_SCREENSHOT_LOADING=<dosya.png>`,
+  oyun dünyası karesi için `CANNONCRUISE_SCREENSHOT`.
+- Yükleme ekranı **30 fps** sabittir (`std::chrono::steady_clock` +
+  `sleep_for`); kare sayısı `CANNONCRUISE_LOADING_FRAMES` (default 100;
+  `0` = atla). Esc/Space/Enter erken çıkış.
 - **Dikkat — izlenen build çıktıları:** `code/build_win32_v180/` repo ile birlikte
   gelir ve eski (VS 17 2022 generator'lı, D3D9) bayat bir CMakeCache içerir;
   VS 18 ile yerinde kullanamazsınız. Temiz yol: yeni bir build dizini kullanın
@@ -84,8 +91,10 @@ Kapsam: `havok_memory_manager` (allocator), `ceventhandler` (RegisterMsg/
 LinkMsg/SendMsg/yaşam döngüsü), `cclassfactory` (Register/Create/Shutdown),
 `cattributehandler` (instance registry + paket öngörücüler),
 `worldcycle_test` (VIKING01/IDUNA03/BEAVER01 load→clump→unload stresi,
-Faz 4.6s), `fmvscene_test` (FMV geçiş grafiği, 8 tanımlayıcı). Tüm paket
-**ctest 30/30** ile çalışır. Tek testi
+Faz 4.6s), `fmvscene_test` (FMV geçiş grafiği, 8 tanımlayıcı),
+`globalassets_test` (GLOBAL.RWS envanteri: gömülü txd + harici resource),
+`globaldump_test` (GLOBAL gömülü txd → PNG dökümü). Tüm paket
+**ctest 32/32** ile çalışır. Tek testi
 sanitizer ile elle de derleyebilirsiniz:
 
 ```bash

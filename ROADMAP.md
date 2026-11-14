@@ -1764,6 +1764,73 @@ loop:
 - D3D9 pencere 45/45 kare; GLOBAL 4 texture upload D3D9'da OK. Ekran
   görüntüsü D3D9'da desteklenmiyor (`IDirect3DDevice9::GetRenderTargetData`
   → systemmem → PNG — ayrı iş kalemi; değişmedi).
-- Açık kalan Faz 4/5 kalemleri: D3D9 screenshot, Image_Win32 decode,
-  global objectRecord fabrikaları, gerçek tekne modeli ({GUID}.dff).
+- Açık kalan Faz 4/5 kalemleri (14 Kasım 2026 sonrası): gerçek tekne modeli
+  ({GUID}.dff), global objectRecord fabrikaları; ayrıca bkz. Faz 4.6ab.
+
+
+### Faz 4.6ab — LOADING ekranı + D3D9 screenshot + GLOBAL envanter — TAMAM (2026-11-14)
+
+#### GLOBAL.RWS içeriği çözüldü (ROADMAP'in "Image_Win32.rws" tahmini yanlıştı)
+
+`globalassets_test` ile tüm üst seviye chunk'lar listelendi:
+
+| asset | tür | içerik |
+|---|---|---|
+| asset[0] | 0x0716 rwID_TEXDICTIONARY (gömülü 0x23, 525 KB) | `SpecialCharacters.png` 256×128 (gamepad ikonları), `Load_NT_005` 512×32 (dalga bordürü), `Load_NT_003` 128×128 (Hugo kayığında), `Load_NT_001` 512×128 (parchment) |
+| asset[3] | 0x0716 wbID_STATICWORLDCOLLISION | harici {GUID}.col (elimizde yok) |
+| asset[5] | 0x0716 wbID_Texture | `SpecialCharacters.png` dış referans (aynı art, .texref kaydı; doku zaten gömülü) |
+| asset[6] | 0x0716 rwaID_WAVEDICT | `Ingame_Win32.rws` referansı (5.6 MB; `Sound/Win32/Ingame_Win32.rws` depoda mevcut) |
+| asset[7..52] | 0x0704 objectRecords | 46 global behaviour (CAudioManager, CDifficultyLevels, CEventProxy, CSystemCommands …) |
+| asset[53] | 0x0716 rwID_2DMAESTRO | **`Loading.anm`** 40420 B (yükleme ekranı zaman çizelgesi) |
+| asset[54-55] | 0x0704 | 2 kayıt |
+
+"Image_Win32.rws" adında bir asset **yok** — yük ekranı art'ı GLOBAL gömülü
+txd'sinde zaten çözüldü ve `MenuTextures_UploadEmbeddedFromRws` ile
+D3D9'da **4/4 OK** yükleniyor; `Loading.anm` depodan çözülebilir
+(`Rt2dMaestro_LoadFromRwsFile` uyumlu: rwID_2DMAESTRO anchor taraması).
+
+#### D3D9 ekran görüntüsü — TAMAM
+
+`RenderPlatform_EndFrame` içindeki GL3-only screenshot kısmı D3D9 için de
+uygulandı: `GetBackBuffer → CreateOffscreenPlainSurface(SYSTEMMEM) →
+GetRenderTargetData → LockRect → RGBA → rw::Image → rw::writePNG`.
+Yalnızca `X8R8G8B8`/`A8R8G8B8`; swap öncesi backbuffer okunur (endUpdate
+sonrası, showRaster öncesi). NULL platformda kullanılmaz; GL3 yolu aynen
+korundu. `CANNONCRUISE_SCREENSHOT` her kare için geçerli.
+
+#### LOADING ekranı (Faz 4.6r SCR.mov frame 4) — TAMAM (2026-11-14 rev)
+
+`code/LoadingScreen.{h,cpp}` (yeni): dünya AddClump edilmeden **önce**
+kısa yükleme şeridi çizilir. Gerçek GLOBAL art'ı kullanılır; **30 fps**
+sabit (`std::chrono::steady_clock` + `sleep_for`, `CANNONCRUISE_LOADING_FRAMES
+(default 100)` kare sonra setup'a döner):
+
+- gece mavisi zemin (üst yarı #040914 lacivert-siz, alt yarı #0C1E3A koyu
+  deniz; D3D9 overlay quad'lar BGRA bayt sırası kullanır),
+- `Load_NT_005` dalga silueti ufuk çizgisine oturur ve **yavaşça sağa
+  sürüklenir** (frame başına 1 px),
+- `Load_NT_001` parchment şerit (kendi en/boy oranını korur, %72 genişlik,
+  iki kenarından eşit),
+- `Load_NT_003` Hugo kayığı denizde **soldan sağa süzülür**, dalgalarla
+  hafifçe yalpalar (`sin(frame*0.11)*2`),
+- `LOADING` + canlı nokta animasyonu el yazısı mürekkep renginde ortalı,
+  `ESC` ipucu sol altta.
+
+Art (D3D9): GLOBAL 4/4 texture OK. NULL: texture yükleme FALSE → fallback
+çizim aktif.
+
+`CANNONCRUISE_LOADING_FRAMES` (varsayılan 100) kare sonra dünya setup'ı
+başlar; Esc/Space/Enter erken çıkış; `.bik` gibi hiçbir harici varlık
+gerekmez (hepsi GLOBAL içinde). Yükleme fazı **30 fps sabit** — hızlı
+makinelerde ekranı uç hızında göstermez.
+
+#### Doğrulama (2026-11-14)
+
+- **ctest 32/32** (NULL) — yeni: `globalassets_test` (envanter; GLOBAL 56
+  chunk: 1 gömülü txd = 4 doku + 4 harici resource + 2DMAESTRO, 0 fail),
+  `globaldump_test` (txd → `Scratchpad/globaldump/tex_*.png`; 4 PNG doğrulandı).
+- **D3D9**: GLOBAL 4/4 texture OK; 30/30 kare; LOADING ekranı capture'ı
+  görsel doğrulandı (parchament + Hugo + dalga çizgisi + "LOADING" metni).
+- NULL: `link verification OK`; 30/30 kare (texture yükleme NULL'da device
+  gerektirdiğinden upload FALSE beklenen davranış; fallback yol aktif).
 

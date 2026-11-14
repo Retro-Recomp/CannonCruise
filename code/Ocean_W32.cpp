@@ -11,12 +11,18 @@
 #include "Ocean_W32.h"
 #include <cassert>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 
-#ifdef RW_GL3
-// rw::im3d / rw::gl3::Im3DVertex — yalnız GL3 render yolu (librw include
-// yolu gerektirir; syntax-only probe RW_GL3'süz derler — bkz. else dalı).
+#if defined(RW_GL3) || defined(RW_D3D9)
+// rw::im3d / Im3DVertex — GL3 ve D3D9 render yolları (librw include
+// yolu gerektirir; syntax-only probe RW_*'süz derler — bkz. else dalı).
 #include <rw.h>
+#if defined(RW_GL3)
+using OceanIm3DVertex = rw::gl3::Im3DVertex;
+#else
+using OceanIm3DVertex = rw::d3d::Im3DVertex;
+#endif
 #endif
 
 // ---------------------------------------------------------------------------
@@ -75,13 +81,13 @@ void COcean_W32::RenderWaterMesh(const RwV3d* pVertices, const RwTexCoords* pTex
     }
 
     // rw::im3d doğrudan (rwstubs no-op C API'sine düşmez — RenderTestQuad
-    // im2d deseni). GL3: gl3::Im3DVertex (pos+normal+rgba+uv); NULL: çizim yok.
-#ifdef RW_GL3
+    // im2d deseni). GL3/D3D9: Im3DVertex (pos+normal+rgba+uv); NULL: çizim yok.
+#if defined(RW_GL3) || defined(RW_D3D9)
     // Doku yok: arazi render'ından sızan TEXTURERASTER temizlenir (yoksa
     // okyanus son arazi dokusuyla çarpılıp kararır).
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
-    rw::gl3::Im3DVertex *imVertices = (rw::gl3::Im3DVertex *)RwMalloc(
-        numVertices * sizeof(rw::gl3::Im3DVertex), 0);
+    OceanIm3DVertex *imVertices = (OceanIm3DVertex *)RwMalloc(
+        numVertices * sizeof(OceanIm3DVertex), 0);
     if (imVertices == nullptr) {
         free(indices);
         return;

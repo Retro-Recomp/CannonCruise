@@ -4,11 +4,17 @@
 
 #include "PlayerShip.h"
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 
-#ifdef RW_GL3
-// rw::im3d / rw::gl3::Im3DVertex — Ocean_W32.cpp ile aynı örüntü.
+#if defined(RW_GL3) || defined(RW_D3D9)
+// rw::im3d / Im3DVertex — GL3 ve D3D9 render yolları.
 #include <rw.h>
+#if defined(RW_GL3)
+using ShipIm3DVertex = rw::gl3::Im3DVertex;
+#else
+using ShipIm3DVertex = rw::d3d::Im3DVertex;
+#endif
 #endif
 
 namespace {
@@ -20,7 +26,6 @@ const RwReal kMaxSpeed = 18.0f;    ///< tam gaza hedef hız (birim/sn)
 const RwReal kReverseSpeed = -9.0f;///< tam geri gaza hedef hız
 const RwReal kSpeedLerp = 0.9f;    ///< hız yakınsama katsayısı (1/sn)
 const RwReal kTurnRate = 0.55f;    ///< rad/sn (tam rudder + tam hız)
-const RwReal kWaveAmp = 0.35f;     ///< bob genliği (okyanus dalgasının altı)
 const RwReal kWaterY = 0.0f;       ///< su seviyesi
 
 } // namespace
@@ -61,10 +66,11 @@ void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
 
     s_ship.pos.x += std::sin(s_ship.yaw) * s_ship.speed * deltaTime;
     s_ship.pos.z += std::cos(s_ship.yaw) * s_ship.speed * deltaTime;
-    // Dalga üstü bob — Ocean'ın dalga formunun ölçekli haliyle uyumlu.
+    // Dalga üstü bob — Ocean'ın dalga formuyla birebir aynı faz/genlik
+    // (sin(x*0.05+t*2)*1.5 + cos(z*0.08+t*1.5)*1.0)
     const RwReal wave = std::sin(s_ship.pos.x * 0.05f + waveT * 2.0f) * 1.5f +
-                        std::cos(s_ship.pos.z * 0.08f + waveT * 1.5f);
-    s_ship.pos.y = kWaterY + 0.6f + wave * kWaveAmp;
+                        std::cos(s_ship.pos.z * 0.08f + waveT * 1.5f) * 1.0f;
+    s_ship.pos.y = kWaterY + 0.8f + wave;
 }
 
 RwBool PlayerShip_GetState(PlayerShipState *pOut) {
@@ -124,18 +130,18 @@ void PlayerShip_Render() {
         v[i].z = s_ship.pos.z - lx * sy + lz * cy;
     }
 
-#ifdef RW_GL3
+#if defined(RW_GL3) || defined(RW_D3D9)
     // Im3D: Transform tepeleri device state'e yükler; çizim indekslerle
-    // yapılır (Ocean_W32 deseni). GL3: gl3::Im3DVertex.
+    // yapılır (Ocean_W32 deseni). GL3/D3D9: Im3DVertex.
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
-    rw::gl3::Im3DVertex verts[42];
-    RwUInt16 indices[42];
+    ShipIm3DVertex verts[64]; // 13 hull + 2 direk üçgeni = 45 tepe (pay bırak)
+    RwUInt16 indices[64];
     const RwUInt32 hullCount = sizeof(hullTris) / sizeof(hullTris[0]);
     const RwUInt32 mastCount = sizeof(mastTris) / sizeof(mastTris[0]);
     RwUInt32 k = 0;
     for (RwUInt32 t = 0; t < hullCount; ++t) {
         for (RwUInt32 j = 0; j < 3; ++j) {
-            rw::gl3::Im3DVertex &vx = verts[k];
+            ShipIm3DVertex &vx = verts[k];
             vx.setX(v[hullTris[t][j]].x);
             vx.setY(v[hullTris[t][j]].y);
             vx.setZ(v[hullTris[t][j]].z);
@@ -151,7 +157,7 @@ void PlayerShip_Render() {
     }
     for (RwUInt32 t = 0; t < mastCount; ++t) {
         for (RwUInt32 j = 0; j < 3; ++j) {
-            rw::gl3::Im3DVertex &vx = verts[k];
+            ShipIm3DVertex &vx = verts[k];
             vx.setX(v[mastTris[t][j]].x);
             vx.setY(v[mastTris[t][j]].y);
             vx.setZ(v[mastTris[t][j]].z);

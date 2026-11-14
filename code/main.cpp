@@ -43,6 +43,7 @@ static EGameState s_gameState = GAMESTATE_BOOT;
 #include "WorldSpawn.h"
 #include "LocalizationManager.h"
 #include "BinkPlayer.h"  // binkw32 oynatici - .bik oynatimi (sub_45F350/45F270)
+#include "LoadingScreen.h" // Faz 4.6ab — LOADING overlay (GLOBAL art)
 #include "rwcore.h"
 #include "AudioManager.h"
 #include "SpeakManager.h"
@@ -775,7 +776,7 @@ int main(int argc, char **argv) {
                     // Load Credits.RWS; afterwards return to MainMenu.
                     char credPath[512] = {0};
                     if (FmvScene_NextScenePath("Credits", credPath, sizeof(credPath)) == 1) {
-                        std::printf("Menu: action CREDITS → loading %s\n", credPath);
+                        std::printf("Menu: action CREDITS -> loading %s\n", credPath);
                         // Load RWS file; textures/visuals loaded via
                         // MenuTextures_LoadFromRws then return to MainMenu.
                         RwsAssets_Resolve("Streams/CREDITS.RWS", credPath,
@@ -1029,6 +1030,29 @@ int main(int argc, char **argv) {
         }
     }
 
+    // Faz 4.6ab -- LOADING overlay (GLOBAL art). Dünya yüklü ama henüz
+    // AddClump edilmedi; kullanıcıya parchament + Hugo + "LOADING" gösterilir.
+    // NOT: librw win iskeletinde pencere boyutu = 640x480 (buffer birebir);
+    // draw space'i de 640x480 olarak veriyoruz (FMV/menü 1280x720'ye çizip
+    // crop'luyor — kırık olurdu).
+    {
+        const char *loadEnv = std::getenv("CANNONCRUISE_LOADING_FRAMES");
+        const int loadFrames =
+            (loadEnv != nullptr) ? std::atoi(loadEnv) : 100;
+        if (loadFrames > 0) {
+            if (LoadingScreen_Play(loadFrames, 640, 480) == FALSE) {
+                delete pOcean;
+                pOcean = nullptr;
+                RwsPipeline_Unload(&pipeline);
+                RenderPlatform_Terminate();
+                RwEngineStop();
+                RwEngineClose();
+                RwEngineTerm();
+                return 0;
+            }
+        }
+    }
+
     // World setup (after boot-flow -- MAPMENU selection set up with single
     // load). 4.6q camera + 4.6p spawn/ocean carried over.
     // 4.6q: camera state lives throughout loop (freecam WASD/QE + mouse look).
@@ -1272,11 +1296,11 @@ int main(int argc, char **argv) {
                 if (PlayerShip_GetState(&shipState) == TRUE) {
                     const RwReal ang =
                         shipState.yaw + 3.14159265f + followOrbit;
-                    camPos[0] = shipState.pos.x + std::sin(ang) * 30.0f;
-                    camPos[1] = shipState.pos.y + 12.0f;
-                    camPos[2] = shipState.pos.z + std::cos(ang) * 30.0f;
+                    camPos[0] = shipState.pos.x + std::sin(ang) * 24.0f;
+                    camPos[1] = shipState.pos.y + 8.5f;
+                    camPos[2] = shipState.pos.z + std::cos(ang) * 24.0f;
                     camLook[0] = shipState.pos.x;
-                    camLook[1] = shipState.pos.y + 3.5f;
+                    camLook[1] = shipState.pos.y + 1.5f;
                     camLook[2] = shipState.pos.z;
                     RenderPlatform_SetCameraPose(camPos, camLook);
                 }

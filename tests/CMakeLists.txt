@@ -262,6 +262,32 @@ add_test(NAME trailingchunk_test COMMAND trailingchunk_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
+# GLOBAL.RWS varlık envanteri — gömülü txd'ler ve harici resource referansları
+# (keşif/regresyon; çıktı ctest logundan incelenir).
+add_executable(globalassets_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/globalassets_test.cpp
+    ${CODE_DIR}/RwStudioStream.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(globalassets_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(globalassets_test PRIVATE librw::librw)
+add_test(NAME globalassets_test COMMAND globalassets_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS)
+
+# GLOBAL gömülü txd'yi PNG'lere döker — yükleme ekranı art'ının görsel
+# doğrulaması (çıktı <outdir>/tex_*.png; ctest regresyonu değil, araç).
+add_executable(globaldump_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/globaldump_test.cpp
+    ${CODE_DIR}/TxdDecode.cpp
+    ${CODE_DIR}/RwStudioStream.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(globaldump_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(globaldump_test PRIVATE librw::librw)
+add_test(NAME globaldump_test COMMAND globaldump_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/GLOBAL.RWS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Scratchpad/globaldump)
+
 # Faz 4.6s — entegrasyon stres: dünya load → clump → unload zinciri
 # (A→B→C→A→B→C turları; seviye geçişi + unload yolunun çökmemesi).
 add_executable(worldcycle_test

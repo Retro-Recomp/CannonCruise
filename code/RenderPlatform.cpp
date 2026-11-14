@@ -9,6 +9,10 @@
 // (ShowRaster frameBuffer nil ise atlanır — engine.cpp:360 null-safety).
 // ============================================================================
 
+#if defined(RW_D3D9) && !defined(WITH_D3D)
+// librw d3d başlıklarını d3d9.h ile birlikte aç (d3ddevice extern'i için).
+#define WITH_D3D 1
+#endif
 #include "RenderPlatform.h"
 #include "RenderPipeline.h"
 #include "TxdDecode.h"
@@ -172,20 +176,81 @@ void RenderPlatform_EndFrame(void) {
         return;
     }
     s_pCamera->endUpdate();
-    // Ekran görüntüsü isteği (swap öncesi) — GL3 framebuffer → PNG.
+    // Ekran görüntüsü isteği (swap öncesi) — GL3 framebuffer → PNG;
+    // D3D9'da backbuffer → systemmem surface → RGBA → PNG.
     if (s_screenshotPath[0] != '\0' && s_pCamera->frameBuffer != nullptr) {
 #ifdef RW_GL3
         // Ekran görüntüsü — GL3 framebuffer → PNG.
-        // D3D9 SINIRLAMASI (belgeli): librw d3d::rasterToImage()
-        // CAMERA raster'larda raster->pixels nil kalır (lock render-target
-        // için çalışmaz) ve nil'den okuma → 0xC0000005. D3D9 görüntüsü için
-        // ayrı yol gerekir (IDirect3DDevice9::GetRenderTargetData →
-        // systemmem surface → rw::Image) — bkz. Faz 4.6 iş kalemi.
         rw::Image *pShot = s_pCamera->frameBuffer->toImage();
         if (pShot != nullptr) {
             rw::writePNG(pShot, s_screenshotPath);
             pShot->destroy();
             std::printf("Screenshot: %s\n", s_screenshotPath);
+        }
+#elif defined(RW_D3D9)
+        // CAMERA raster lock'u render-target'ta çalışmaz; backbuffer'ı
+        // sistem belleğine kopyalayıp RGBA→PNG yazarız. EndScene sonrası,
+        // Present öncesi çağrılır (EndFrame'de s_pCamera->endUpdate() sonrası).
+        IDirect3DDevice9 *pDev = rw::d3d::d3ddevice;
+        if (pDev == nullptr) {
+            std::fprintf(stderr, "Screenshot: d3ddevice yok\n");
+        } else {
+            IDirect3DSurface9 *pBack = nullptr;
+            if (SUCCEEDED(pDev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO,
+                                              &pBack))) {
+                D3DSURFACE_DESC desc;
+                if (SUCCEEDED(pBack->GetDesc(&desc)) &&
+                    (desc.Format == D3DFMT_X8R8G8B8 ||
+                     desc.Format == D3DFMT_A8R8G8B8)) {
+                    IDirect3DSurface9 *pSys = nullptr;
+                    if (SUCCEEDED(pDev->CreateOffscreenPlainSurface(
+                            desc.Width, desc.Height, desc.Format,
+                            D3DPOOL_SYSTEMMEM, &pSys, nullptr))) {
+                        if (SUCCEEDED(pDev->GetRenderTargetData(pBack,
+                                                                pSys))) {
+                            D3DLOCKED_RECT lr;
+                            if (SUCCEEDED(pSys->LockRect(&lr, nullptr,
+                                                          D3DLOCK_READONLY))) {
+                                const int w = (int)desc.Width;
+                                const int h = (int)desc.Height;
+                                rw::Image *pImg =
+                                    rw::Image::create(w, h, 32);
+                                if (pImg != nullptr) {
+                                    pImg->allocate();
+                                    if (pImg->pixels != nullptr) {
+                                    for (int y = 0; y < h; ++y) {
+                                        const RwUInt8 *src =
+                                            (const RwUInt8 *)lr.pBits +
+                                            (size_t)y * (size_t)lr.Pitch;
+                                        RwUInt8 *dst =
+                                            pImg->pixels +
+                                            (size_t)y * (size_t)pImg->stride;
+                                        for (int x = 0; x < w; ++x) {
+                                            dst[x * 4 + 0] = src[x * 4 + 2];
+                                            dst[x * 4 + 1] = src[x * 4 + 1];
+                                            dst[x * 4 + 2] = src[x * 4 + 0];
+                                            dst[x * 4 + 3] = 255;
+                                        }
+                                    }
+                                    rw::writePNG(pImg, s_screenshotPath);
+                                    std::printf("Screenshot: %s\n",
+                                                s_screenshotPath);
+                                    }
+                                    pImg->destroy();
+                                }
+                                pSys->UnlockRect();
+                            }
+                        }
+                        pSys->Release();
+                    }
+                } else {
+                    std::fprintf(stderr,
+                                 "Screenshot: desteklenmeyen backbuffer "
+                                 "formatı 0x%x\n",
+                                 (unsigned)desc.Format);
+                }
+                pBack->Release();
+            }
         }
 #endif
         s_screenshotPath[0] = '\0'; // tek seferlik
