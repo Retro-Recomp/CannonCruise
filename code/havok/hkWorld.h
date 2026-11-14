@@ -3,7 +3,8 @@
 
 // ============================================================================
 // CannonCruise - Havok Physics 2.2.1 Shim (hkWorld.h)
-// Binary: "hkWorld" (CC.asm), FUN_0043a040 (CPhysicsWorld::Update → stepDeltaTime)
+// Binary contains the "hkWorld" type name. The CPhysicsWorld update wrapper's
+// downstream relationship to stepDeltaTime is not yet fully traced.
 // Havok 2.x naming: hkWorld (not hkpWorld — hkp prefix is Havok 4+).
 // ============================================================================
 
@@ -31,7 +32,7 @@ public:
 
     virtual const hkClass* getClass() const;
 
-    /// Advance simulation by deltaTime seconds (FUN_0043a040 calls this method)
+    /// Shim API: advance simulation by deltaTime seconds.
     void stepDeltaTime(hkReal deltaTime);
 
     /// Add / remove entity (rigid bodies are hkEntity subclasses)

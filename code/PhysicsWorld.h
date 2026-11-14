@@ -14,17 +14,16 @@
 
 /**
  * @class CPhysicsWorld
- * @brief Singleton wrapper around the Havok physics simulation (hkpWorld).
+ * @brief Singleton wrapper around the physics backend world.
  *
- * Current implementation only tracks opaque body/phantom pointers in vectors;
- * it does not create a Havok world, own SDK bodies or advance simulation.
- * RigidBodyExistsInWorld checks local membership, not SDK object validity.
- * Accessed via CSingleton<CPhysicsWorld>; SDK integration is pending.
+ * The current backend is Bullet; body/phantom pointers are delegated through
+ * the backend API. RigidBodyExistsInWorld checks local membership, not SDK
+ * object validity. Accessed via CSingleton<CPhysicsWorld>.
  */
 class CPhysicsWorld : public CSingleton<CPhysicsWorld>
 {
 public:
-    /** @brief Constructor – initialises the Havok world pointer to NULL. */
+    /** @brief Constructor – creates the configured physics backend world. */
     CPhysicsWorld();
 
     /**
@@ -48,15 +47,17 @@ public:
 
     /**
      * @brief Advances the physics simulation by deltaTime seconds.
-     * @param deltaTime  Time step (the original game uses a fixed 1/60 s).
+     * @param deltaTime  Time step supplied to the backend.
      *
-     * Currently a no-op; the proposed stepDeltaTime call is commented out.
+     * The port currently supplies 1/60 s from its runtime loop. The original
+     * world's update wrapper passes 1/30 to an internal routine; parity is
+     * unresolved.
      */
     void Update(RwReal deltaTime);
 
     /**
      * @brief Registers a rigid body with the physics world.
-     * @param pBody  Pointer to a Havok hkpRigidBody (cast to void*).
+     * @param pBody  Opaque body pointer created by the active backend.
      */
     void AddRigidBody(void* pBody);
 
@@ -78,7 +79,7 @@ public:
 
     /**
      * @brief Registers a phantom (trigger volume) with the physics world.
-     * @param pPhantom  Pointer to a Havok hkpPhantom (cast to void*).
+     * @param pPhantom  Opaque trigger pointer created by the active backend.
      */
     void AddPhantom(void* pPhantom);
 
@@ -91,7 +92,7 @@ public:
 private:
     std::vector<void*> m_avpRigidBodyVector; ///< All active rigid bodies.
     std::vector<void*> m_avpPhantomVector;   ///< All active phantom volumes.
-    void* m_pHavokWorld;                     ///< Opaque pointer to hkpWorld.
+    void* m_pHavokWorld;                     ///< Legacy name; opaque backend world.
 };
 
 /**
@@ -99,8 +100,9 @@ private:
  * @brief RWS behaviour that owns and drives the CPhysicsWorld singleton.
  *
  * Registered with the RenderWare Studio class factory so the engine can
- * instantiate it from level data. Currently every delivered message calls the
- * no-op Update with 1/60 s; physics-event filtering/subscription is not restored.
+ * instantiate it from level data. HandleEvents currently steps on every
+ * delivered message without checking its ID; the original message filter is
+ * not yet restored.
  */
 class CPhysicsWorldBehaviour : public RWS::CEventHandler
 {
@@ -113,8 +115,8 @@ public:
     virtual ~CPhysicsWorldBehaviour();
 
     /**
-     * @brief Steps the physics simulation on each iMsgPhysicsUpdate message.
-     * @param msg  Engine message (only iMsgPhysicsUpdate is processed).
+     * @brief Steps the physics simulation when an event is delivered.
+     * @param msg  Engine message (currently not filtered by ID).
      */
     virtual void HandleEvents(const RWS::CMsg& msg);
 

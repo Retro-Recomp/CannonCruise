@@ -82,11 +82,34 @@ echo.
 echo [6/6] DLL kopyalama...
 set DLL_SOURCE=%PROJECT_ROOT%\DLLs
 set DLL_DEST=%BUILD_DIR%\Release
-if exist "%DLL_SOURCE%" (
-    if not exist "%DLL_DEST%" mkdir "%DLL_DEST%"
-    copy "%DLL_SOURCE%\*" "%DLL_DEST%" /Y >nul
-    echo   OK: DLL'ler kopyalandi
+if not exist "%DLL_SOURCE%\binkw32.dll" (
+    echo HATA: Bink runtime bulunamadi: "%DLL_SOURCE%\binkw32.dll"
+    pause
+    exit /b 1
 )
+if not exist "%DLL_DEST%" mkdir "%DLL_DEST%"
+REM Remove previously copied Windows DLLs so incremental builds stay clean.
+for %%F in ("%DLL_SOURCE%\*.dll") do (
+    if /I not "%%~nxF"=="binkw32.dll" (
+        if exist "%DLL_DEST%\%%~nxF" (
+            del /q "%DLL_DEST%\%%~nxF"
+            if errorlevel 1 (
+                echo HATA: Eski runtime DLL'i kaldirilamadi: "%%~nxF"
+                pause
+                exit /b 1
+            )
+        )
+    )
+)
+copy "%DLL_SOURCE%\binkw32.dll" "%DLL_DEST%" /Y >nul
+if errorlevel 1 (
+    echo HATA: Bink runtime kopyalanamadi!
+    pause
+    exit /b 1
+)
+REM Copy only the app-owned Bink runtime. Bundling Windows DLLs from DLLs\
+REM shadows system Direct3D/runtime DLLs and breaks D3D9 adapter discovery.
+echo   OK: Yalnizca binkw32.dll kopyalandi; Windows DLL'leri sistemden yuklenir.
 
 echo.
 echo ======================================

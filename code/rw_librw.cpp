@@ -31,6 +31,7 @@
 // must come BEFORE rw.h. Otherwise the window field becomes
 // "please_include_windows_h" (uint32) and cannot be resolved as HWND.
 #include <windows.h>
+#include <d3d9.h>
 #endif
 
 #include "rwcore.h"
@@ -53,6 +54,49 @@ namespace
     double s_lastMouseX = 0.0;          // mouse delta calibration
     double s_lastMouseY = 0.0;
     RwBool s_mouseCalibrated = FALSE;
+#endif
+
+#ifdef RW_D3D9
+    RwBool HasD3D9HalAdapter() {
+        IDirect3D9 *pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+        if (pD3D == nullptr) {
+            std::fprintf(stderr,
+                         "CannonCruise: Direct3DCreate9 failed; D3D9 startup "
+                         "cannot continue\n");
+            return FALSE;
+        }
+
+        RwBool hasHalAdapter = FALSE;
+        const UINT adapterCount = pD3D->GetAdapterCount();
+        HMODULE d3dModule = GetModuleHandleA("d3d9.dll");
+        char d3dPath[MAX_PATH] = {};
+        if (d3dModule != nullptr) {
+            GetModuleFileNameA(d3dModule, d3dPath, MAX_PATH);
+        }
+        std::fprintf(stderr, "CannonCruise: D3D9 runtime '%s', adapters=%u\n",
+                     d3dPath, adapterCount);
+        for (UINT adapter = 0; adapter < adapterCount; ++adapter) {
+            D3DCAPS9 caps = {};
+            const HRESULT result =
+                pD3D->GetDeviceCaps(adapter, D3DDEVTYPE_HAL, &caps);
+            if (result == D3D_OK) {
+                hasHalAdapter = TRUE;
+                break;
+            }
+            std::fprintf(stderr,
+                         "CannonCruise: D3D9 adapter %u HAL caps failed "
+                         "(HRESULT=0x%08lX)\n",
+                         adapter, (unsigned long)result);
+        }
+        pD3D->Release();
+
+        if (hasHalAdapter != TRUE) {
+            std::fprintf(stderr,
+                         "CannonCruise: no Direct3D9 HAL adapter is available; "
+                         "D3D9 startup cannot continue\n");
+        }
+        return hasHalAdapter;
+    }
 #endif
 #ifdef RW_D3D9
     HWND s_hwnd = nullptr;     // D3D9 device target window
@@ -155,6 +199,11 @@ RwBool RwEngineOpen(void) {
     // NULL platform's Engine::open(nil) was leading to a NULL pointer
     // dereference (0xC0000005 ACCESS_VIOLATION) on this platform → the window is
     // created here and the HWND is given to Engine::open.
+    // librw's Engine::open currently ignores DEVICEOPEN's result, so reject
+    // unsupported adapters here before Engine::start can dereference them.
+    if (HasD3D9HalAdapter() != TRUE) {
+        return FALSE;
+    }
     if (s_hwnd == nullptr) {
         s_hwnd = CCD3DCreateWindow(640, 480, "CannonCruise");
         if (s_hwnd == nullptr) {

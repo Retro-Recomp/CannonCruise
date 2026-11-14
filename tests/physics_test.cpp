@@ -2,8 +2,8 @@
 // CannonCruise - Physics Backend Test (physics_test.cpp)
 // Verified binary parameters (CC_ida.asm):
 //   - gravity y = -9.8          (sub_55E6D0[+0x04], 0C11CCCCDh)
-//   - fixed step 1/60           (sub_4B8710 push 3C888889h; PhysicsWorld
-//                                HandleEvents contract)
+//   - test step 1/60            (port-side input; original world-update
+//                                cadence is still being traced)
 //   - friction 0.6 / restitution 0.3 (sub_55E6D0[+0x44]/[+0x58])
 // Free fall, ground-collision friction stop, trigger overlap,
 // impulse and shape ownership paths.
@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 static int g_checks = 0;
 static int g_failures = 0;
@@ -64,7 +65,7 @@ static void TestFreeFall() {
     CHECK(pBody != 0);
     PhysicsWorld_AddRigidBody(pWorld, pBody);
 
-    const float dt = 1.0f / 60.0f; // fixed step — binary 1/60
+    const float dt = 1.0f / 60.0f; // fixed step for this backend test
     for (int i = 0; i < 60; ++i) {
         PhysicsWorld_Step(pWorld, dt);
     }
@@ -252,6 +253,72 @@ static void TestTriMeshStatic() {
     PhysicsWorld_Destroy(pWorld);
 }
 
+static void TestInvalidInputs() {
+    const RwReal validPos[3] = {0.0f, 0.0f, 0.0f};
+    const RwReal validHalf[3] = {1.0f, 1.0f, 1.0f};
+    const RwReal zeroHalf[3] = {0.0f, 1.0f, 1.0f};
+    CHECK(PhysicsShape_CreateBox(0) == 0);
+    CHECK(PhysicsShape_CreateBox(zeroHalf) == 0);
+    CHECK(PhysicsShape_CreateSphere(
+              std::numeric_limits<RwReal>::quiet_NaN()) == 0);
+    CHECK(PhysicsTrigger_CreateBox(0, validPos) == 0);
+    CHECK(PhysicsTrigger_CreateBox(validHalf, 0) == 0);
+    CHECK(PhysicsTrigger_CreateBox(zeroHalf, validPos) == 0);
+
+    static const RwReal vertices[9] = {
+        0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+    };
+    CHECK(PhysicsShape_CreateConvexHull(
+              vertices, 2, 3 * static_cast<RwInt32>(sizeof(RwReal))) == 0);
+    static const RwInt32 badIndices[3] = {0, 1, 3};
+    static const RwInt32 incompleteIndices[4] = {0, 1, 2, 0};
+    PhysicsTriMeshDesc mesh = {};
+    mesh.pVertices = vertices;
+    mesh.vertexCount = 3;
+    mesh.vertexStride = 3 * static_cast<RwInt32>(sizeof(RwReal));
+    mesh.pIndices = badIndices;
+    mesh.indexCount = 3;
+    mesh.pos[0] = mesh.pos[1] = mesh.pos[2] = 0.0f;
+    CHECK(PhysicsBody_CreateTriMesh(&mesh) == 0);
+    CHECK(PhysicsShape_CreateTriMesh(&mesh) == 0);
+
+    mesh.pIndices = incompleteIndices;
+    mesh.indexCount = 4;
+    CHECK(PhysicsBody_CreateTriMesh(&mesh) == 0);
+    mesh.indexCount = 3;
+    mesh.vertexStride = static_cast<RwInt32>(sizeof(RwReal));
+    CHECK(PhysicsShape_CreateTriMesh(&mesh) == 0);
+    mesh.vertexStride = 3 * static_cast<RwInt32>(sizeof(RwReal)) + 1;
+    CHECK(PhysicsShape_CreateTriMesh(&mesh) == 0);
+
+    RwReal vx = 11.0f;
+    RwReal vy = 12.0f;
+    RwReal vz = 13.0f;
+    PhysicsBody_GetLinearVelocity(0, &vx, &vy, &vz);
+    CHECK(vx == 11.0f && vy == 12.0f && vz == 13.0f);
+
+    PhysicsBodyBoxDesc box = {};
+    box.halfExtents[0] = box.halfExtents[1] = box.halfExtents[2] = 0.5f;
+    box.mass = 0.0f;
+    box.pos[0] = box.pos[1] = box.pos[2] = 0.0f;
+    box.friction = -1.0f;
+    box.restitution = -1.0f;
+    void *pBody = PhysicsBody_CreateBox(&box);
+    CHECK(pBody != 0);
+    RwReal rotation[9] = {};
+    PhysicsBody_GetRotation(pBody, rotation);
+    CHECK(Near(rotation[0], 1.0f, 1e-6f));
+    CHECK(Near(rotation[4], 1.0f, 1e-6f));
+    CHECK(Near(rotation[8], 1.0f, 1e-6f));
+    CHECK(Near(rotation[1], 0.0f, 1e-6f));
+    CHECK(Near(rotation[3], 0.0f, 1e-6f));
+    CHECK(Near(rotation[6], 0.0f, 1e-6f));
+    CHECK(Near(rotation[7], 0.0f, 1e-6f));
+    CHECK(Near(rotation[2], 0.0f, 1e-6f));
+    CHECK(Near(rotation[5], 0.0f, 1e-6f));
+    PhysicsBody_Destroy(pBody);
+}
+
 int main() {
     TestGravityDefault();
     TestFreeFall();
@@ -259,6 +326,7 @@ int main() {
     TestImpulse();
     TestTriggerOverlap();
     TestTriMeshStatic();
+    TestInvalidInputs();
 
     std::printf("physics_test: %d checks, %d failures\n", g_checks,
                 g_failures);

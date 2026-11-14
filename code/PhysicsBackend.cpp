@@ -25,7 +25,10 @@
 #include <LinearMath/btDefaultMotionState.h>
 #include <LinearMath/btTransform.h>
 
+#include <cmath>
+#include <cstddef>
 #include <cstring>
+#include <limits>
 
 // The opaque type from the header — must be defined at global scope (not in an anon ns)
 struct PhysicsWorldHandle {
@@ -48,6 +51,92 @@ namespace
     const int kSolverIterations = 20;   // [+0x80]
     // AABB ±500 ([+0x20..38]) — Bullet uses a large broadphase; in-game
     // clamp not yet applied (documented deviation)
+
+    bool IsFinite3(const RwReal *pValues) {
+        return pValues && std::isfinite(pValues[0]) &&
+               std::isfinite(pValues[1]) && std::isfinite(pValues[2]);
+    }
+
+    bool IsValidHalfExtents(const RwReal *pHalfExtents) {
+        return IsFinite3(pHalfExtents) && pHalfExtents[0] > 0.0f &&
+               pHalfExtents[1] > 0.0f && pHalfExtents[2] > 0.0f;
+    }
+
+    bool IsValidRotation(const RwReal *pRotation) {
+        if (!pRotation) {
+            return true;
+        }
+        for (int i = 0; i < 9; ++i) {
+            if (!std::isfinite(pRotation[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool IsZeroRotation(const RwReal *pRotation) {
+        if (!pRotation) {
+            return true;
+        }
+        for (int i = 0; i < 9; ++i) {
+            if (pRotation[i] != 0.0f) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool IsValidVertexBuffer(const RwReal *pVertices, RwInt32 vertexCount,
+                             RwInt32 vertexStride) {
+        if (!pVertices || vertexCount < 3 ||
+            vertexStride < 3 * static_cast<RwInt32>(sizeof(RwReal)) ||
+            vertexStride % static_cast<RwInt32>(sizeof(RwReal)) != 0) {
+            return false;
+        }
+
+        const std::size_t stride = static_cast<std::size_t>(vertexStride);
+        const std::size_t vertexOffset =
+            static_cast<std::size_t>(vertexCount - 1);
+        const std::size_t maxOffset =
+            static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) -
+            3 * sizeof(RwReal);
+        if (vertexOffset > maxOffset / stride) {
+            return false;
+        }
+
+        const char *pBase = reinterpret_cast<const char *>(pVertices);
+        for (RwInt32 i = 0; i < vertexCount; ++i) {
+            const std::size_t offset = static_cast<std::size_t>(i) * stride;
+            const RwReal *pVertex =
+                reinterpret_cast<const RwReal *>(pBase + offset);
+            if (!std::isfinite(pVertex[0]) || !std::isfinite(pVertex[1]) ||
+                !std::isfinite(pVertex[2])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool IsValidTriMeshDesc(const PhysicsTriMeshDesc *pDesc) {
+        if (!pDesc || !pDesc->pIndices || pDesc->indexCount < 3 ||
+            pDesc->indexCount % 3 != 0 ||
+            !IsValidVertexBuffer(pDesc->pVertices, pDesc->vertexCount,
+                                 pDesc->vertexStride) ||
+            !IsFinite3(pDesc->pos)) {
+            return false;
+        }
+        for (RwInt32 i = 0; i < pDesc->indexCount; ++i) {
+            if (pDesc->pIndices[i] < 0 ||
+                pDesc->pIndices[i] >= pDesc->vertexCount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    const RwReal *RotationOrIdentity(const RwReal *pRotation) {
+        return IsZeroRotation(pRotation) ? 0 : pRotation;
+    }
 
     // static mesh bodies: shape + triangle mesh live together
     struct MeshBundle {
@@ -109,12 +198,14 @@ namespace
             const RwInt32 i0 = pDesc->pIndices[i];
             const RwInt32 i1 = pDesc->pIndices[i + 1];
             const RwInt32 i2 = pDesc->pIndices[i + 2];
-            const RwReal *v0 =
-                reinterpret_cast<const RwReal *>(pBase + i0 * pDesc->vertexStride);
-            const RwReal *v1 =
-                reinterpret_cast<const RwReal *>(pBase + i1 * pDesc->vertexStride);
-            const RwReal *v2 =
-                reinterpret_cast<const RwReal *>(pBase + i2 * pDesc->vertexStride);
+            const std::size_t stride =
+                static_cast<std::size_t>(pDesc->vertexStride);
+            const RwReal *v0 = reinterpret_cast<const RwReal *>(
+                pBase + static_cast<std::size_t>(i0) * stride);
+            const RwReal *v1 = reinterpret_cast<const RwReal *>(
+                pBase + static_cast<std::size_t>(i1) * stride);
+            const RwReal *v2 = reinterpret_cast<const RwReal *>(
+                pBase + static_cast<std::size_t>(i2) * stride);
             pMesh->addTriangle(btVector3(v0[0], v0[1], v0[2]),
                                btVector3(v1[0], v1[1], v1[2]),
                                btVector3(v2[0], v2[1], v2[2]));
@@ -255,8 +346,8 @@ void PhysicsWorld_Step(PhysicsWorldHandle *pWorld, RwReal deltaTime) {
     if (!pWorld || !pWorld->pWorld) {
         return;
     }
-    // fixed step: maxSubSteps=1 + fixedTimeStep=deltaTime → advances a full
-    // deltaTime per call (mimics hkpWorld::stepDeltaTime)
+    // Advance one Bullet step for the supplied dt. This is the intended
+    // hkpWorld::stepDeltaTime mapping; original cadence equivalence is unverified.
     pWorld->pWorld->stepSimulation(deltaTime, 1, deltaTime);
 }
 
@@ -282,12 +373,17 @@ void PhysicsWorld_GetGravity(const PhysicsWorldHandle *pWorld, RwReal *pX,
 // bodies
 // ---------------------------------------------------------------------------
 void *PhysicsBody_CreateBox(const PhysicsBodyBoxDesc *pDesc) {
-    if (!pDesc) {
+    if (!pDesc || !IsValidHalfExtents(pDesc->halfExtents) ||
+        !std::isfinite(pDesc->mass) || pDesc->mass < 0.0f ||
+        !IsFinite3(pDesc->pos) || !IsValidRotation(pDesc->rot3x3) ||
+        !std::isfinite(pDesc->friction) ||
+        !std::isfinite(pDesc->restitution)) {
         return 0;
     }
     btBoxShape *pShape = new btBoxShape(btVector3(
         pDesc->halfExtents[0], pDesc->halfExtents[1], pDesc->halfExtents[2]));
-    btTransform t = MakeTransform(pDesc->pos, pDesc->rot3x3);
+    btTransform t =
+        MakeTransform(pDesc->pos, RotationOrIdentity(pDesc->rot3x3));
     const btScalar friction =
         (pDesc->friction >= 0.0f) ? pDesc->friction : kFriction;
     const btScalar restitution =
@@ -296,8 +392,7 @@ void *PhysicsBody_CreateBox(const PhysicsBodyBoxDesc *pDesc) {
 }
 
 void *PhysicsBody_CreateTriMesh(const PhysicsTriMeshDesc *pDesc) {
-    if (!pDesc || !pDesc->pVertices || !pDesc->pIndices ||
-        pDesc->indexCount < 3) {
+    if (!IsValidTriMeshDesc(pDesc)) {
         return 0;
     }
     MeshBundle *pBundle = new MeshBundle();
@@ -320,7 +415,7 @@ void *PhysicsBody_CreateTriMesh(const PhysicsTriMeshDesc *pDesc) {
 // standalone collision shapes — the CCollisionGeometry counterpart
 // ---------------------------------------------------------------------------
 void *PhysicsShape_CreateBox(const RwReal halfExtents[3]) {
-    if (!halfExtents) {
+    if (!IsValidHalfExtents(halfExtents)) {
         return 0;
     }
     ShapeBundle *pBundle = new ShapeBundle();
@@ -332,7 +427,7 @@ void *PhysicsShape_CreateBox(const RwReal halfExtents[3]) {
 }
 
 void *PhysicsShape_CreateSphere(RwReal radius) {
-    if (radius <= 0.0f) {
+    if (!std::isfinite(radius) || radius <= 0.0f) {
         return 0;
     }
     ShapeBundle *pBundle = new ShapeBundle();
@@ -344,7 +439,7 @@ void *PhysicsShape_CreateSphere(RwReal radius) {
 
 void *PhysicsShape_CreateConvexHull(const RwReal *pVertices,
                                     RwInt32 vertexCount, RwInt32 vertexStride) {
-    if (!pVertices || vertexCount < 3 || vertexStride < 3 * (int)sizeof(RwReal)) {
+    if (!IsValidVertexBuffer(pVertices, vertexCount, vertexStride)) {
         return 0;
     }
     ShapeBundle *pBundle = new ShapeBundle();
@@ -352,8 +447,10 @@ void *PhysicsShape_CreateConvexHull(const RwReal *pVertices,
     btConvexHullShape *pShape = new btConvexHullShape();
     const char *pBase = reinterpret_cast<const char *>(pVertices);
     for (RwInt32 i = 0; i < vertexCount; ++i) {
-        const RwReal *v =
-            reinterpret_cast<const RwReal *>(pBase + i * vertexStride);
+        const std::size_t offset =
+            static_cast<std::size_t>(i) *
+            static_cast<std::size_t>(vertexStride);
+        const RwReal *v = reinterpret_cast<const RwReal *>(pBase + offset);
         pShape->addPoint(btVector3(v[0], v[1], v[2]), /*recalcLocalAabb=*/false);
     }
     pShape->recalcLocalAabb();
@@ -363,8 +460,7 @@ void *PhysicsShape_CreateConvexHull(const RwReal *pVertices,
 }
 
 void *PhysicsShape_CreateTriMesh(const PhysicsTriMeshDesc *pDesc) {
-    if (!pDesc || !pDesc->pVertices || !pDesc->pIndices ||
-        pDesc->indexCount < 3) {
+    if (!IsValidTriMeshDesc(pDesc)) {
         return 0;
     }
     ShapeBundle *pBundle = new ShapeBundle();
@@ -399,7 +495,8 @@ void PhysicsShape_Destroy(void *pShape) {
 void *PhysicsBody_CreateWithShape(void *pShape, RwReal mass,
                                   const RwReal pos[3],
                                   const RwReal *pRot3x3ColMajor) {
-    if (!pShape || !pos) {
+    if (!pShape || !IsFinite3(pos) || !std::isfinite(mass) || mass < 0.0f ||
+        !IsValidRotation(pRot3x3ColMajor)) {
         return 0;
     }
     btCollisionShape *pBtShape;
@@ -409,7 +506,7 @@ void *PhysicsBody_CreateWithShape(void *pShape, RwReal mass,
     } else {
         pBtShape = static_cast<btCollisionShape *>(pShape);
     }
-    btTransform t = MakeTransform(pos, pRot3x3ColMajor);
+    btTransform t = MakeTransform(pos, RotationOrIdentity(pRot3x3ColMajor));
     btRigidBody *pBody =
         MakeBody(mass, t, pBtShape, kFriction, kRestitution);
     // userIndex=1 → shape came from outside; Destroy does not take ownership
@@ -446,6 +543,9 @@ void PhysicsBody_Destroy(void *pBody) {
 
 void *PhysicsTrigger_CreateBox(const RwReal halfExtents[3],
                                const RwReal pos[3]) {
+    if (!IsValidHalfExtents(halfExtents) || !IsFinite3(pos)) {
+        return 0;
+    }
     btBoxShape *pShape = new btBoxShape(btVector3(
         halfExtents[0], halfExtents[1], halfExtents[2]));
     btGhostObject *pGhost = new btGhostObject();
@@ -573,6 +673,9 @@ void PhysicsBody_ApplyCentralImpulse(void *pBody, RwReal x, RwReal y,
 
 void PhysicsBody_GetLinearVelocity(const void *pBody, RwReal *pX, RwReal *pY,
                                    RwReal *pZ) {
+    if (!pBody) {
+        return;
+    }
     const btRigidBody *pRb = AsBodyConst(pBody);
     const btVector3 v = pRb->getLinearVelocity();
     if (pX) *pX = (RwReal)v.x();

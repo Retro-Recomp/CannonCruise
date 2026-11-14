@@ -593,7 +593,8 @@ const hkClass* hkWorld::getClass() const
 
 void hkWorld::stepDeltaTime(hkReal deltaTime)
 {
-    // FUN_0043a040 (CPhysicsWorld::Update) → hkpWorld::stepDeltaTime
+    // Bullet-backed shim step; equivalence to the original update wrapper is
+    // not yet established (see docs/HAVOK_TO_BULLET.md).
     PhysicsWorld_Step(m_pPhysicsWorld, deltaTime);
 }
 

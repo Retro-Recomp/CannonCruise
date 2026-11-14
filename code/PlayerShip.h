@@ -2,13 +2,9 @@
 // CannonCruise - Placeholder Player Boat (PlayerShip.h)
 // Phase 4.6s (ship follow) -- 2026-10-17.
 //
-// Actual player ship: CShipPlayer (ShipPlayer.cpp, binary
-// sub_4AE6C0; 0x488 bytes) is registered with the factory but its 3D model ({GUID}.dff)
-// is not available to us -- like the world mesh, the external build-output asset is missing.
-// This module provides a LOW-POLYGON placeholder ship (hull + mast) and a
-// simple kinematic motion model so the game loop can be verified.
-// The physics body (Bullet) will be connected in a later phase
-// (CPhysicsEntity::SetPosition/GetPosition are ready).
+// The original CShipPlayer model ({GUID}.dff) is unavailable. This module
+// provides a clean-room low-poly longboat with layered planks, rigging, oars,
+// a deck cannon and crew figure; its kinematic Bullet body mirrors movement.
 //
 // Motion model (experimental, not binary-inspired):
 //   - throttle: W=+1 (ileri), S=-0.5 (geri)
@@ -31,6 +27,11 @@ struct PlayerShipState {
 /// Spawns the ship into the scene. If pPos is null, (0,0,0) is used.
 void PlayerShip_Spawn(const RwV3d *pPos, RwReal yaw);
 
+/// Sets the outer XZ water-area bounds; the hull is kept inside with clearance.
+/// Returns FALSE and disables map bounds when the extents are invalid or too small.
+RwBool PlayerShip_SetMapBounds(RwReal minX, RwReal maxX,
+                               RwReal minZ, RwReal maxZ);
+
 /// Removes the kinematic rigid body created at spawn from the PhysicsWorld
 /// and frees it (to avoid Bullet's empty-vector assertion in the dtor
 /// when the application shuts down).
@@ -43,6 +44,6 @@ void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
 /// Active scene state (FALSE if Spawn was not called).
 RwBool PlayerShip_GetState(PlayerShipState *pOut);
 
-/// Placeholder hull rendering -- rw::im3d TRILIST (real GPU rendering in GL3 builds;
-/// in NULL builds index generation is verified, drawing is skipped).
+/// Low-poly longboat rendering -- rw::im3d TRILIST (real GPU rendering in GL3
+/// builds; in NULL builds drawing is skipped).
 void PlayerShip_Render();

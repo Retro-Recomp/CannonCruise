@@ -5,7 +5,7 @@
 //
 // Binary functions:
 //   FUN_0043b9a0 — CPhysicsWorldBehaviour constructor & registration
-//   FUN_0043a040 — CPhysicsWorld::Update
+//   FUN_0043a1c0 — CPhysicsWorld::Update (Ghidra; IDA sub_43A1C0)
 //   FUN_0043aa20 — CPhysicsWorld::AddRigidBody
 //   FUN_0043ae30 — CPhysicsWorld::RemoveRigidBody
 // ============================================================================
@@ -61,9 +61,9 @@ CPhysicsWorld::~CPhysicsWorld()
 }
 
 // ---------------------------------------------------------------------------
-// Update – steps the physics simulation forward by deltaTime.
-// In the original binary (FUN_0043a040) this calls hkpWorld::stepDeltaTime;
-// backend: btDiscreteDynamicsWorld::stepSimulation(dt, 1, dt) — fixed step.
+// Update – steps the Bullet backend by the supplied deltaTime.
+// The original routine passes 1/30 to sub_555EF0; its downstream cadence and
+// relationship to hkpWorld::stepDeltaTime still need to be verified.
 // ---------------------------------------------------------------------------
 void CPhysicsWorld::Update(RwReal deltaTime)
 {
@@ -207,8 +207,8 @@ CPhysicsWorldBehaviour::~CPhysicsWorldBehaviour()
 }
 
 // ---------------------------------------------------------------------------
-// HandleEvents – the only message we care about is iMsgPhysicsUpdate.
-// The fixed timestep 1/60 s matches the original game's 60 Hz physics rate.
+// HandleEvents currently steps on every delivered message. The original handler
+// filters by message ID; restore that contract after verifying the message ID.
 // ---------------------------------------------------------------------------
 void CPhysicsWorldBehaviour::HandleEvents(const RWS::CMsg& msg)
 {

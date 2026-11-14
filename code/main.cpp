@@ -331,10 +331,21 @@ int main(int argc, char **argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     std::printf("CannonCruise: link verification OK\n");
 
-    // Engine boot -- test pattern (Init/Open/Start; teardown Stop/Close/Term).
-    if (RwEngineInit(0, 0, 0) != TRUE || RwEngineOpen() != TRUE ||
-        RwEngineStart() != TRUE) {
+    // Engine boot -- keep the failing stage visible and avoid continuing after
+    // a render-device open failure.
+    if (RwEngineInit(0, 0, 0) != TRUE) {
         std::fprintf(stderr, "CannonCruise: engine init failed\n");
+        return 2;
+    }
+    if (RwEngineOpen() != TRUE) {
+        std::fprintf(stderr, "CannonCruise: engine open failed\n");
+        RwEngineTerm();
+        return 2;
+    }
+    if (RwEngineStart() != TRUE) {
+        std::fprintf(stderr, "CannonCruise: engine start failed\n");
+        RwEngineClose();
+        RwEngineTerm();
         return 2;
     }
 
@@ -581,12 +592,14 @@ int main(int argc, char **argv) {
             }
             if (bFmvPlayed == FALSE) {
 
-            static RwBool s_prevEsc = FALSE;
-            // Phase entry: consume held Esc (skip leakage from previous phase)
+            static RwBool s_prevSkip = FALSE;
+            // Consume a key already held on phase entry to avoid skipping
+            // before the opening card is visible.
             RwPlatformPollEvents();
-            s_prevEsc = (RwBool)(RwPlatformKeyDown(RW_KEY_ESCAPE) ||
-                                 RwPlatformKeyDown('Q') ||
-                                 RwPlatformKeyDown(' '));
+            s_prevSkip = (RwBool)(RwPlatformKeyDown(RW_KEY_ENTER) ||
+                                  RwPlatformKeyDown(RW_KEY_ESCAPE) ||
+                                  RwPlatformKeyDown('Q') ||
+                                  RwPlatformKeyDown(' '));
             for (int fr = 0;; ++fr) {
                 if (introCap >= 0 && fr >= introCap) {
                     break;
@@ -596,37 +609,63 @@ int main(int argc, char **argv) {
                     bQuitApp = TRUE;
                     break;
                 }
-                const RwBool esc = RwPlatformKeyDown(RW_KEY_ESCAPE) ||
-                                   RwPlatformKeyDown('Q') ||
-                                   RwPlatformKeyDown(' ');
-                if (esc == TRUE && s_prevEsc == FALSE) {
-                    s_prevEsc = esc;
+                const RwBool skip = RwPlatformKeyDown(RW_KEY_ENTER) ||
+                                    RwPlatformKeyDown(RW_KEY_ESCAPE) ||
+                                    RwPlatformKeyDown('Q') ||
+                                    RwPlatformKeyDown(' ');
+                if (skip == TRUE && s_prevSkip == FALSE) {
+                    s_prevSkip = skip;
                     break;
                 }
-                s_prevEsc = esc;
+                s_prevSkip = skip;
                 if (RenderPlatform_BeginFrame(nullptr) != TRUE) {
                     break;
                 }
                 if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
                     RenderPlatform_RenderScene();
                 }
-                // intro card -- Im2D overlay (ZTEST off; 3D scene depth written)
+                // Branded fallback for an unavailable FMV: keep the opening
+                // cinematic rather than exposing asset diagnostics.
                 RenderPlatform_BeginOverlay2D();
-                char l1[64], l2[64], l3[96];
-                std::snprintf(l1, sizeof(l1), "CANNONCRUISE");
-                std::snprintf(l2, sizeof(l2), "FMV SCENE %u", (unsigned)ii + 1);
-                std::snprintf(l3, sizeof(l3),
-                              "FMV SKIPPED (external {GUID} assets missing)");
-                ShowText_DrawBitmapText(l1, 40.0f, 200.0f, 5, 220, 230, 255,
-                                        255);
-                ShowText_DrawBitmapText(l2, 40.0f, 280.0f, 4, 200, 210, 230,
-                                        255);
-                ShowText_DrawBitmapText(fmv.behaviour, 40.0f, 350.0f, 3, 180,
-                                        190, 200, 255);
-                ShowText_DrawBitmapText(fmv.target, 40.0f, 390.0f, 3, 180, 190,
-                                        200, 255);
-                ShowText_DrawBitmapText(l3, 40.0f, 660.0f, 2, 140, 150, 160,
-                                        255);
+                RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, (RwReal)kScreenW,
+                                               (RwReal)kScreenH, 0xFF07151Du);
+                RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, (RwReal)kScreenW,
+                                               8.0f, 0xFF18333Au);
+                RenderPlatform_DrawOverlayQuad(
+                    0.0f, (RwReal)kScreenH - 8.0f, (RwReal)kScreenW, 8.0f,
+                    0xFF18333Au);
+                RenderPlatform_DrawOverlayQuad(150.0f, 122.0f, 980.0f, 2.0f,
+                                               0xFFB88A49u);
+                RenderPlatform_DrawOverlayQuad(150.0f, 596.0f, 980.0f, 2.0f,
+                                               0xFFB88A49u);
+                RenderPlatform_DrawOverlayQuad(150.0f, 122.0f, 2.0f, 476.0f,
+                                               0xFFB88A49u);
+                RenderPlatform_DrawOverlayQuad(1128.0f, 122.0f, 2.0f, 476.0f,
+                                               0xFFB88A49u);
+
+                const char *title = "CANNONCRUISE";
+                const RwReal titleScale = 7.0f;
+                const RwReal titleWidth =
+                    (RwReal)std::strlen(title) * 6.0f * titleScale;
+                ShowText_DrawBitmapText(title, (kScreenW - titleWidth) * 0.5f,
+                                        254.0f, (RwInt32)titleScale, 235, 211,
+                                        158, 255);
+                const char *subtitle = "A VOYAGE THROUGH THE NORTHERN SEAS";
+                const RwReal subtitleScale = 3.0f;
+                const RwReal subtitleWidth =
+                    (RwReal)std::strlen(subtitle) * 6.0f * subtitleScale;
+                ShowText_DrawBitmapText(
+                    subtitle, (kScreenW - subtitleWidth) * 0.5f, 338.0f,
+                    (RwInt32)subtitleScale, 177, 194, 193, 255);
+                RenderPlatform_DrawOverlayQuad(430.0f, 394.0f, 420.0f, 1.0f,
+                                               0xFF42605Du);
+                const char *prompt = "ENTER / SPACE / ESC TO CONTINUE";
+                const RwReal promptScale = 2.0f;
+                const RwReal promptWidth =
+                    (RwReal)std::strlen(prompt) * 6.0f * promptScale;
+                ShowText_DrawBitmapText(
+                    prompt, (kScreenW - promptWidth) * 0.5f, 524.0f,
+                    (RwInt32)promptScale, 204, 190, 150, 255);
                 RenderPlatform_EndOverlay2D();
                 if (pShotPath != nullptr && fr == 1) {
                     RenderPlatform_RequestScreenshot(pShotPath);
@@ -1127,6 +1166,8 @@ int main(int argc, char **argv) {
     RwReal camYaw = 0.0f;   // rad -- mouse/arrow key pitch/yaw
     RwReal camPitch = 0.0f;
     RwReal camSpan = 400.0f; // world scale -- freecam speed base
+    const RwReal kFollowCameraDistance = 36.0f;
+    const RwReal kFollowCameraHeight = 18.0f;
     if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
         const char *bgmTrack = "BeaverM";
         if (pWorldPath != nullptr) {
@@ -1265,6 +1306,13 @@ int main(int argc, char **argv) {
                     s_camBoundMin[2] = cz - half;
                     s_camBoundMax[2] = cz + half;
                     s_camBoundsSet = TRUE;
+                    if (PlayerShip_SetMapBounds(
+                            s_camBoundMin[0], s_camBoundMax[0],
+                            s_camBoundMin[2], s_camBoundMax[2]) != TRUE) {
+                        std::fprintf(stderr,
+                                     "CannonCruise: invalid ocean bounds for "
+                                     "player ship\n");
+                    }
                 }
             }
         }
@@ -1292,7 +1340,27 @@ int main(int argc, char **argv) {
                     }
                 }
                 PlayerShip_Spawn(&shipPos, shipYaw);
+                PlayerShipState spawnedShip;
+                if (PlayerShip_GetState(&spawnedShip) == TRUE) {
+                    shipPos = spawnedShip.pos;
+                    shipYaw = spawnedShip.yaw;
+                }
                 RWS::HUD_Initialize();
+                if (camMode == nullptr || std::strcmp(camMode, "FOLLOW") == 0) {
+                    const RwReal ang = shipYaw + 3.14159265f;
+                    camPos[0] =
+                        shipPos.x + std::sin(ang) * kFollowCameraDistance;
+                    camPos[1] = shipPos.y + kFollowCameraHeight;
+                    camPos[2] =
+                        shipPos.z + std::cos(ang) * kFollowCameraDistance;
+                    camLook[0] =
+                        shipPos.x + std::sin(shipYaw) * 6.0f;
+                    camLook[1] = shipPos.y + 1.5f;
+                    camLook[2] =
+                        shipPos.z + std::cos(shipYaw) * 6.0f;
+                    ClampCameraToMap(camPos);
+                    RenderPlatform_SetCameraPose(camPos, camLook);
+                }
                 std::printf("CannonCruise: player ship placeholder spawn "
                             "(%.1f, %.1f, %.1f) yaw=%.2f\n",
                             (double)shipPos.x, (double)shipPos.y,
@@ -1413,8 +1481,8 @@ int main(int argc, char **argv) {
             }
             const RwBool bSimActive =
                 (s_gameState == GAMESTATE_PAUSE) ? FALSE : TRUE;
-            // Physics step: real dynamics (buoyancy/cannonball + ship)
-            // run in Bullet. 1/60 s per frame (running frame rate 60Hz).
+            // The port advances Bullet by a fixed 1/60 s per active frame.
+            // This does not enforce 60 FPS or establish original cadence parity.
             {
                 CPhysicsWorld *pWorld = CPhysicsWorld::GetSingletonPtr();
                 if (pWorld != nullptr && bSimActive == TRUE) {
@@ -1562,9 +1630,11 @@ int main(int argc, char **argv) {
                         shipState.yaw + 3.14159265f + followOrbit;
                     // Camera above-behind, tied rigidly to the ship: looking
                     // down over the stern at the deck and bow (reference view).
-                    camPos[0] = shipState.pos.x + std::sin(ang) * 20.0f;
-                    camPos[1] = shipState.pos.y + 12.0f;
-                    camPos[2] = shipState.pos.z + std::cos(ang) * 20.0f;
+                    camPos[0] =
+                        shipState.pos.x + std::sin(ang) * kFollowCameraDistance;
+                    camPos[1] = shipState.pos.y + kFollowCameraHeight;
+                    camPos[2] =
+                        shipState.pos.z + std::cos(ang) * kFollowCameraDistance;
                     ClampCameraToMap(camPos);
                     // aim at the deck, slightly ahead (over the bow)
                     camLook[0] = shipState.pos.x + std::sin(shipState.yaw) * 6.0f;
@@ -1662,19 +1732,18 @@ int main(int argc, char **argv) {
                     RenderPlatform_SetCameraPose(camPos, camLook);
                 }
             }
-            PlayerShip_Render(); // placeholder hull (GL3: im3d; NULL: no-op)
             if (pOcean != nullptr) {
                 if (bSimActive == TRUE) {
                     pOcean->Update((RwReal)frame * (1.0f / 60.0f));
                 }
                 pOcean->Render(); // between Begin/End
             }
+            // Keep the hull above the water mesh in the depth buffer.
+            PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
-                    // Player HP: 150/150 if alive, drop on tower hits later
-                    RWS::HUD_SetHealth(150.0f / 150.0f);
                     RWS::HUD_SetShipHeading(ss.yaw);
                     for (size_t ti = 0; ti < s_towers.size(); ++ti) {
                         CTowerCatapult *pT = s_towers[ti];

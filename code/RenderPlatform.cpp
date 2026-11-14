@@ -62,6 +62,11 @@ void ApplyCameraToPipeline(void) {
 } // namespace
 
 RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
+    if (width <= 0 || height <= 0) {
+        std::fprintf(stderr, "RenderPlatform: invalid raster size %d x %d\n",
+                     width, height);
+        return FALSE;
+    }
     if (RwEngineIsRunning() != TRUE) {
         std::fprintf(stderr, "RenderPlatform: engine not running\n");
         return FALSE;
@@ -147,8 +152,19 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height) {
     return TRUE;
 }
 
+static rw::TexDictionary *s_worldDict = nullptr;
+
 RwBool RenderPlatform_IsInitialized(void) {
     return (s_pWorld != nullptr && s_pCamera != nullptr) ? TRUE : FALSE;
+}
+
+RwBool RenderPlatform_GetScreenSize(RwInt32 *width, RwInt32 *height) {
+    if (width == nullptr || height == nullptr) {
+        return FALSE;
+    }
+    *width = s_width;
+    *height = s_height;
+    return (s_width > 0 && s_height > 0) ? TRUE : FALSE;
 }
 
 void *RenderPlatform_GetWorld(void) { return s_pWorld; }
@@ -497,8 +513,8 @@ void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
 }
 
 // ---------------------------------------------------------------------------
-// Embedded menu textures (MAINMENU.RWS TexDictionary -> librw Texture).
-// TxdDecode pixels already come out RGBA (TxdDecode.h) -- no swizzle.
+// Named UI/procedural textures (RGBA -> librw Texture). The level dictionary
+// is managed separately so world material lookup keeps its own lifetime.
 // ---------------------------------------------------------------------------
 static std::vector<rw::Texture *> s_menuTextures;
 
@@ -637,12 +653,19 @@ RwBool RenderPlatform_UploadTexture(const char *name, RwInt32 width,
 
 RwBool RenderPlatform_HasTexture(const char *name)
 {
-    return (FindMenuTexture(name) != nullptr) ? TRUE : FALSE;
+    return (RenderPlatform_GetTexture(name) != nullptr) ? TRUE : FALSE;
 }
 
 void *RenderPlatform_GetTexture(const char *name)
 {
-    return (void *)FindMenuTexture(name);
+    if (name == nullptr) {
+        return nullptr;
+    }
+    rw::Texture *texture = FindMenuTexture(name);
+    if (texture == nullptr && s_worldDict != nullptr) {
+        texture = s_worldDict->find(name);
+    }
+    return texture;
 }
 
 void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
@@ -692,8 +715,6 @@ void RenderPlatform_ClearTextures(void)
 // Level TexDictionary (3D geometry materials resolve by name at stream time).
 // Lifetime: modify/destroy AFTER pipeline unload (materials hold raw pointers).
 // ---------------------------------------------------------------------------
-static rw::TexDictionary *s_worldDict = nullptr;
-
 RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
 {
     if (rwsPath == nullptr) {
@@ -899,5 +920,6 @@ void RenderPlatform_SetCameraPose(const RwReal position[3],
     pMat->up = up;
     pMat->at = at;
     pMat->pos = rw::makeV3d(position[0], position[1], position[2]);
+    pMat->update();
     s_pCameraFrame->updateObjects();
 }

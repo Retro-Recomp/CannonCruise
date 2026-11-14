@@ -31,10 +31,13 @@ RwInt32 HUD_GetFish(void);
 /** @brief Sets player health ratio [0..1]. */
 void HUD_SetHealth(RwReal ratio);
 
+/** @brief Current player health ratio [0..1]. */
+RwReal HUD_GetHealth(void);
+
 /** @brief Registers a tower as destroyed (increments the counter, +500 score). */
 void HUD_RegisterTowerDestroyed(void);
 
-/** @brief Adds score. */
+/** @brief Applies a score delta, clamped to [0, INT32_MAX]. */
 void HUD_AddScore(RwInt32 amount);
 
 /** @brief Total score so far. */

@@ -55,8 +55,8 @@ add_sdk_test(renderpipeline_test
     ${CODE_DIR}/RenderPipeline.cpp
 )
 
-# Phase 4.6 - Bullet physics backend (instead of Havok); binary parameters
-# gravity -9.8 / friction 0.6 / restitution 0.3 / step 1/60 verified.
+# Phase 4.6 - Bullet physics backend (instead of Havok); selected binary
+# parameters are checked. Original world-update cadence remains unresolved.
 add_sdk_test(physics_test
     ${CMAKE_CURRENT_SOURCE_DIR}/physics_test.cpp
     ${CODE_DIR}/PhysicsBackend.cpp

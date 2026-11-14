@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 
 static const int kFrames = 120;        // 120 frames × 1/60 s = 2 s
 static const RwReal kMaxSpeedExpect = 18.0f;
@@ -50,6 +51,9 @@ int main(int argc, char **argv) {
     PlayerShip_Spawn(&spawnPos, 0.0f); // +Z direction of the unit circle
     CHECK(PlayerShip_GetState(&state) == TRUE);
     CHECK(state.pos.x == 0.0f && state.pos.z == 0.0f);
+    PlayerShip_Update(1.0f / 60.0f, 0.0f, 0.0f, 1.0f);
+    CHECK(PlayerShip_GetState(&state) == TRUE);
+    CHECK(state.yaw == 0.0f);
 
     // 120 frames full throttle forward
     const RwReal dt = 1.0f / 60.0f;
@@ -67,8 +71,27 @@ int main(int argc, char **argv) {
     // should have advanced in +Z direction
     Check(state.pos.z > 10.0f,
           "ship moved forward (z > 10)", __LINE__);
+    const RwReal yawBeforeSteering = state.yaw;
+    for (int i = 0; i < kFrames; ++i) {
+        PlayerShip_Update(dt, (RwReal)(kFrames + i) * dt, 1.0f, 1.0f);
+    }
+    CHECK(PlayerShip_GetState(&state) == TRUE);
+    CHECK(std::fabs(state.yaw - yawBeforeSteering) > 0.01f);
 
     // Clean shutdown
+    PlayerShip_Shutdown();
+
+    // Keep the entire hull in the water grid; even a custom spawn is clamped.
+    CHECK(PlayerShip_SetMapBounds(-100.0f, 100.0f, -100.0f, 100.0f) == TRUE);
+    RwV3d edgeSpawn = {0.0f, 0.0f, 95.0f};
+    PlayerShip_Spawn(&edgeSpawn, 0.0f);
+    CHECK(PlayerShip_GetState(&state) == TRUE);
+    CHECK(state.pos.z < 80.0f);
+    for (int i = 0; i < kFrames; ++i) {
+        PlayerShip_Update(dt, (RwReal)i * dt, 1.0f, 0.0f);
+    }
+    CHECK(PlayerShip_GetState(&state) == TRUE);
+    CHECK(state.pos.z < 80.0f);
     PlayerShip_Shutdown();
 
     // ======================================================================
@@ -84,9 +107,44 @@ int main(int argc, char **argv) {
         RWS::HUD_Initialize();
         Check(RWS::HUD_GetAmmo() == 175,
               "HUD ammo starts at 175", __LINE__);
+        RWS::HUD_UseAmmo(-1);
+        Check(RWS::HUD_GetAmmo() == 175,
+              "negative ammo use is ignored", __LINE__);
         RWS::HUD_UseAmmo(3);
         Check(RWS::HUD_GetAmmo() == 172,
               "HUD ammo 175 -> 172 after UseAmmo(3)", __LINE__);
+        RWS::HUD_UseAmmo((std::numeric_limits<RwInt32>::max)());
+        Check(RWS::HUD_GetAmmo() == 0, "ammo clamps at zero", __LINE__);
+
+        RWS::HUD_AddFish(-1);
+        RWS::HUD_AddFish((std::numeric_limits<RwInt32>::max)());
+        RWS::HUD_AddFish(1);
+        Check(RWS::HUD_GetFish() ==
+                  (std::numeric_limits<RwInt32>::max)(),
+              "fish count ignores negatives and saturates", __LINE__);
+        RWS::HUD_SetHealth(0.4f);
+        RWS::HUD_SetHealth((RwReal)std::numeric_limits<RwReal>::quiet_NaN());
+        Check(std::fabs(RWS::HUD_GetHealth() - 0.4f) < 0.001f,
+              "non-finite health update is ignored", __LINE__);
+        RWS::HUD_SetHealth(2.0f);
+        Check(RWS::HUD_GetHealth() == 1.0f,
+              "health clamps to one", __LINE__);
+        RWS::HUD_AddScore((std::numeric_limits<RwInt32>::max)());
+        RWS::HUD_AddScore(1);
+        Check(RWS::HUD_GetScore() ==
+                  (std::numeric_limits<RwInt32>::max)(),
+              "score addition saturates", __LINE__);
+        RWS::HUD_AddScore((std::numeric_limits<RwInt32>::min)());
+        Check(RWS::HUD_GetScore() == 0,
+              "score delta clamps at zero", __LINE__);
+        RWS::HUD_RegisterTowerDestroyed();
+        RWS::HUD_RegisterTowerDestroyed();
+        RWS::HUD_RegisterTowerDestroyed();
+        Check(RWS::HUD_GetTowersDestroyed() == 2 &&
+                  RWS::HUD_GetScore() == 1000,
+              "tower count and bonus score stop at the level total", __LINE__);
+
+        RWS::HUD_Initialize();
 
         // Place one tower (150 target HP); no wild boats; the cannonball will hit
         // the top layer of the tower directly.

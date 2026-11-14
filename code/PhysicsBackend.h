@@ -12,13 +12,15 @@
 //     [+0x30..38] AABB max = 500  [+0x44] friction = 0.6
 //     [+0x48] = 1.0               [+0x4C] = 4
 //     [+0x58] restitution = 0.3   [+0x80] solver iter = 20
-//   sub_4B8710 — fixed physics step 1/60 (push 3C888889h — CSoldier tick)
-//   FUN_0043a040 — CPhysicsWorld::Update → hkpWorld::stepDeltaTime (1/60)
+//   sub_4B8710 — CSoldier running-tick path passes 1/60 to loc_466040; this
+//                does not establish the CPhysicsWorld update timestep.
+//   FUN_0043a1c0 / IDA sub_43A1C0 — passes 1/30 to sub_555EF0; downstream
+//                stepping semantics and cadence are unresolved.
 //
 // DEVIATIONS (documented): Bullet sequential-impulse solver ≠ Havok 2004 solver —
-// an identical feel is not guaranteed; critical values are reverse engineered from
-// the binary and fed into the backend parameters. The AABB ±500 broadphase limit
-// mimics the Havok cinfo (Bullet uses a wide aabb; in-game clamp).
+// an identical feel is not guaranteed; binary values are mapped where supported.
+// The original AABB ±500
+// broadphase bounds are not currently applied by the Bullet backend.
 // ============================================================================
 #pragma once
 
@@ -31,8 +33,8 @@
 struct PhysicsWorldHandle;
 
 /**
- * @brief Dynamic body creation definition — box half extents,
- * origin: top-left-back (RwMatrix column-major pos).
+ * @brief Box body creation definition. Half extents must be positive;
+ * an all-zero rotation matrix is treated as identity.
  */
 struct PhysicsBodyBoxDesc {
     RwReal halfExtents[3]; ///< half-box half extents
@@ -40,12 +42,13 @@ struct PhysicsBodyBoxDesc {
     RwReal friction;       ///< default 0.6 (sub_55E6D0[+0x44])
     RwReal restitution;    ///< default 0.3 (sub_55E6D0[+0x58])
     RwReal pos[3];         ///< world position
-    RwReal rot3x3[9];      ///< column-major 3x3 rotation (empty → identity)
+    RwReal rot3x3[9];      ///< column-major 3x3 rotation (all-zero → identity)
 };
 
 /**
  * @brief Static triangle mesh definition — generated from a Clump (CollisionGeometry).
- * vertexStride in bytes; typical 12 (3×RwReal) or the vertex struct size.
+ * Indices must be complete triangles and in [0, vertexCount); vertices and
+ * position must be finite. vertexStride is in bytes and at least 3×RwReal.
  */
 struct PhysicsTriMeshDesc {
     const RwReal *pVertices; ///< vertex stream (with stride)
@@ -61,8 +64,8 @@ struct PhysicsTriMeshDesc {
 PhysicsWorldHandle *PhysicsWorld_Create(void);
 void PhysicsWorld_Destroy(PhysicsWorldHandle *pWorld);
 
-// PhysicsWorld_Step — fixed-step simulation (binary: fixed 1/60; the caller
-// provides it). Bullet stepSimulation(dt, maxSubSteps=1, dt) — a single fixed step.
+// PhysicsWorld_Step — one Bullet step for the caller-supplied dt. The exact
+// correspondence with the original world's update wrapper is unresolved.
 void PhysicsWorld_Step(PhysicsWorldHandle *pWorld, RwReal deltaTime);
 
 void PhysicsWorld_SetGravity(PhysicsWorldHandle *pWorld, RwReal x, RwReal y,
@@ -71,7 +74,7 @@ void PhysicsWorld_GetGravity(const PhysicsWorldHandle *pWorld, RwReal *pX,
                              RwReal *pY, RwReal *pZ);
 
 // Body life cycle — the returned void* is directly compatible with CPhysicsWorld
-// Add/RemoveRigidBody (btRigidBody*).
+// Add/RemoveRigidBody (btRigidBody*). Creation returns NULL for invalid input.
 void *PhysicsBody_CreateBox(const PhysicsBodyBoxDesc *pDesc);
 // Static triangle mesh — btBvhTriangleMeshShape + a non-kinematic body
 // (mass 0). btTriangleMesh holds the copy together with the body.
@@ -113,6 +116,7 @@ void PhysicsWorld_AddTrigger(PhysicsWorldHandle *pWorld, void *pTrigger);
 void PhysicsWorld_RemoveTrigger(PhysicsWorldHandle *pWorld, void *pTrigger);
 
 // State access — for RW frame sync (body → frame matrix).
+// Getters leave output values unchanged when pBody is NULL.
 void PhysicsBody_GetPosition(const void *pBody, RwReal *pX, RwReal *pY,
                              RwReal *pZ);
 void PhysicsBody_GetRotation(const void *pBody, RwReal *pRot3x3ColMajor);

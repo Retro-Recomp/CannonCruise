@@ -14,7 +14,8 @@ endif()
 # ---------------------------------------------------------------------------
 # Bullet Physics â€” portable physics engine instead of Havok (Phase 4.6).
 # Binary parameters (sub_55E6D0): gravity -9.8, AABB Â±500, friction 0.6,
-# restitution 0.3, solver iter 20; fixed step 1/60 (sub_4B8710).
+# restitution 0.3, solver iter 20. World-update cadence is unresolved:
+# sub_43A1C0 passes 1/30 to sub_555EF0; sub_4B8710 is a separate soldier tick.
 # Only required sub-libraries compiled (LinearMath/Collision/Dynamics).
 # ---------------------------------------------------------------------------
 include(FetchContent)

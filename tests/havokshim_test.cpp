@@ -10,8 +10,8 @@
 //      reverse-engineered game code speaks the names the original
 //      binary calls.
 //   2) PHYSICS BEHAVIOR — sub_55E6D0 defaults (gravity -9.8,
-//      friction 0.6, restitution 0.3) + stepDeltaTime (FUN_0043a040)
-//      free-fall/contact/phantom overlap paths.
+//      friction 0.6, restitution 0.3) + the shim's Bullet-backed
+//      stepDeltaTime API; this does not prove binary physics parity.
 // ============================================================================
 
 #include "havok.h"

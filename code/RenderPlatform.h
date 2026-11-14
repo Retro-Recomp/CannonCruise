@@ -37,6 +37,10 @@ RwBool RenderPlatform_Initialize(RwInt32 width, RwInt32 height);
 /// Is the platform set up (single world/camera)?
 RwBool RenderPlatform_IsInitialized(void);
 
+/// Gets the initialized raster dimensions in pixels.
+/// Returns FALSE and writes zeroes when dimensions are unavailable.
+RwBool RenderPlatform_GetScreenSize(RwInt32 *width, RwInt32 *height);
+
 /// World (valid if not NULL).
 void *RenderPlatform_GetWorld(void);
 
@@ -137,22 +141,21 @@ void RenderPlatform_DrawOverlayQuad(RwReal x, RwReal y, RwReal w, RwReal h,
 void RenderPlatform_RequestScreenshot(const char *path);
 
 /**
- * @brief Loads an embedded txd texture (TxdDecode RGBA -> librw Image->Raster->
- *        Texture). If the same name exists, the old one is destroyed. No-op on NULL.
+ * @brief Uploads RGBA pixels as a named librw texture. If the same menu texture
+ *        exists, it is replaced. No-op on NULL.
  * @return TRUE (loaded).
  */
 RwBool RenderPlatform_UploadTexture(const char *name, RwInt32 width,
                                     RwInt32 height, const RwUInt8 *rgbaPixels,
                                     RwInt32 pitch);
 
-/** @brief Is a texture loaded (by name)? */
+/** @brief Is a menu or current-level texture loaded (by name)? */
 RwBool RenderPlatform_HasTexture(const char *name);
 
 /**
- * @brief Returns the loaded texture as an opaque pointer (librw rw::Texture*).
+ * @brief Returns a menu or current-level texture as an opaque rw::Texture*.
  *        For 3D materials (e.g. placeholder ship). nullptr if absent.
- *        nullptr on NULL. The returned pointer is valid until
- *        RenderPlatform_ClearTextures is called.
+ *        nullptr on NULL. Valid until the owning texture dictionary is cleared.
  */
 void *RenderPlatform_GetTexture(const char *name);
 
