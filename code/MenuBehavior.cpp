@@ -13,6 +13,7 @@
 #include "RenderPlatform.h"
 #include "ShowText.h"
 #include "TxdDecode.h"
+#include "RwStudioStream.h"
 #include "InputManager.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 #include <cassert>
@@ -607,6 +608,80 @@ RwBool MenuTextures_LoadFromRws(const char* rwsPath)
     }
     std::fclose(f);
     return any;
+}
+
+RwUInt32 MenuTextures_UploadEmbeddedFromRws(const char* rwsPath)
+{
+    if (rwsPath == 0)
+    {
+        return 0;
+    }
+    RwStudioFile* pFile = RwStudioFileOpen(rwsPath);
+    if (pFile == 0)
+    {
+        std::printf("RwsTexture: %s acilamadi\n", rwsPath);
+        return 0;
+    }
+    RwUInt32 uploaded = 0;
+    RwStudioAsset asset;
+    while (RwStudioFileNextAsset(pFile, &asset))
+    {
+        if (asset.embeddedType != 0x23 ||
+            asset.embeddedLibId != 0x1803FFFF ||
+            asset.embeddedLength == 0)
+        {
+            continue;
+        }
+        RwUInt8* pBuf = static_cast<RwUInt8*>(std::malloc(asset.embeddedLength));
+        if (pBuf == 0)
+        {
+            continue;
+        }
+        const RwUInt32 got =
+            RwStudioAssetReadEmbedded(pFile, &asset, pBuf, asset.embeddedLength);
+        if (got == asset.embeddedLength)
+        {
+            RwTxdImage* pImage = static_cast<RwTxdImage*>(
+                std::malloc(sizeof(RwTxdImage)));
+            if (pImage != 0)
+            {
+                if (RwTxdDecodeImage(pBuf, got, pImage) == TRUE)
+                {
+                    std::printf("RwsTexture: %s — gömülü txd: %u doku\n",
+                                rwsPath, (unsigned)pImage->count);
+                    for (RwUInt32 i = 0; i < pImage->count; ++i)
+                    {
+                        const RwTxdTexture* t = &pImage->textures[i];
+                        const RwBool up =
+                            (t->pPixels != 0 && t->width > 0 && t->height > 0)
+                                ? RenderPlatform_UploadTexture(
+                                      t->name, (RwInt32)t->width,
+                                      (RwInt32)t->height, t->pPixels,
+                                      (RwInt32)t->pitch)
+                                : FALSE;
+                        std::printf("RwsTexture:   %s %ux%u depth=%u pitch=%u -> %s\n",
+                                    t->name, (unsigned)t->width,
+                                    (unsigned)t->height, (unsigned)t->depth,
+                                    (unsigned)t->pitch,
+                                    (up == TRUE) ? "OK" : "FAIL");
+                        if (up == TRUE)
+                        {
+                            ++uploaded;
+                        }
+                    }
+                }
+                else
+                {
+                    std::printf("RwsTexture: %s — txd decode basarisiz\n",
+                                rwsPath);
+                }
+                std::free(pImage);
+            }
+        }
+        std::free(pBuf);
+    }
+    RwStudioFileClose(pFile);
+    return uploaded;
 }
 
 RwBool CMenuBehavior::MoveNext()

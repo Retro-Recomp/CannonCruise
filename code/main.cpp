@@ -46,6 +46,7 @@ static EGameState s_gameState = GAMESTATE_BOOT;
 #include "rwcore.h"
 #include "AudioManager.h"
 #include "SpeakManager.h"
+#include "PlayerShip.h"   // Faz 4.6s — placeholder tekne + chase kamera
 
 #include <cmath>
 #include <cstdio>
@@ -351,12 +352,32 @@ int main(int argc, char **argv) {
     // double-spawn not needed). (4.6r-4 MAPMENU)
     COcean *pOcean = nullptr; // quit-cleanup notification (setup below)
 
-    // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL->INTRO skip->MAINMENU->
-    // world). INTRO1-3/FMV {GUID} files not available -> skip; MAINMENU
-    // external {GUID}.dff missing (empty clump) but embedded Menu.anm stream
-    // rendered via Rt2dMaestro + command sequences walked.
+    // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL load -> FMV
+    // chain (JINGLE) -> MAINMENU -> world). INTRO1-3/FMV {GUID} files not
+    // available -> skip; MAINMENU external {GUID}.dff missing (empty clump)
+    // but embedded Menu.anm stream rendered via Rt2dMaestro + command sequences walked.
     // CANNONCRUISE_MENU_FRAMES: frame cap (0=skip menu, -1=unlimited).
     RwBool bQuitApp = FALSE;
+    // 4.6r-5 -- GLOBAL.RWS (binary sub_4A2010: GLOBAL -> JINGLE).
+    //  - Embedded texture dictionary (RwStudio ayrıştırıcısıyla; gömülü
+    //    asset 0xe8'de DEĞİL) decode + upload — isimler loglanır.
+    //  - Global objectRecords (CAudioManager, CDifficultyLevels, CEventProxy
+    //    CSystemCommands ... + rwID_2DMAESTRO) — kayıtlı fabrika yok;
+    //    binary davranışla bilinmeyen sınıflar atlanır (kayıt yok).
+    //  - Image_Win32.rws (5.6 MB UI pack) — format çözülmedi, decode yok;
+    //    menü font/atlas MAINMENU txd'den geliyor (4.6r). Decode eklenirse
+    //    buraya bağlanır.
+    {
+        char globalPath[512] = {0};
+        if (RwsAssets_Resolve("Streams/GLOBAL.RWS", globalPath,
+                              sizeof(globalPath)) == TRUE) {
+            const RwUInt32 gCount = MenuTextures_UploadEmbeddedFromRws(globalPath);
+            std::printf("GLOBAL: %u embedded textures uploaded\n",
+                        (unsigned)gCount);
+        } else {
+            std::printf("GLOBAL: Streams/GLOBAL.RWS bulunamadi -> atlandi\n");
+        }
+    }
     if (bBootFlow == TRUE) {
         s_gameState = GAMESTATE_LOGO_ITE;
         // 4.6r-6 -- FMV scene phase (binary sub_4A2010: GLOBAL -> JINGLE; JINGLE
@@ -1144,6 +1165,36 @@ int main(int argc, char **argv) {
                             (double)(cz - 2.5f * tileSize));
             }
         }
+        // Phase 4.6s -- tekne follow: placeholder boat at sea, facing the
+        // island centre. CANNONCRUISE_SHIP=x,y,z,yaw ile override.
+        {
+            WorldGeometryBounds bb;
+            if (WorldGeometry_GetLastBounds(&bb) == TRUE) {
+                const RwReal cx = (bb.min[0] + bb.max[0]) * 0.5f;
+                const RwReal cz = (bb.min[2] + bb.max[2]) * 0.5f;
+                const RwReal dx = bb.max[0] - bb.min[0];
+                const RwReal dz = bb.max[2] - bb.min[2];
+                const RwReal span = (dx > dz) ? dx : dz;
+                RwV3d shipPos = {cx + span * 0.60f, 0.0f, cz + span * 0.20f};
+                RwReal shipYaw = std::atan2(cx - shipPos.x, cz - shipPos.z);
+                const char *shipEnv = std::getenv("CANNONCRUISE_SHIP");
+                if (shipEnv != nullptr) {
+                    float sx = 0.0f, sy = 0.0f, sz = 0.0f, syaw = 0.0f;
+                    if (std::sscanf(shipEnv, "%f,%f,%f,%f", &sx, &sy, &sz,
+                                    &syaw) >= 3) {
+                        shipPos.x = sx;
+                        shipPos.y = sy;
+                        shipPos.z = sz;
+                        shipYaw = syaw;
+                    }
+                }
+                PlayerShip_Spawn(&shipPos, shipYaw);
+                std::printf("CannonCruise: player ship placeholder spawn "
+                            "(%.1f, %.1f, %.1f) yaw=%.2f\n",
+                            (double)shipPos.x, (double)shipPos.y,
+                            (double)shipPos.z, (double)shipYaw);
+            }
+        }
     }
     // Geometry/material diagnostics (root cause of colorlessness).
     if (std::getenv("CANNONCRUISE_GEODIAG") != nullptr) {
@@ -1179,10 +1230,57 @@ int main(int argc, char **argv) {
             if (RwPlatformKeyDown('T')) {
                 speakMgr.PlaySpeak(2, 0);
             } // world->render() -- between Begin/End
+            // Phase 4.6s -- chase cam is the default when a world loads
+            // (CANNONCRUISE_CAM=FREE opts out to freecam; =DATA keeps the
+            // binary-extracted chase-rig pose). The FOLLOW branch below
+            // re-derives camPos/camLook from the player ship each frame.
+            const char *camFollowEnv = std::getenv("CANNONCRUISE_CAM");
+            const RwBool bFollowCam =
+                (camFollowEnv == nullptr ||
+                 std::strcmp(camFollowEnv, "FOLLOW") == 0)
+                    ? TRUE
+                    : FALSE;
+            static RwReal followOrbit = 0.0f; // mouse orbit around ship (rad)
             // Phase 4.6q -- freecam: mouse look + WASD (in view plane) +
             // Q/E (vertical) + arrow keys (yaw/pitch). Null platform no key/
             // mouse -> no-op. View derived from yaw/pitch.
-            {
+            if (bFollowCam == TRUE) {
+                // Tekne: W/S gaz, A/D dümen; fare X kamera orbit (sönümlü).
+                const RwReal kDt = 1.0f / 60.0f;
+                RwReal throttle = 0.0f;
+                if (RwPlatformKeyDown('W')) {
+                    throttle += 1.0f;
+                }
+                if (RwPlatformKeyDown('S')) {
+                    throttle -= 0.5f;
+                }
+                RwReal rudder = 0.0f;
+                if (RwPlatformKeyDown('A')) {
+                    rudder += 1.0f;
+                }
+                if (RwPlatformKeyDown('D')) {
+                    rudder -= 1.0f;
+                }
+                int mdx = 0, mdy = 0;
+                if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
+                    followOrbit += (RwReal)mdx * 0.0035f;
+                }
+                followOrbit *= 0.94f; // sönüm — gemi arkasına döner
+                PlayerShip_Update(kDt, (RwReal)frame * kDt, throttle,
+                                  rudder);
+                PlayerShipState shipState;
+                if (PlayerShip_GetState(&shipState) == TRUE) {
+                    const RwReal ang =
+                        shipState.yaw + 3.14159265f + followOrbit;
+                    camPos[0] = shipState.pos.x + std::sin(ang) * 30.0f;
+                    camPos[1] = shipState.pos.y + 12.0f;
+                    camPos[2] = shipState.pos.z + std::cos(ang) * 30.0f;
+                    camLook[0] = shipState.pos.x;
+                    camLook[1] = shipState.pos.y + 3.5f;
+                    camLook[2] = shipState.pos.z;
+                    RenderPlatform_SetCameraPose(camPos, camLook);
+                }
+            } else {
                 const RwReal kDt = 1.0f / 60.0f;
                 const RwReal speed = camSpan * 0.10f * kDt;
                 const RwReal turn = 1.8f * kDt; // arrow key rad/s
@@ -1270,6 +1368,7 @@ int main(int argc, char **argv) {
                 pOcean->Update((RwReal)frame * (1.0f / 60.0f));
                 pOcean->Render(); // between Begin/End
             }
+            PlayerShip_Render(); // placeholder hull (GL3: im3d; NULL: no-op)
         }
         if (RenderPlatform_RenderTestQuad(0.0f, 0.0f, 0.25f, 0.25f,
                                           0xFF40A0FF) != TRUE) {

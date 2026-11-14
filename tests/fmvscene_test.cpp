@@ -14,7 +14,8 @@
 //       OUTRO3  → Outro3  → Credits
 //   - seviye/dünya dosyaları (>64 KB) tanımlayıcı SAYILMAZ → 0 (zincir sonu)
 //   - video yolu binary-exact: ".\Video\Win32\<ad>.bik" (sub_45F950 case0)
-//   - .bik depoda YOK → FmvScene_VideoExists = 0 (FMV skip)
+//   - .bik dosyaları depoda MEVCUT (Video/Win32/*.bik, Faz 4.6y) →
+//     FmvScene_VideoExists = 1; olmayan bir ad → 0
 //   - hedef → sıra dosyası; hedef büyük/küçük harf FARKI için UPPERCASE
 //     ikinci denemesi ("Nordic01" → Streams/NORDIC01.RWS)
 //
@@ -136,9 +137,11 @@ static void TestVideoPath() {
     CHECK(FmvScene_VideoPath("", buf, sizeof(buf)) == 0);
     CHECK(FmvScene_VideoPath("Jingle", nullptr, 0) == 0);
 
-    // Depoda hiç .bik yok → her zaman 0 (FMV skip); .bik eklenince çalışır.
-    CHECK(FmvScene_VideoExists("Jingle") == 0);
-    CHECK(FmvScene_VideoExists("Intro") == 0);
+    // Faz 4.6y: .bik dosyaları depoda mevcut (Video/Win32/*.bik) → 1.
+    // Oynatma Faz 4.6y'de BinkPlayer ile bağlandı; depoda olmayan ad → 0.
+    CHECK(FmvScene_VideoExists("Jingle") == 1);
+    CHECK(FmvScene_VideoExists("Intro") == 1);
+    CHECK(FmvScene_VideoExists("NoSuchFmvXYZ") == 0);
     CHECK(FmvScene_VideoExists(nullptr) == 0);
 }
 

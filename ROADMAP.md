@@ -1,6 +1,6 @@
 # 🗺️ CannonCruise — Proje Durum Raporu & Yol Haritası
 
-> **Son Güncelleme:** 17 Ekim 2026  
+> **Son Güncelleme:** 14 Kasım 2026   
 > **Proje:** Cannon Cruise PC — Tersine mühendislik ile kaynak kod yeniden inşası  
 > **Referanslar:** `CannonCruise.exe`, `CC.asm`, `CC_ida.asm`  
 > **Derleme temeli ve reçete:** [BUILDING.md](BUILDING.md)  
@@ -1698,3 +1698,72 @@ loop:
 - **ctest**: 28/29 geçti (`fmvscene_test` — test ortamında `Video\` dizini yok, kod hatası değil; oyun doğru çalışma dizininden çalışırken çalışır).
 - **Link doğrulaması**: `link verification OK`.
 - **Oyun manuel testi**: D3D9 pencere, video oynatma (Jingle `.bik` oynatılıyor), Credits düğmesi → MainMenu (Viking1 değil), sesli efektler çalışıyor.
+
+### Faz 4.6aa — GLOBAL load + tekne follow + entegrasyon stresi — TAMAM (2026-11-14)
+
+#### Derleme durumu (bu makine, Windows)
+
+- Depodaki `code/build_win32_v180/` **bayat cache** (VS 17 2022 generator,
+  D3D9 UNINITIALIZED) ile geliyor; VS 18 2026'da configure edilemiyordu.
+  Taze configure edilen build (VS 18, Win32) NULL ve D3D9 platformlarında
+  **0 hata / 0 uyarı** derlendi.
+- İzlenen build çıktıları git'te korundu; kaynak ağacına dokunulmadı.
+  Temiz yol için README "Windows (doğrulandı)" bölümüne bakın.
+
+#### fmvscene_test düzeltmesi
+
+- Test `.bik` dosyalarının depoda olmadığını varsayıyordu (`VideoExists == 0`);
+  Faz 4.6y'de 8 `.bik` depoya eklendi → beklenti `== 1` + olmayan ad için `== 0`
+  güncellendi. **ctest 30/30** (önce 28/29).
+
+#### GLOBAL load (4.6r-5) — TAMAM
+
+- **`MenuTextures_UploadEmbeddedFromRws(rwsPath)`** (MenuBehavior.{h,cpp}):
+  RWS içindeki **tüm** gömülü TexDictionary asset'lerini (embeddedType=0x23,
+  libId=0x1803FFFF) RwStudio ile bulur, `RwTxdDecodeImage` ile çözer, her
+  texture'ı `RenderPlatform_UploadTexture` ile yükler; her texture'ın
+  adı/boyutu/sonucu loglanır. (Direkt-0xe8 `MenuTextures_LoadFromRws`
+  GLOBAL için geçerli değil — gömülü asset 0xe8'de değil.)
+- **GLOBAL.RWS**: gömülü txd **4 doku** — `SpecialCharacters.png` (256×128),
+  `Load_NT_001` (512×128), `Load_NT_003` (128×128), `Load_NT_005` (512×32)
+  — yükleme ekranı art'ı ("Loading"). NULL platformda upload FALSE (librw
+  device texture yaratamaz; beklenen) — **D3D9'da 4/4 OK**.
+- Global objectRecords (CAudioManager, CDifficultyLevels, CEventProxy,
+  CSystemCommands + rwID_2DMAESTRO): kayıtlı fabrika yok; bilinmeyen
+  sınıflar binary davranışla atlanır (değişmedi).
+- `Image_Win32.rws` (5.6 MB UI pack, external {GUID}): format çözülmedi;
+  menü font/atlas MAINMENU txd'den geliyor (4.6r). Decode eklenirse GLOBAL
+  bloğuna (main.cpp) bağlanır.
+
+#### Tekne follow (4.6s kalanı) — TAMAM
+
+- **`code/PlayerShip.{h,cpp}`** (yeni): placeholder düşük-poligonlu tekne
+  (gövde + direk; `rw::im3d` TRILIST; GL3'te gerçek çizim, NULL'da indeks
+  üretimi doğrulanır). Kinematik model: W/S gaz (geri = −0.5), A/D dümen
+  (0.55 rad/sn ölçek), hıza orantılı dönüş, okyanus dalga formuyla senkron
+  bob (`sin(x*0.05+t*2)*1.5 + cos(z*0.08+t*1.5)` ölçekli).
+- **Kamera FOLLOW chase (varsayılan)**: gemi + 30 birim arkada, +12 yukarı,
+  lookAt gemi+3.5; fare X = sönümlü orbit (×0.94/frame). `CANNONCRUISE_CAM=
+  FREE` eski freecam, `=DATA` (4.6p), `=AUTO` (4.6q bbox).
+- **Spawn**: dünya bbox'undan açık su (cx+span*0.6, cz+span*0.2), adaya
+  dönük yaw (`atan2`); `CANNONCRUISE_SHIP=x,y[,z,yaw]` override.
+- Gerçek `CShipPlayer` gövdesi/renderer'ı `{GUID}.dff` olmadan bağlanamaz;
+  Bullet gövdesi bağlı (`CPhysicsEntity::SetPosition` hazır) ama
+  entegrasyon fizik/AI fazında yapılır. Çarpışma henüz yok (placeholder).
+
+#### Entegrasyon stresi (4.6s kalanı) — TAMAM
+
+- **`tests/worldcycle_test.cpp`** (yeni): VIKING01 (130) / IDUNA03 (61) /
+  BEAVER01 (176) — `WorldGeometry` payload → Inspect → CreateClump →
+  `countAtomics` doğrula → DestroyClump, 6 tur (A→B→C→A→B→C); seviye
+  geçişi + unload zinciri çökmesiz, `tests/CMakeLists.txt`'e kayıtlı.
+- **ctest 30/30** (NULL ve D3D9, Windows).
+
+#### D3D9 doğrulama
+
+- D3D9 pencere 45/45 kare; GLOBAL 4 texture upload D3D9'da OK. Ekran
+  görüntüsü D3D9'da desteklenmiyor (`IDirect3DDevice9::GetRenderTargetData`
+  → systemmem → PNG — ayrı iş kalemi; değişmedi).
+- Açık kalan Faz 4/5 kalemleri: D3D9 screenshot, Image_Win32 decode,
+  global objectRecord fabrikaları, gerçek tekne modeli ({GUID}.dff).
+

@@ -262,6 +262,21 @@ add_test(NAME trailingchunk_test COMMAND trailingchunk_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
 
+# Faz 4.6s — entegrasyon stres: dünya load → clump → unload zinciri
+# (A→B→C→A→B→C turları; seviye geçişi + unload yolunun çökmemesi).
+add_executable(worldcycle_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/worldcycle_test.cpp
+    ${CODE_DIR}/WorldGeometry.cpp
+    ${CODE_DIR}/RwStudioStream.cpp
+    ${CODE_DIR}/rw_librw.cpp
+)
+target_include_directories(worldcycle_test PRIVATE ${SDK_INCLUDE_DIRS})
+target_link_libraries(worldcycle_test PRIVATE librw::librw)
+add_test(NAME worldcycle_test COMMAND worldcycle_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/VIKING01.RWS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/IDUNA03.RWS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Streams/BEAVER01.RWS)
+
 # Faz 4.6p â€” dÃ¼nya spawn zinciri: 0x0704 kayÄ±tlarÄ± â†’ CClassFactory
 # create + apply (bilinen sÄ±nÄ±flar Ã¼retilir; bilinmeyenler sessiz atla).
 # WHOLE_ARCHIVE: RWS_REGISTER_CLASS statik kayÄ±tlarÄ± archive'tan Ã§ekilsin.

@@ -1,5 +1,10 @@
 # CannonCruise — Derleme Temeli
 
+> **Güncelleme 2026-11-14:** bu belge tarihsel P0 reçetesidir. Windows/MSVC
+> derlemesi VS 18 (2026, Win32) ile doğrulandı; güncel durum, komutlar ve
+> izlenen bayat `build_win32_v180/` cache uyarısı için [README.md](README.md)
+> ve [ROADMAP.md](ROADMAP.md)'a bakın. "Henüz çalıştırılmadı" metinleri
+> 9 Ekim 2026 anına aittir.
 > 9 Ekim 2026 · P0 / durum ve derleme reçetesi  
 > Durum: **Belgelenmiş doğrulama hedefi; Windows'ta henüz çalıştırılmadı.**
 > **macOS için:** [Ayrı macOS yol haritası](ROADMAP_MACOS.md). Aşağıdaki Win32/x86 hedefi ve PowerShell reçetesi macOS portuna uygulanmaz.

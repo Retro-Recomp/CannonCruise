@@ -123,4 +123,14 @@ public:
  */
 RwBool MenuTextures_LoadFromRws(const char* rwsPath);
 
+/**
+ * @brief RWS içindeki TÜM gömülü TexDictionary asset'lerini (embeddedType=0x23,
+ *        libId=0x1803FFFF) RwStudio ayrıştırıcısıyla bulur, decode eder ve
+ *        dokuları GL'e yükler. Direkt-0xe8 yolu GLOBAL için geçerli değil
+ *        (GLOBAL'de gömülü asset farklı offset'te); INFO/LOG için her
+ *        dokunun adı yazılır.
+ * @return Yüklenen doku sayısı (0 = gömülü txd yok / decode hatası).
+ */
+RwUInt32 MenuTextures_UploadEmbeddedFromRws(const char* rwsPath);
+
 #endif // MENUBEHAVIOR_H

@@ -4,8 +4,11 @@ CannonCruisePC oyununun tersine mühendislikle yeniden inşa edilen kaynak kodu.
 Orijinal 2004 tarihli 32-bit Windows oyunu (`CannonCruise.exe`) Ghidra ve IDA
 analizleri (`CC.asm`, `CC_ida.asm`) temel alınarak C++14 ile yeniden yazılmaktadır.
 
-**Durum:** Aktif geliştirme — Faz 4 (derleme/link) macOS üzerinde tamamlandı;
-Windows/MSVC derlemesi ve çalışma zamanı doğrulaması bekliyor.
+**Durum:** Aktif geliştirme — Faz 4 (derleme/link) doğrulandı: macOS/Clang'de
+`CannonCruiseLib` + link doğrulama hedefi; Windows'ta VS 18 (2026) ile Win32
+derlemesi ve ctest 30/30 geçti (NULL ve D3D9 platformları). Çalışma zamanı
+doğrulaması kısmi (D3D9 penceresi açılıyor, 45/45 kare; screenshot D3D9'da
+henüz yok).
 
 ## Dizin yapısı
 
@@ -37,10 +40,26 @@ cmake --build build -j8
   link hatası verir. Ayrıca `CannonCruise` hedefi yalnızca sistem kütüphanelerine
   dinamik bağlanır (oyun SDK'ları henüz link edilmiyor).
 
-### Windows (bekliyor)
+### Windows (doğrulandı — VS 18 2026)
 
-Windows/MSVC reçetesi için [BUILDING.md](BUILDING.md). macOS sonucu bu adımın
-yerine geçmez (roadmap 4.4b).
+```bat
+cd code
+cmake -B build -G "Visual Studio 18 2026" -A Win32 -DCANNONCRUISE_RW_PLATFORM=NULL
+cmake --build build --config Release --parallel 8
+ctest --test-dir build -C Release --output-on-failure
+```
+
+- `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (pencereli) | `GL3`.
+- **Dikkat — izlenen build çıktıları:** `code/build_win32_v180/` repo ile birlikte
+  gelir ve eski (VS 17 2022 generator'lı, D3D9) bayat bir CMakeCache içerir;
+  VS 18 ile yerinde kullanamazsınız. Temiz yol: yeni bir build dizini kullanın
+  (`cmake -B build_win32 ...`) ve iş bitince silin; ya da `build_win32_v180/`
+  içindeki `CMakeCache.txt`/`CMakeFiles/`/`*.vcxproj*` silinip yeniden
+  yapılandırılabilir (izlenen çıktılar git'te durur).
+- D3D9 notu: ekran görüntüsü desteği yok (`GetRenderTargetData` ayrı iş
+  kalemi); pencere 45/45 kare ile doğrulandı. ctest 30/30 (NULL ve D3D9).
+- `build_cannoncruise.cmd` VS 18 recipe'i içerir ama `build_win32_v180/`
+  bayat cache ile birlikte gelir — yukarıdaki temiz dizin yaklaşımını izleyin.
 
 ## Belgeler
 
@@ -63,7 +82,10 @@ ctest --test-dir build --output-on-failure
 
 Kapsam: `havok_memory_manager` (allocator), `ceventhandler` (RegisterMsg/
 LinkMsg/SendMsg/yaşam döngüsü), `cclassfactory` (Register/Create/Shutdown),
-`cattributehandler` (instance registry + paket öngörücüler). Tek testi
+`cattributehandler` (instance registry + paket öngörücüler),
+`worldcycle_test` (VIKING01/IDUNA03/BEAVER01 load→clump→unload stresi,
+Faz 4.6s), `fmvscene_test` (FMV geçiş grafiği, 8 tanımlayıcı). Tüm paket
+**ctest 30/30** ile çalışır. Tek testi
 sanitizer ile elle de derleyebilirsiniz:
 
 ```bash
