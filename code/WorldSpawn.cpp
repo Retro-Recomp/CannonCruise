@@ -17,6 +17,12 @@
 #include "MissionIndicator.h"
 #include "TowerCatapult.h"
 #include "CollisionTrigger.h"
+#include "ApplyTowerCatapult.h"
+#include "ApplyMenuBehavior.h"
+#include "ApplyMissionIndicator.h"
+#include "ApplyHealthDebris.h"
+#include "ApplyBirdSeaGull.h"
+#include "ApplyFernandoActor.h"
 #include "framework/core/attributehandler/cattributehandler.h"
 
 #include <cstdio>
@@ -222,40 +228,138 @@ RwBool ApplyAudioGlobalMixer(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
 // (no object registration for the specials); misapplies become no-ops.
 void *CreateTowerCatapult() { return new CTowerCatapult(); }
 
-RwBool ApplyTowerCatapult(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyTowerCatapult(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyTowerCatapult *apply = new ApplyTowerCatapult;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateCollisionTrigger() { return new CCollisionTrigger(); }
 
-RwBool ApplyCollisionTrigger(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyCollisionTrigger(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyCollisionTrigger *apply = new ApplyCollisionTrigger;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateMenuBehavior() { return new CMenuBehavior(); }
 
-RwBool ApplyMenuBehavior(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyMenuBehavior(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyMenuBehavior *apply = new ApplyMenuBehavior;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateMissionIndicator() { return new CMissionIndicator(); }
 
-RwBool ApplyMissionIndicator(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyMissionIndicator(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyMissionIndicator *apply = new ApplyMissionIndicator;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateHealthDebris() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CHealthDebris(emptyPacket);
 }
 
-RwBool ApplyHealthDebris(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyHealthDebris(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyHealthDebris *apply = new ApplyHealthDebris;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateBirdSeaGull() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CBirdSeaGull(emptyPacket);
 }
 
-RwBool ApplyBirdSeaGull(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyBirdSeaGull(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyBirdSeaGull *apply = new ApplyBirdSeaGull;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 void *CreateFernandoActor() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CFernandoActor(emptyPacket);
 }
 
-RwBool ApplyFernandoActor(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
+RwBool ApplyFernandoActor(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
+{
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
+    ApplyFernandoActor *apply = new ApplyFernandoActor;
+    if (apply) {
+        CAttributePacket packet;
+        memcpy(&packet, pValue, sizeof(packet));
+        RwBool result = apply->Apply(packet);
+        delete apply;
+        return result;
+    }
+    return TRUE;
+}
 
 } // namespace
 
