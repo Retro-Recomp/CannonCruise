@@ -35,8 +35,11 @@ void *CreateWbRender() {
 }
 
 RwBool ApplyWbRender(void *, RwUInt32 id, const RwUInt8 *pValue) {
+    if (!pValue) {
+        return FALSE;
+    }
     RwUInt32 bits = 0;
-    std::memcpy(&bits, pValue, 4);
+    std::memcpy(&bits, pValue, sizeof(bits));
     return CRenderBehaviourWorld::Instance()->ApplyWbRenderAttribute(id, bits);
 }
 
@@ -47,12 +50,15 @@ void *CreateWbCamera() {
 }
 
 RwBool ApplyWbCamera(void *pObject, RwUInt32 id, const RwUInt8 *pValue) {
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
     CCameraState *pCam = static_cast<CCameraState *>(pObject);
     if (CCameraStateApplyVec3(pCam, id, pValue) == TRUE) {
         return TRUE; // VEC3 record (12B copy)
     }
     RwUInt32 bits = 0;
-    std::memcpy(&bits, pValue, 4);
+    std::memcpy(&bits, pValue, sizeof(bits));
     return pCam->ApplyAttribute(id, bits);
 }
 
@@ -63,6 +69,9 @@ void *CreateAudio() {
 }
 
 RwBool ApplyAudio(void *pObject, RwUInt32 id, const RwUInt8 *pValue) {
+    if (!pObject || !pValue) {
+        return FALSE;
+    }
     return CAudioStreamEntityApplyAttribute(
         static_cast<CAudioStreamEntity *>(pObject), id, pValue);
 }
@@ -70,7 +79,7 @@ RwBool ApplyAudio(void *pObject, RwUInt32 id, const RwUInt8 *pValue) {
 void *CreatePhysicsWorld() { return new CPhysicsWorldBehaviour; }
 
 // CPhysicsWorldBehaviour apply: no property in binary — message-driven
-// (HandleEvents); port returns no-op. Output: .RWS spawn count artar.
+// (HandleEvents); port returns no-op.
 RwBool ApplyPhysicsWorld(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 // === Stub behavior classes — consumes .RWS 0x0704 records ===
@@ -201,15 +210,24 @@ void *CreateMissionIndicator() { return new CMissionIndicator(); }
 
 RwBool ApplyMissionIndicator(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
-void *CreateHealthDebris() { return new RWS::CHealthDebris(RWS::CAttributePacket()); }
+void *CreateHealthDebris() {
+    RWS::CAttributePacket emptyPacket;
+    return new RWS::CHealthDebris(emptyPacket);
+}
 
 RwBool ApplyHealthDebris(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
-void *CreateBirdSeaGull() { return new RWS::CBirdSeaGull(RWS::CAttributePacket()); }
+void *CreateBirdSeaGull() {
+    RWS::CAttributePacket emptyPacket;
+    return new RWS::CBirdSeaGull(emptyPacket);
+}
 
 RwBool ApplyBirdSeaGull(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
-void *CreateFernandoActor() { return new RWS::CFernandoActor(RWS::CAttributePacket()); }
+void *CreateFernandoActor() {
+    RWS::CAttributePacket emptyPacket;
+    return new RWS::CFernandoActor(emptyPacket);
+}
 
 RwBool ApplyFernandoActor(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
@@ -269,8 +287,11 @@ RwBool GameBehaviours_Register() {
         {"CFernandoActor", sizeof(RWS::CFernandoActor), &CreateFernandoActor,
          &ApplyFernandoActor},
     };
-    for (RwUInt32 i = 0; i < sizeof(entries) / sizeof(entries[0]); ++i) {
+
+    const RwUInt32 entryCount = sizeof(entries) / sizeof(entries[0]);
+    for (RwUInt32 i = 0; i < entryCount; ++i) {
         if (BehaviourLoader::Register(&entries[i]) != TRUE) {
+            BehaviourLoader::UnregisterAll();
             return FALSE;
         }
     }
@@ -283,11 +304,15 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     if (pStats) {
         std::memset(pStats, 0, sizeof(*pStats));
     }
+    if (!pPath) {
+        return -1;
+    }
 
     RwStudioFile *pFile = RwStudioFileOpen(pPath);
     if (!pFile) {
         return -1;
     }
+
     RwStudioAsset asset;
     RwInt32 totalApplied = 0;
     while (RwStudioFileNextAsset(pFile, &asset) == TRUE) {
@@ -300,13 +325,15 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances,
             (RwInt32)(sizeof(pInstances) / sizeof(pInstances[0])));
+        const RwUInt32 createdCount = (applied > 0) ? (RwUInt32)applied : 0;
         if (applied > 0) {
-            stats.instancesCreated += (RwUInt32)applied;
+            stats.instancesCreated += createdCount;
             totalApplied += applied;
         }
         // unknown classes: factory miss (binary: property skip)
-        stats.instancesSkipped +=
-            pObj->behaviourCount - (RwUInt32)(applied > 0 ? applied : 0);
+        if (pObj->behaviourCount > createdCount) {
+            stats.instancesSkipped += pObj->behaviourCount - createdCount;
+        }
     }
     RwStudioFileClose(pFile);
 

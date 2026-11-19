@@ -145,6 +145,51 @@ namespace
         }
         return 0;
     }
+
+    struct HavokListNode {
+        void* pData;
+        HavokListNode* pNext;
+    };
+
+    bool ListContains(HavokListNode* pHead, void* pData)
+    {
+        for (HavokListNode* p = pHead; p; p = p->pNext) {
+            if (p->pData == pData) return true;
+        }
+        return false;
+    }
+
+    HavokListNode* ListAdd(HavokListNode* pHead, void* pData)
+    {
+        HavokListNode* pNode = new HavokListNode();
+        pNode->pData = pData;
+        pNode->pNext = pHead;
+        return pNode;
+    }
+
+    HavokListNode* ListRemove(HavokListNode* pHead, void* pData)
+    {
+        HavokListNode** pp = &pHead;
+        while (*pp) {
+            if ((*pp)->pData == pData) {
+                HavokListNode* pDead = *pp;
+                *pp = pDead->pNext;
+                delete pDead;
+                return pHead;
+            }
+            pp = &(*pp)->pNext;
+        }
+        return pHead;
+    }
+
+    void ListFree(HavokListNode* pHead)
+    {
+        while (pHead) {
+            HavokListNode* pNext = pHead->pNext;
+            delete pHead;
+            pHead = pNext;
+        }
+    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -234,8 +279,6 @@ hkCapsuleShape::hkCapsuleShape(const hkVector3& start, const hkVector3& end,
     const btVector3 s = ToBt(start);
     const btVector3 e = ToBt(end);
     const btScalar len = (e - s).length();
-    // btCapsuleShape wants half-length (height = 2*half-length NOT;
-    // ctor parameter is half-length). |end-start| passed directly.
     m_pBulletShape = new btCapsuleShape(radius, len > 0.0f ? len : 0.0f);
 }
 
@@ -327,6 +370,7 @@ hkMeshShape::hkMeshShape(const hkVector3* vertices, int numVertices,
                          const hkUint32* indices, int numIndices)
     : m_pTriangleMesh(0), m_pBulletShape(0)
 {
+    (void)numVertices;
     btTriangleMesh* pMesh = new btTriangleMesh();
     for (int i = 0; i + 2 < numIndices; i += 3) {
         pMesh->addTriangle(ToBt(vertices[indices[i]]),
@@ -430,8 +474,11 @@ hkEntity::hkEntity(btRigidBody* pBulletBody)
 hkEntity::~hkEntity()
 {
     EntityRegRemove(this);
-    delete m_pBulletBody;
-    m_pBulletBody = 0;
+    if (m_pBulletBody) {
+        delete m_pBulletBody->getMotionState();
+        delete m_pBulletBody;
+        m_pBulletBody = 0;
+    }
 }
 
 void hkEntity::getPosition(hkVector3& position) const
@@ -581,6 +628,10 @@ hkWorld::hkWorld(hkReal worldMinX, hkReal worldMaxX,
 
 hkWorld::~hkWorld()
 {
+    ListFree(*reinterpret_cast<HavokListNode**>(&m_pConstraints));
+    m_pConstraints = 0;
+    ListFree(*reinterpret_cast<HavokListNode**>(&m_pActions));
+    m_pActions = 0;
     PhysicsWorld_Destroy(m_pPhysicsWorld);
     m_pPhysicsWorld = 0;
 }
@@ -640,56 +691,6 @@ hkResult hkWorld::removePhantom(hkPhantom* pPhantom)
     }
     PhysicsWorld_RemoveTrigger(m_pPhysicsWorld, pPhantom->getBulletGhost());
     return hkResult(hkResult::SUCCESS);
-}
-
-// Constraint/action tracking-focused: game doesn't use constraints yet.
-// Kept as linked list for symmetric add/remove.
-namespace
-{
-    struct HavokListNode {
-        void* pData;
-        HavokListNode* pNext;
-    };
-
-    bool ListContains(HavokListNode* pHead, void* pData)
-    {
-        for (HavokListNode* p = pHead; p; p = p->pNext) {
-            if (p->pData == pData) return true;
-        }
-        return false;
-    }
-
-    HavokListNode* ListAdd(HavokListNode* pHead, void* pData)
-    {
-        HavokListNode* pNode = new HavokListNode();
-        pNode->pData = pData;
-        pNode->pNext = pHead;
-        return pNode;
-    }
-
-    HavokListNode* ListRemove(HavokListNode* pHead, void* pData)
-    {
-        HavokListNode** pp = &pHead;
-        while (*pp) {
-            if ((*pp)->pData == pData) {
-                HavokListNode* pDead = *pp;
-                *pp = pDead->pNext;
-                delete pDead;
-                return pHead;
-            }
-            pp = &(*pp)->pNext;
-        }
-        return pHead;
-    }
-
-    void ListFree(HavokListNode* pHead)
-    {
-        while (pHead) {
-            HavokListNode* pNext = pHead->pNext;
-            delete pHead;
-            pHead = pNext;
-        }
-    }
 }
 
 hkResult hkWorld::addConstraint(hkConstraint* pConstraint)
@@ -757,7 +758,7 @@ hkPhantom::~hkPhantom()
     if (m_pBulletGhost) {
         btCollisionShape* pShape = m_pBulletGhost->getCollisionShape();
         delete m_pBulletGhost;
-        delete pShape;   // phantom owns shape
+        delete pShape;   // phantom owns shape when constructed with raw btGhostObject
         m_pBulletGhost = 0;
     }
 }
@@ -810,7 +811,13 @@ hkShapePhantom::hkShapePhantom(hkShape* pShape)
         btCollisionObject::CF_NO_CONTACT_RESPONSE);
 }
 
-hkShapePhantom::~hkShapePhantom() { m_pBulletGhost = 0; } // base frees
+hkShapePhantom::~hkShapePhantom()
+{
+    // m_pShape is caller-owned; delete only the btGhostObject so ~hkPhantom()
+    // does not delete m_pShape->getBulletShape() twice.
+    delete m_pBulletGhost;
+    m_pBulletGhost = 0;
+}
 
 void hkShapePhantom::getAabb(hkAabb& aabb) const
 {

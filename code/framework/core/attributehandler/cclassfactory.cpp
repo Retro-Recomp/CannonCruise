@@ -28,14 +28,15 @@ namespace RWS
     {
         while (*a && *b)
         {
-            char ca = std::toupper(static_cast<unsigned char>(*a));
-            char cb = std::toupper(static_cast<unsigned char>(*b));
+            char ca = static_cast<char>(std::toupper(static_cast<unsigned char>(*a)));
+            char cb = static_cast<char>(std::toupper(static_cast<unsigned char>(*b)));
             if (ca != cb)
-                return ca - cb;
+                return static_cast<unsigned char>(ca) - static_cast<unsigned char>(cb);
             ++a;
             ++b;
         }
-        return std::toupper(static_cast<unsigned char>(*a)) - std::toupper(static_cast<unsigned char>(*b));
+        return std::toupper(static_cast<unsigned char>(*a)) -
+               std::toupper(static_cast<unsigned char>(*b));
     }
 
     // Singleton instance pointer (DAT_00635660)
@@ -100,54 +101,54 @@ namespace RWS
     // CClassFactory::ClassIsRegistered (FUN_00412cd0)
     // ASM: 00412cd0 — Check whether the class is registered
     // ========================================================================
-RwBool CClassFactory::ClassIsRegistered(const char* pClassName)
-{
-    if (!pClassName)
+    RwBool CClassFactory::ClassIsRegistered(const char* pClassName)
     {
+        if (!pClassName)
+        {
+            return FALSE;
+        }
+
+        CClassFactory* pFactory = Instance();
+        for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
+             it != pFactory->m_RegisteredClasses.end(); ++it)
+        {
+            if (Stricmp(it->first.c_str(), pClassName) == 0)
+            {
+                return TRUE;
+            }
+        }
+
         return FALSE;
     }
-
-    CClassFactory* pFactory = Instance();
-    for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
-         it != pFactory->m_RegisteredClasses.end(); ++it)
-    {
-        if (Stricmp(it->first.c_str(), pClassName) == 0)
-        {
-            return TRUE;
-        }
-    }
-
-    return FALSE;
-}
 
     // ========================================================================
     // CClassFactory::Create (FUN_00412a60)
     // ASM: 00412a60 — Create a new object from the class name
     // ========================================================================
-void* CClassFactory::Create(const char* pClassName)
-{
-    if (!pClassName)
+    void* CClassFactory::Create(const char* pClassName)
     {
-        return 0;
-    }
-
-    CClassFactory* pFactory = Instance();
-    for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
-         it != pFactory->m_RegisteredClasses.end(); ++it)
-    {
-        if (Stricmp(it->first.c_str(), pClassName) == 0)
+        if (!pClassName)
         {
-            ClassData* pData = it->second;
-            if (pData && pData->m_pCreationFunc)
-            {
-                return pData->m_pCreationFunc();
-            }
             return 0;
         }
-    }
 
-    return 0;
-}
+        CClassFactory* pFactory = Instance();
+        for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
+             it != pFactory->m_RegisteredClasses.end(); ++it)
+        {
+            if (Stricmp(it->first.c_str(), pClassName) == 0)
+            {
+                ClassData* pData = it->second;
+                if (pData && pData->m_pCreationFunc)
+                {
+                    return pData->m_pCreationFunc();
+                }
+                return 0;
+            }
+        }
+
+        return 0;
+    }
 
     // ========================================================================
     // CClassFactory::Register (FUN_00412f10, FUN_00413700, FUN_00413ab0)
@@ -156,7 +157,40 @@ void* CClassFactory::Create(const char* pClassName)
     void* CClassFactory::Register(const char* pClassName, ClassCreationFunc pCreateFunc, RwUInt32 size, RwUInt32 flags)
     {
         assert(pClassName != 0 && "Failed PRE-condition: pClassName");
-        assert(!ClassIsRegistered(pClassName) && "Failed PRE-condition: !ClassIsRegistered(pClassName)");
+        if (!pClassName)
+        {
+            return 0;
+        }
+
+        CClassFactory* pFactory = Instance();
+
+        // WHOLE_ARCHIVE static initializers can register the same class name
+        // across multiple translation units; reuse/update the existing entry
+        // rather than aborting on duplicate registration.
+        for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
+             it != pFactory->m_RegisteredClasses.end(); ++it)
+        {
+            if (Stricmp(it->first.c_str(), pClassName) == 0)
+            {
+                ClassData* pExisting = it->second;
+                if (pExisting)
+                {
+                    if (pCreateFunc != 0)
+                    {
+                        pExisting->m_pCreationFunc = pCreateFunc;
+                    }
+                    if (flags != 0)
+                    {
+                        pExisting->m_Size = size;
+                        if ((size & (m_AlignmentSize - 1)) != 0)
+                        {
+                            pExisting->m_Size = (size - (size & (m_AlignmentSize - 1))) + m_AlignmentSize;
+                        }
+                    }
+                }
+                return pExisting;
+            }
+        }
 
         ClassData* pData = new ClassData();
         pData->m_pCreationFunc = pCreateFunc;
@@ -172,7 +206,6 @@ void* CClassFactory::Create(const char* pClassName)
             }
         }
 
-        CClassFactory* pFactory = Instance();
         pFactory->m_RegisteredClasses[pClassName] = pData;
 
         assert(ClassIsRegistered(pClassName) && "Failed POST-condition: ClassIsRegistered(pClassName)");
@@ -184,25 +217,28 @@ void* CClassFactory::Create(const char* pClassName)
     // CClassFactory::UnRegister (FUN_00413da0)
     // ASM: 00413da0 — Remove a specific class's registration
     // ========================================================================
-void CClassFactory::UnRegister(const char* pClassName)
-{
-    if (!pClassName)
+    void CClassFactory::UnRegister(const char* pClassName)
     {
-        return;
-    }
-
-    CClassFactory* pFactory = Instance();
-    for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
-         it != pFactory->m_RegisteredClasses.end(); ++it)
-    {
-        if (Stricmp(it->first.c_str(), pClassName) == 0)
+        if (!pClassName)
         {
-            delete it->second;
-            pFactory->m_RegisteredClasses.erase(it);
-            break;
+            return;
+        }
+
+        CClassFactory* pFactory = Instance();
+        for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
+             it != pFactory->m_RegisteredClasses.end(); )
+        {
+            if (Stricmp(it->first.c_str(), pClassName) == 0)
+            {
+                delete it->second;
+                it = pFactory->m_RegisteredClasses.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
         }
     }
-}
 
     // ========================================================================
     // CClassFactory::UnRegisterAll (FUN_004139b0)

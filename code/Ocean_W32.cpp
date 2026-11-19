@@ -83,33 +83,42 @@ void COcean_W32::RenderWaterMesh(const RwV3d* pVertices, const RwTexCoords* pTex
     // rw::im3d directly (does not fall back to the rwstubs no-op C API — RenderTestQuad
     // im2d pattern). GL3/D3D9: Im3DVertex (pos+normal+rgba+uv); NULL: no drawing.
 #if defined(RW_GL3) || defined(RW_D3D9)
-    // No texture: clear the TEXTURERASTER leaked from the terrain render (otherwise
-    // the ocean multiplies with the last terrain texture and darkens).
-    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
-    OceanIm3DVertex *imVertices = (OceanIm3DVertex *)RwMalloc(
-        numVertices * sizeof(OceanIm3DVertex), 0);
-    if (imVertices == nullptr) {
-        free(indices);
-        return;
+    // Headless unit tests (e.g. ocean_test) may start the engine without an active
+    // camera or world. Grid validation and index generation above still run; skip
+    // GPU Im3D submission until a camera and world are active.
+    if (rw::engine != nullptr &&
+        rw::Engine::state == rw::Engine::Started &&
+        rw::engine->currentCamera != nullptr &&
+        rw::engine->currentWorld != nullptr)
+    {
+        // No texture: clear the TEXTURERASTER leaked from the terrain render (otherwise
+        // the ocean multiplies with the last terrain texture and darkens).
+        rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+        OceanIm3DVertex *imVertices = (OceanIm3DVertex *)RwMalloc(
+            numVertices * sizeof(OceanIm3DVertex), 0);
+        if (imVertices == nullptr) {
+            free(indices);
+            return;
+        }
+        for (RwUInt32 i = 0; i < numVertices; ++i) {
+            imVertices[i].setX(pVertices[i].x);
+            imVertices[i].setY(pVertices[i].y);
+            imVertices[i].setZ(pVertices[i].z);
+            imVertices[i].setNormalX(0.0f);
+            imVertices[i].setNormalY(1.0f);
+            imVertices[i].setNormalZ(0.0f);
+            imVertices[i].setColor(pColors[i].red, pColors[i].green,
+                                   pColors[i].blue, pColors[i].alpha);
+            imVertices[i].setU(pTexCoords[i].u);
+            imVertices[i].setV(pTexCoords[i].v);
+        }
+        rw::im3d::Transform(imVertices, (int)numVertices, nullptr,
+                            rw::im3d::EVERYTHING);
+        rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, indices,
+                                         (int)numIndices);
+        rw::im3d::End();
+        RwFree(imVertices);
     }
-    for (RwUInt32 i = 0; i < numVertices; ++i) {
-        imVertices[i].setX(pVertices[i].x);
-        imVertices[i].setY(pVertices[i].y);
-        imVertices[i].setZ(pVertices[i].z);
-        imVertices[i].setNormalX(0.0f);
-        imVertices[i].setNormalY(1.0f);
-        imVertices[i].setNormalZ(0.0f);
-        imVertices[i].setColor(pColors[i].red, pColors[i].green,
-                               pColors[i].blue, pColors[i].alpha);
-        imVertices[i].setU(pTexCoords[i].u);
-        imVertices[i].setV(pTexCoords[i].v);
-    }
-    rw::im3d::Transform(imVertices, (int)numVertices, nullptr,
-                        rw::im3d::EVERYTHING);
-    rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, indices,
-                                     (int)numIndices);
-    rw::im3d::End();
-    RwFree(imVertices);
 #else
     // NULL platform: device im3D no-op — index buffer generation is proven,
     // drawing is skipped (in the RW_GL3 build the real render path above is used).

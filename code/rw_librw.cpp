@@ -97,8 +97,7 @@ namespace
         }
         return hasHalAdapter;
     }
-#endif
-#ifdef RW_D3D9
+
     HWND s_hwnd = nullptr;     // D3D9 device target window
     RwBool s_winQuit = FALSE;  // WM_CLOSE/WM_DESTROY → game loop exits
     double s_lastMouseX = 0.0; // mouse delta calibration (same as GL3)
@@ -511,7 +510,23 @@ RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {
     if (!stream) {
         return 0;
     }
+    // Ensure librw engine & native raster readers are registered if a test
+    // calls RwTexDictionaryStreamRead before RwEngineInit.
+    if (rw::engine == nullptr) {
+        RwEngineInit(nullptr, 0, 0);
+    }
     ShimStream *p = reinterpret_cast<ShimStream *>(stream);
+    // Support both raw .txd files (cursor at outer rwID_TEXDICTIONARY header)
+    // and streams where RwStreamFindChunk(..., rwID_TEXDICTIONARY) already
+    // consumed the 12-byte chunk header.
+    const rw::int32 pos = p->file.tell();
+    rw::uint32 chunkType = 0;
+    if (p->file.read8(&chunkType, sizeof(chunkType)) == sizeof(chunkType)) {
+        p->file.seek(pos, SEEK_SET);
+        if (chunkType == rw::ID_TEXDICTIONARY) {
+            rw::findChunk(&p->file, rw::ID_TEXDICTIONARY, nullptr, nullptr);
+        }
+    }
     return reinterpret_cast<RwTexDictionary *>(
         rw::TexDictionary::streamRead(&p->file));
 }

@@ -1,3 +1,4 @@
+// #pragma pack(push, 1) - Reverted to default alignment for MSVC/RenderWare 3.7 compatibility
 #ifndef RWS_RWGFXRESOURCE_H
 #define RWS_RWGFXRESOURCE_H
 
