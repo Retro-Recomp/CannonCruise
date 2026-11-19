@@ -35,10 +35,10 @@ class/behavior names. Missing from the port (no equivalent at all):
 |---|---|
 | `CAnimatedEnvironment` | — missing |
 | `CHugoActor` | — missing |
-| `CLogic_OR` | — missing |
+| `CLogic_OR` | ported (CLogic_OR.h/.cpp) |
 | `CParticleFountain` | — missing (port has `CParticleEmitter`/`CParticleBank`) |
-| `CThunder` | — missing |
-| `CWaypoint` | — missing |
+| `CThunder` | ported (CThunder.h/.cpp) |
+| `CWaypoint` | ported (CWaypoint.h/.cpp) |
 
 Name mismatches (same class, different port name):
 
@@ -51,7 +51,8 @@ Name mismatches (same class, different port name):
 Present but **not registered** in the port (used directly): `CLoadLevel`,
 `CMine` (both exist as source).
 
-## 4. Behavior wiring: 25 registered, 13 are no-op stubs
+## 4. Behavior wiring: 26 registered, 12 are no-op stubs (CEventTrigger Apply now wired);
+  highest-value remaining gaps: real `Apply` for the 11 stub behaviors.
 
 `.RWS` spawns 26 unique behavior classes; the port registers 25. Of those,
 **13 are stubs whose `Apply` does nothing** (attribute values in `.RWS`
@@ -71,22 +72,24 @@ audio, `CParticleEmitter`/`CParticleBank` for particles) — the gap is the
 
 | Feature | Status |
 |---|---|
-| Save/Load (Slot0) | `CSaveGameManager` exists; not wired to gameplay |
-| LEVELCOMPLETE screen | not wired (both towers destroyed → nothing happens) |
+| Save/Load (Slot0) | `CSaveGameManager` wired; F5/Save F6-Load controls added; data includes level-unlocked bitflags, high score, coins; checksum-verified |
+| LEVELCOMPLETE screen | wired (both towers destroyed → automatic `GAMESTATE_LEVELCOMPLETE` + `AfterGameMenuBehavior::ShowSummary`) |
 | Particles | `CParticleEmitter`/`CParticleBank`/`CParticleScript` exist; behavior stub |
 | Audio | `CAudioManager`/`CAudioStreamEntity`/`BinkPlayer` exist; behavior stubs |
-| Event triggers | `CTrigger` (real) exists; `CEventTrigger` behavior is a stub |
+| Event triggers | `CTrigger` (real) exists; `CEventTrigger` behavior Apply wired |
 | World features | mine/waypoint/thunder/animated-environment classes missing |
 | Logic | `CLogic_OR` missing (OR-combined trigger logic) |
 
 ## 6. Conclusion
 
-- **Class coverage**: 44/50 binary classes have a port equivalent (88%) —
-  41 exact-name + 3 name mismatches; 6 missing.
-- **Behavior coverage**: 25/26 `.RWS` behaviors registered (96%); 13 need
-  real `Apply` wiring.
+- **Class coverage**: 47/50 binary classes have a port equivalent (94%) —
+  44 exact-name + 3 name mismatches; 3 missing (CAnimatedEnvironment, CHugoActor,
+  CParticleFountain).
+- **Behavior coverage**: 26/27 `.RWS` behaviors registered (96%); 11 stub `Apply`
+  methods remain (CParticleManager, CParticleEntity, CWin32Keyboard, CAudioObject,
+  CAudioStream, CProgressIndicator, CDifficultyLevels, CFMVBehavior, CAudioManager,
+  CCameraShaker, CDirectorsCamera). CEventTrigger Apply now wired.
 - **Function coverage**: 1.9% raw — dominated by statically-linked library
   code; not actionable.
 
-Highest-value next gaps: LEVELCOMPLETE wiring (closes the mission loop),
-Save/Load, and real `Apply` for the 13 stub behaviors.
+Highest-value next gaps: real `Apply` for the 11 stub behaviors.

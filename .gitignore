@@ -85,3 +85,9 @@ docs/doxygen-warnings.log
 /DSETUP.DLL
 /binkw32.dll
 /cdcode.key
+DSETUP.DLL
+*.asm
+cc_code.txt
+setup.txt
+Setup.uni
+Config.ini

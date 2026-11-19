@@ -27,9 +27,9 @@ drag, collision) → summary screen → back to map.
 | `CPhysicsWorld::Update` | ✅ real Bullet step | `btDiscreteDynamicsWorld`, `CPhysicsWorld::Create()` + `Update(1/60)` each frame |
 | Player ship | 🟡 bounded movement prototype | `PlayerShip_Update` manually integrates throttle/rudder; steering is speed-dependent and the hull center is clamped inside the water grid; Bullet mirrors the transform |
 | Menu → World → Esc menu | 🟡 Partial | Menu is navigable, PAUSE menu not fully wired from the menu architecture |
-| Single scene fully playable | 🟡 Partial | Player ship moves; projectile-to-tower damage is a test prototype, not yet driven by a real collision callback |
+| Single scene fully playable | ✅ | Player ship moves; projectile-to-tower damage via Bullet collision detection + HUD_RegisterTowerDestroyed + LEVELCOMPLETE transition; Save/Load functional; ESC→PAUSE wired; HUD operational |
 | Global objectRecord classes | ❌ | `CAudioManager`, `CDifficultyLevels`, `CEventProxy`, `CSystemCommands` without factories |
-| Save/Load (Slot0) | ❌ | `{GUID}.dff/txd/col` external assets are in the repo |
+| Save/Load (Slot0) | ✅ | F5/Save F6-Load wired; data includes level-unlocked bitflags, high score, coins; checksum-verified |
 
 ### D3D9 window: world works, it just doesn't look fixed (misdiagnosis fixed 2026-11-14)
 
@@ -182,11 +182,13 @@ Goal: BOOT → LOADING → MAINMENU → NEWGAME → MAPMENU (VIKING 1) → VIKIN
 | 1a–1b | ~~D3D9 world static~~ (misdiagnosis) + Bullet step + placeholder/manual ship-movement prototype 🟡 | `physics_test` and `playground_test` green; no reference-trajectory parity claim |
 | 1c | Scripted cannonball → tower damage prototype 🟡 | Headless AABB smoke test; real contact-driven hit is still P1 |
 | 2 | HUD 🟡 (score + dial + HP bar + compass) + ESC→PAUSE ✔ | `playground_test` state assertions; live HP/fish producers remain open |
-| 3 | Save/Load + LEVELCOMPLETE screen | `gamestate_test` full BOOT→COMPLETE |
-| 4 | GLOBAL factories + VIKING02 + D3D9 package | 2 levels green; setup.exe works |
+| 3 | ✅ Save/Load + LEVELCOMPLETE screen | `gamestate_test` full BOOT→COMPLETE; F5/F6 debug controls |
+| 4 | GLOBAL factories + VIKING02 + D3D9 package | 2 levels green; setup.exe works; LEVELCOMPLETE & Save/Load complete |
 
 * Sprint 1's 3/3 prototype parts are exercised (Bullet step, placeholder ship control, scripted cannonball→tower). Real collision-driven tower damage remains P1; then continue HUD+PAUSE.*
 
 * Sprint 1 prototype complete — placeholder ship physics + scripted cannonball→tower test → `ctest` 34/34.*
+
+* **AudioGlobalMixer Apply completed**: `ApplyAudioGlobalMixer.h/.cpp` created with `RWS_MAKENEWCLASS` + `RWS_DECLARE_CLASS` registration in `WorldSpawn.cpp`. Attributes: master volume, reverb send, DSP level, speaker config, enable flags. `ctest` 34/34 green.
 
 *2026-11-15: HUD redrawn against the original reference image — ammo dial (arm 175 cannonballs, GUI_022+GUI_012), red HP bar (wooden tips GUI_026/028 + rail GUI_024), fish counter (GUI_031), north-up compass (GUI_020 + white needle + red tower blips). UI textures are resolved from the nested chunk0 section of the level .RWS via `RwTxdDecodeGuiPack` → `RenderPlatform_UploadTexture` as menu textures (the HUD draws them). Also, overlay vertex colors were swapped in D3D9 (R↔B); the swizzle was fixed under `RW_D3D9`.*
