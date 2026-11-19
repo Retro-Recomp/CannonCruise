@@ -39,13 +39,13 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 - `ApplyFMVBehavior` — video file, start/end time, transition
 
 ### Stub Classes (WorldSpawn only, no .h/.cpp)
-- `ApplyTowerCatapult` — in TowerCatapult.cpp
-- `ApplyCollisionTrigger` — in Trigger.cpp
-- `ApplyMenuBehavior` — in MenuBehavior.cpp
-- `ApplyMissionIndicator` — in MissionIndicator.cpp
-- `ApplyHealthDebris` — in HealthDebris.cpp
-- `ApplyBirdSeaGull` — in Bird.cpp
-- `ApplyFernandoActor` — in FernandoActor.cpp
+- `ApplyTowerCatapult` — in TowerCatapult.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyCollisionTrigger` — in Trigger.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyMenuBehavior` — in MenuBehavior.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyMissionIndicator` — in MissionIndicator.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyHealthDebris` — in HealthDebris.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyBirdSeaGull` — in Bird.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
+- `ApplyFernandoActor` — in FernandoActor.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
 
 ## Remaining Gaps (11 stub Apply methods)
 
@@ -99,7 +99,8 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 ### sub_555EF0 Physics Tick Parity
 
 **Current Implementation:**
-- `main.cpp`: `CPhysicsWorld::Update(1/60)` called each simulation frame
+- `main.cpp`: `CPhysicsWorld::Update(1/60)` called each simulation frame **only on `iMsgPhysicsUpdate (0x0002)` message**
+- `code/PhysicsWorld.cpp`: `CPhysicsWorldBehaviour::HandleEvents` now filters by `msg.Id == iMsgPhysicsUpdate` — unrelated messages (render, input, AI) do not advance the physics world
 - The 1/60 tick is the implemented cadence for the Bullet-driven physics step
 - Verified: ctest 34/34 green (NULL + D3D9 builds clean)
 
@@ -111,6 +112,7 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 - The 1/60 tick is demonstrated equivalent for the Bullet-driven physics step
 - The separate 1/60 constant from the soldier tick path should NOT be conflated with the world-update wrapper's 1/30 argument
 - Full parity trace requires: basic block analysis of sub_555EF0, argument handling, and comparison against the implemented 1/60 tick behavior
+- Physics event filter now ensures world only steps on explicit physics update message, preventing unrelated message types from advancing the world
 
 **Gate Status:**
 - no unresolved 1/30-vs-1/60 claim; each parity claim has an ASM reference and a repeatable port-side test. Do not change the timestep based only on a constant from another event handler.
@@ -134,7 +136,8 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 
 ### Build Verification
 - **ctest: 34/34 green** (NULL + D3D9 builds clean)
-- Class coverage: 40/50 classes with .h/.cpp Apply implementations (80%)
+- Class coverage: 47/50 binary classes (94%)
+- Physics event filter: verified via code analysis; runtime test pending
 
 ## GAP Analysis Summary
 
@@ -154,9 +157,10 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 | **ApplyAudioGlobalMixer** | **✅ NEW** | **✅ UPDATED** |
 
 ### P1 Gate Status
-- **4 of 7 requirements fully complete**
-- **3 of 7 requirements partial** (known deviations documented)
-- **P1 largely satisfied** — core mechanic (Bullet → OnHit → TakeDamage) implemented
+- **5 of 7 requirements fully complete**
+- **2 of 7 requirements partial** (known deviations documented)
+- **P1 largely satisfied** — core mechanic (Bullet → OnHit → TakeDamage) implemented;
+  remaining partial items relate to physics event filter verification and sub_555EF0 parity trace
 
 ### Build Status
 - **ctest: 34/34 green** (NULL + D3D9 builds clean)

@@ -1,0 +1,1518 @@
+======================================
+CannonCruise Build Script
+======================================
+
+Proje koku: C:\Users\mnkhprre\Documents\GitHub\CannonCruise
+Build dizini: C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32
+Platform: D3D9
+
+[1/6] Environment ayarlaniyor...
+[2/6] Araclar dogrulaniyor...
+cmake version 4.4.4
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+
+[3/6] Build dizini hazirlaniyor...
+  OK: Build dizini olusturuldu: C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32
+
+[4/6] CMake configure...
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26300.
+-- The C compiler identification is MSVC 19.51.36260.0
+-- The CXX compiler identification is MSVC 19.51.36260.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x86/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x86/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Warning (deprecated) at build_win32/_deps/bullet3-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMAKE_EXE_LINKER_FLAGS_DEBUG=/INCREMENTAL:NO /debug /INCREMENTAL
+-- Found OpenGL: opengl32
+OPENGL FOUND
+opengl32glu32
+CMake Warning (deprecated) at build_win32/_deps/librw-src/CMakeLists.txt:6 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+-- LIBRW_PLATFORM = D3D9 (choices=NULL;GL3;D3D9)
+-- tests/CMakeLists.txt not found at C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/../tests; skipping unit tests.
+-- Configuring done (21.4s)
+-- Generating done (0.4s)
+-- Build files have been written to: C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32
+  OK: CMake configure tamamlandi
+
+[5/6] Derleme yapiliyor...
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3Serialize/Bullet2FileLoader/CMakeLists.txt
+  b3BulletFile.cpp
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3Dynamics/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3Collision/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3OpenCL/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3Common/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/Bullet3Geometry/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/BulletDynamics/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/BulletCollision/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/BulletInverseDynamics/CMakeLists.txt
+  b3CpuRigidBodyPipeline.cpp
+  b3DynamicBvh.cpp
+  b3AlignedAllocator.cpp
+  b3ConvexHullComputer.cpp
+  clew.c
+  IDMath.cpp
+  btKinematicCharacterController.cpp
+  b3Vector3.cpp
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/BulletSoftBody/CMakeLists.txt
+  b3Chunk.cpp
+  btAxisSweep3.cpp
+  b3Logging.cpp
+  b3DynamicBvhBroadphase.cpp
+  b3GeometryUtil.cpp
+  b3FixedConstraint.cpp
+  btSoftBody.cpp
+  btConeTwistConstraint.cpp
+  Generating Code...
+  MultiBodyTree.cpp
+  btBroadphaseProxy.cpp
+  b3Generic6DofConstraint.cpp
+  b3OverlappingPairCache.cpp
+  btCollisionAlgorithm.cpp
+  b3GpuGridBroadphase.cpp
+  b3DNA.cpp
+  btContactConstraint.cpp
+  btDbvt.cpp
+  b3PgsJacobiSolver.cpp
+  b3ConvexUtility.cpp
+  b3GpuSapBroadphase.cpp
+  btFixedConstraint.cpp
+  MultiBodyTreeInitCache.cpp
+  btDbvtBroadphase.cpp
+  Generating Code...
+  b3Point2PointConstraint.cpp
+  b3GpuParallelLinearBvhBroadphase.cpp
+  b3File.cpp
+  MultiBodyTreeImpl.cpp
+  btGearConstraint.cpp
+  btDispatcher.cpp
+  b3TypedConstraint.cpp
+  b3CpuNarrowPhase.cpp
+  Bullet3Common.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet3Common.lib
+  btOverlappingPairCache.cpp
+  b3GpuParallelLinearBvh.cpp
+  btGeneric6DofConstraint.cpp
+  Generating Code...
+  Generating Code...
+  btQuantizedBvh.cpp
+  Generating Code...
+  Bullet3Geometry.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet3Geometry.lib
+  btSoftBodyConcaveCollisionAlgorithm.cpp
+  b3OpenCLUtils.cpp
+  btGeneric6DofSpringConstraint.cpp
+  b3Serializer.cpp
+  Generating Code...
+  btGeneric6DofSpring2Constraint.cpp
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/bullet3-src/src/LinearMath/CMakeLists.txt
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/build_win32/_deps/librw-src/src/CMakeLists.txt
+  btSimpleBroadphase.cpp
+  btHinge2Constraint.cpp
+  btSoftBodyHelpers.cpp
+  btActivatingCollisionAlgorithm.cpp
+  b3ContactCache.cpp
+  b3ConvexHullContact.cpp
+  btAlignedAllocator.cpp
+  anim.cpp
+  btHingeConstraint.cpp
+  btConvexHull.cpp
+  btBoxBoxCollisionAlgorithm.cpp
+  BulletInverseDynamics.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\BulletInverseDynamics.lib
+  base.cpp
+  btConvexHullComputer.cpp
+  btPoint2PointConstraint.cpp
+  bmp.cpp
+  b3GjkEpa.cpp
+  btBox2dBox2dCollisionAlgorithm.cpp
+  Bullet2FileLoader.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet2FileLoader.lib
+  Bullet3Dynamics.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet3Dynamics.lib
+  btGeometryUtil.cpp
+  camera.cpp
+  btSequentialImpulseConstraintSolver.cpp
+  b3OptimizedBvh.cpp
+  btPolarDecomposition.cpp
+  Bullet3Collision.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet3Collision.lib
+  btBoxBoxDetector.cpp
+  charset.cpp
+  btQuickprof.cpp
+  b3QuantizedBvh.cpp
+  clump.cpp
+  btCollisionDispatcher.cpp
+  btSequentialImpulseConstraintSolverMt.cpp
+  engine.cpp
+  b3StridingMeshInterface.cpp
+  btCollisionDispatcherMt.cpp
+  b3TriangleCallback.cpp
+  btReducedVector.cpp
+  error.cpp
+  b3TriangleIndexVertexArray.cpp
+  btBatchedConstraints.cpp
+  frame.cpp
+  btSoftBodyRigidBodyCollisionConfiguration.cpp
+  btCollisionObject.cpp
+  b3VoronoiSimplexSolver.cpp
+  geometry.cpp
+  b3BoundSearchCL.cpp
+  geoplg.cpp
+  btNNCGConstraintSolver.cpp
+  b3FillCL.cpp
+  btSerializer.cpp
+  hanim.cpp
+  btSerializer64.cpp
+  btThreads.cpp
+  btSliderConstraint.cpp
+  btSoftRigidCollisionAlgorithm.cpp
+  image.cpp
+  b3LauncherCL.cpp
+  btCollisionWorld.cpp
+  light.cpp
+  b3PrefixScanCL.cpp
+  btSolve2LinearConstraint.cpp
+  matfx.cpp
+  btVector3.cpp
+  b3PrefixScanFloat4CL.cpp
+  btTaskScheduler.cpp
+  btTypedConstraint.cpp
+  pipeline.cpp
+  plg.cpp
+  b3RadixSort32CL.cpp
+  btSoftRigidDynamicsWorld.cpp
+  png.cpp
+  btCollisionWorldImporter.cpp
+  Generating Code...
+  btThreadSupportPosix.cpp
+  btThreadSupportWin32.cpp
+  Generating Code...
+  prim.cpp
+  raster.cpp
+  btUniversalConstraint.cpp
+  Generating Code...
+  btDiscreteDynamicsWorld.cpp
+  btCompoundCollisionAlgorithm.cpp
+  btSoftMultiBodyDynamicsWorld.cpp
+  btCompoundCompoundCollisionAlgorithm.cpp
+  Compiling...
+  render.cpp
+  Generating Code...
+  skin.cpp
+  Generating Code...
+  texture.cpp
+  btSoftSoftCollisionAlgorithm.cpp
+  LinearMath.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\LinearMath.lib
+  tga.cpp
+  tristrip.cpp
+  userdata.cpp
+  uvanim.cpp
+  world.cpp
+  btDefaultSoftBodySolver.cpp
+  d3d8.cpp
+  btDeformableBackwardEulerObjective.cpp
+  d3d8matfx.cpp
+  d3d8render.cpp
+  d3d8skin.cpp
+  Compiling...
+  btConvexConcaveCollisionAlgorithm.cpp
+  btDeformableBodySolver.cpp
+  d3d9.cpp
+  btConvexConvexAlgorithm.cpp
+  btConvexPlaneCollisionAlgorithm.cpp
+  btConvex2dConvex2dAlgorithm.cpp
+  d3d9matfx.cpp
+  btDefaultCollisionConfiguration.cpp
+  Compiling...
+  b3GpuRaycast.cpp
+  b3GpuGenericConstraint.cpp
+  btEmptyCollisionAlgorithm.cpp
+  btDeformableMultiBodyConstraintSolver.cpp
+  b3GpuJacobiContactSolver.cpp
+  btGhostObject.cpp
+  d3d9render.cpp
+  Compiling...
+  btDiscreteDynamicsWorldMt.cpp
+  b3GpuNarrowPhase.cpp
+  btHashedSimplePairCache.cpp
+  btInternalEdgeUtility.cpp
+  b3GpuPgsConstraintSolver.cpp
+  btSimulationIslandManagerMt.cpp
+  d3d9skin.cpp
+  b3GpuPgsContactSolver.cpp
+  btManifoldResult.cpp
+  btRigidBody.cpp
+  btDeformableContactProjection.cpp
+  b3GpuRigidBodyPipeline.cpp
+  btSimulationIslandManager.cpp
+  b3Solver.cpp
+  btSphereBoxCollisionAlgorithm.cpp
+  d3d.cpp
+  btSimpleDynamicsWorld.cpp
+  Generating Code...
+  btSphereSphereCollisionAlgorithm.cpp
+  btRaycastVehicle.cpp
+  btSphereTriangleCollisionAlgorithm.cpp
+  btUnionFind.cpp
+  btWheelInfo.cpp
+  SphereTriangleDetector.cpp
+  d3ddevice.cpp
+  btMultiBody.cpp
+  btDeformableMultiBodyDynamicsWorld.cpp
+  btBoxShape.cpp
+  btBox2dShape.cpp
+  btBvhTriangleMeshShape.cpp
+  btMultiBodyConstraint.cpp
+  d3dimmed.cpp
+  btMultiBodyConstraintSolver.cpp
+  btCapsuleShape.cpp
+  Generating Code...
+  btDeformableContactConstraint.cpp
+  btMultiBodyDynamicsWorld.cpp
+  d3drender.cpp
+  poly34.cpp
+  btReducedDeformableBody.cpp
+  btMultiBodyFixedConstraint.cpp
+  Generating Code...
+  Bullet3OpenCL_clew.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\Bullet3OpenCL_clew.lib
+  btMultiBodyGearConstraint.cpp
+  Compiling...
+  xbox.cpp
+  xboxmatfx.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\d3d\xbox.cpp(542,4): warning C4838: conversion from 'rw::xbox::<unnamed-enum-D3DFMT_UNKNOWN>' to 'rw::uint32' requires a narrowing conversion [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-build\src\librw.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\d3d\xbox.cpp(543,4): warning C4838: conversion from 'rw::xbox::<unnamed-enum-D3DFMT_UNKNOWN>' to 'rw::uint32' requires a narrowing conversion [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-build\src\librw.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\d3d\xbox.cpp(544,4): warning C4838: conversion from 'rw::xbox::<unnamed-enum-D3DFMT_UNKNOWN>' to 'rw::uint32' requires a narrowing conversion [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-build\src\librw.vcxproj]
+  btReducedDeformableBodyHelpers.cpp
+  xboxskin.cpp
+  btMultiBodyJointLimitConstraint.cpp
+  xboxvfmt.cpp
+  gl3.cpp
+  gl3device.cpp
+  Compiling...
+  btCollisionShape.cpp
+  gl3immed.cpp
+  gl3matfx.cpp
+  btMultiBodyJointMotor.cpp
+  gl3pipe.cpp
+  gl3raster.cpp
+  btReducedDeformableBodySolver.cpp
+  btCompoundShape.cpp
+  gl3render.cpp
+  gl3shader.cpp
+  btMultiBodyMLCPConstraintSolver.cpp
+  gl3skin.cpp
+  wdgl.cpp
+  btConcaveShape.cpp
+  lodepng.cpp
+  btConeShape.cpp
+  pds.cpp
+  btConvexHullShape.cpp
+  ps2.cpp
+  btMultiBodyPoint2Point.cpp
+  ps2device.cpp
+  ps2matfx.cpp
+  ps2raster.cpp
+  btReducedDeformableContactConstraint.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1907,9): warning C4477: 'printf' : format string '%016lX' requires an argument of type 'unsigned long', but variadic argument 1 has type 'rw::uint64' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-build\src\librw.vcxproj]
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1907,9):
+      consider using '%llX' in the format string
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1907,9):
+      consider using '%I64X' in the format string
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1927,9): warning C4477: 'printf' : format string '%016lX' requires an argument of type 'unsigned long', but variadic argument 1 has type 'rw::uint64' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-build\src\librw.vcxproj]
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1927,9):
+      consider using '%llX' in the format string
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\_deps\librw-src\src\ps2\ps2raster.cpp(1927,9):
+      consider using '%I64X' in the format string
+  
+  Generating Code...
+  btConvexInternalShape.cpp
+  btMultiBodySliderConstraint.cpp
+  btConvexPointCloudShape.cpp
+  btConvexPolyhedron.cpp
+  btMultiBodySphericalJointMotor.cpp
+  Generating Code...
+  btConvexShape.cpp
+  Compiling...
+  ps2skin.cpp
+  btConvex2dShape.cpp
+  btMultiBodySphericalJointLimit.cpp
+  Generating Code...
+  btConvexTriangleMeshShape.cpp
+  btCylinderShape.cpp
+  btEmptyShape.cpp
+  glad.c
+  btHeightfieldTerrainShape.cpp
+  btDantzigLCP.cpp
+  librw.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\librw.lib
+  btMiniSDF.cpp
+  Generating Code...
+  btMinkowskiSumShape.cpp
+  btMultimaterialTriangleMeshShape.cpp
+  btMultiSphereShape.cpp
+  btOptimizedBvh.cpp
+  btPolyhedralConvexShape.cpp
+  Generating Code...
+  Compiling...
+  btScaledBvhTriangleMeshShape.cpp
+  btSdfCollisionShape.cpp
+  btShapeHull.cpp
+  btSphereShape.cpp
+  btStaticPlaneShape.cpp
+  btStridingMeshInterface.cpp
+  btTetrahedronShape.cpp
+  btTriangleBuffer.cpp
+  btTriangleCallback.cpp
+  btTriangleIndexVertexArray.cpp
+  btTriangleIndexVertexMaterialArray.cpp
+  btTriangleMesh.cpp
+  btTriangleMeshShape.cpp
+  btUniformScalingShape.cpp
+  btContactProcessing.cpp
+  btGenericPoolAllocator.cpp
+  btGImpactBvh.cpp
+  btGImpactCollisionAlgorithm.cpp
+  Compiling...
+  btMLCPSolver.cpp
+  btGImpactQuantizedBvh.cpp
+  btLemkeAlgorithm.cpp
+  btGImpactShape.cpp
+  Generating Code...
+  Generating Code...
+  BulletDynamics.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\BulletDynamics.lib
+  Compiling...
+  btTriangleShapeEx.cpp
+  gim_box_set.cpp
+  gim_contact.cpp
+  BulletSoftBody.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\BulletSoftBody.lib
+  gim_memory.cpp
+  gim_tri_collision.cpp
+  btContinuousConvexCollision.cpp
+  btConvexCast.cpp
+  btGjkConvexCast.cpp
+  btGjkEpa2.cpp
+  btGjkEpaPenetrationDepthSolver.cpp
+  btGjkPairDetector.cpp
+  btMinkowskiPenetrationDepthSolver.cpp
+  btPersistentManifold.cpp
+  btRaycastCallback.cpp
+  btSubSimplexConvexCast.cpp
+  btVoronoiSimplexSolver.cpp
+  btPolyhedralContactClipping.cpp
+  Generating Code...
+  BulletCollision.vcxproj -> C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\lib\Release\BulletCollision.lib
+  Building Custom Rule C:/Users/mnkhprre/Documents/GitHub/CannonCruise/code/CMakeLists.txt
+  Actor.cpp
+  AfterGameMenuBehavior.cpp
+  AmmoCrate.cpp
+  AnimController.cpp
+  Animation.cpp
+  ApplyAudioGlobalMixer.cpp
+  ApplyAudioManager.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioGlobalMixer.cpp(78,25): error C2600: 'RWS::ApplyAudioGlobalMixer::~ApplyAudioGlobalMixer': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(30,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(31,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(31,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(37,23): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(37,45): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(50,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.h(50,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(15,38): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(15,60): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,58): error C2275: 'RWS::ApplyAudioManager': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(31,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(33,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(40,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(45,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(50,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(55,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(60,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(64,21): error C2600: 'RWS::ApplyAudioManager::~ApplyAudioManager': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(78,33): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioManager.cpp(78,55): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyAudioObject.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(29,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(30,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(36,22): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(36,44): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(49,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(49,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(55,14): error C3646: 'm_sSoundFile': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.h(55,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioObject.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(16,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(16,58): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,58): error C2275: 'RWS::ApplyAudioObject': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(30,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(32,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(34,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(40,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(44,29): error C2065: 'm_sSoundFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(45,21): error C2065: 'm_sSoundFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(49,21): error C2065: 'm_sSoundFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(56,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(61,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(66,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(71,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(75,20): error C2600: 'RWS::ApplyAudioObject::~ApplyAudioObject': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(89,32): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(89,54): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioObject.cpp(100,9): error C2065: 'm_sSoundFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyAudioStream.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(29,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(30,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(36,22): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(36,44): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(49,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(49,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(55,14): error C3646: 'm_sSourceFile': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.h(55,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyAudioStream.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(16,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(16,58): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,58): error C2275: 'RWS::ApplyAudioStream': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(31,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(33,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(41,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(45,29): error C2065: 'm_sSourceFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(46,21): error C2065: 'm_sSourceFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(50,21): error C2065: 'm_sSourceFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(57,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(62,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(67,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(72,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(77,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(81,20): error C2600: 'RWS::ApplyAudioStream::~ApplyAudioStream': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(95,32): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(95,54): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyAudioStream.cpp(106,9): error C2065: 'm_sSourceFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyBirdSeaGull.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(35,22): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(35,44): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(51,14): error C3646: 'm_sAudioCue': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(51,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyBirdSeaGull.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(13,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(13,58): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,58): error C2275: 'RWS::ApplyBirdSeaGull': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(21,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(23,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(25,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(31,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(34,29): error C2065: 'm_sAudioCue': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(35,21): error C2065: 'm_sAudioCue': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(39,21): error C2065: 'm_sAudioCue': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(46,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(51,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(56,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(61,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(65,20): error C2600: 'RWS::ApplyBirdSeaGull::~ApplyBirdSeaGull': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(79,32): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.cpp(79,54): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyCollisionTrigger.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(35,27): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(35,49): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyCollisionTrigger.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(13,46): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(13,68): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,58): error C2275: 'RWS::ApplyCollisionTrigger': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(22,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(24,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(26,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(31,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(36,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(41,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(46,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(50,25): error C2600: 'RWS::ApplyCollisionTrigger::~ApplyCollisionTrigger': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(64,37): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyCollisionTrigger.cpp(64,59): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyDifficultyLevels.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(29,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(30,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(36,27): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(36,49): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(49,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.h(49,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyDifficultyLevels.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(15,46): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(15,68): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,58): error C2275: 'RWS::ApplyDifficultyLevels': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(30,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(32,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(34,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(39,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(44,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(49,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(54,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(59,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(63,25): error C2600: 'RWS::ApplyDifficultyLevels::~ApplyDifficultyLevels': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(77,37): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyDifficultyLevels.cpp(77,59): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyFMVBehavior.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(30,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(31,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(31,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(37,22): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(37,44): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(50,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(50,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(53,14): error C3646: 'm_sVideoFile': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFMVBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(16,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(16,58): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,58): error C2275: 'RWS::ApplyFMVBehavior': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(31,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(33,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(41,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(45,29): error C2065: 'm_sVideoFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(46,21): error C2065: 'm_sVideoFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(50,21): error C2065: 'm_sVideoFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(57,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(62,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(67,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(72,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(76,20): error C2600: 'RWS::ApplyFMVBehavior::~ApplyFMVBehavior': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(90,32): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(90,54): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFMVBehavior.cpp(101,9): error C2065: 'm_sVideoFile': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyFernandoActor.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(35,24): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(35,46): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(53,14): error C3646: 'm_sSkinName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyFernandoActor.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(13,40): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(13,62): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,58): error C2275: 'RWS::ApplyFernandoActor': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(19,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(21,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(23,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(28,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(33,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(37,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(43,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(46,29): error C2065: 'm_sSkinName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(47,21): error C2065: 'm_sSkinName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(51,21): error C2065: 'm_sSkinName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(58,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(62,22): error C2600: 'RWS::ApplyFernandoActor::~ApplyFernandoActor': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(76,34): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.cpp(76,56): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyHealthDebris.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(35,23): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(35,45): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyHealthDebris.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(13,38): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(13,60): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,58): error C2275: 'RWS::ApplyHealthDebris': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(21,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(23,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(25,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(30,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(37,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(39,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(44,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(49,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(54,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(58,21): error C2600: 'RWS::ApplyHealthDebris::~ApplyHealthDebris': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(72,33): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyHealthDebris.cpp(72,55): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyMenuBehavior.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(35,23): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(35,45): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(53,14): error C3646: 'm_sMenuName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMenuBehavior.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(13,38): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(13,60): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,58): error C2275: 'RWS::ApplyMenuBehavior': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(20,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(22,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(24,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(29,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(34,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(40,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(43,29): error C2065: 'm_sMenuName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(44,21): error C2065: 'm_sMenuName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(48,21): error C2065: 'm_sMenuName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(55,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(59,21): error C2600: 'RWS::ApplyMenuBehavior::~ApplyMenuBehavior': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(73,33): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.cpp(73,55): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyMissionIndicator.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(28,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(28,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(29,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(35,27): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(35,49): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(48,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(48,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(53,14): error C3646: 'm_sMissionName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyMissionIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(13,46): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(13,68): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,58): error C2275: 'RWS::ApplyMissionIndicator': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(20,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(22,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(24,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(29,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(34,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(40,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(43,29): error C2065: 'm_sMissionName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(44,21): error C2065: 'm_sMissionName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(48,21): error C2065: 'm_sMissionName': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(55,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(59,25): error C2600: 'RWS::ApplyMissionIndicator::~ApplyMissionIndicator': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(73,37): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.cpp(73,59): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyParticleEntity.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleEntity.h(11,1): error C1083: Cannot open include file: 'RwsUtils.h': No such file or directory [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleEntity.cpp')
+  
+  ApplyParticleManager.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(31,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(31,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(32,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(32,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(38,26): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(38,48): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(51,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.h(51,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyParticleManager.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(15,44): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(15,66): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,58): error C2275: 'RWS::ApplyParticleManager': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(31,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(33,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(35,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(40,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(45,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(50,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(55,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(60,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(64,24): error C2600: 'RWS::ApplyParticleManager::~ApplyParticleManager': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(78,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyParticleManager.cpp(78,58): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyPhysicsWorld.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(29,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(30,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(36,23): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(36,45): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(50,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.h(50,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyPhysicsWorld.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(18,38): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(18,60): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,58): error C2275: 'RWS::ApplyPhysicsWorld': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(37,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(39,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(41,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(46,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(51,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(56,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(61,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(66,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(71,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(76,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(80,21): error C2600: 'RWS::ApplyPhysicsWorld::~ApplyPhysicsWorld': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(93,33): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(93,55): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(104,5): error C2653: 'PhysicsBackend': is not a class or namespace name [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(104,45): error C2065: 'm_bGravityEnabled': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(104,21): error C3861: 'SetGravity': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(105,5): error C2653: 'PhysicsBackend': is not a class or namespace name [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(105,21): error C3861: 'SetFriction': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(106,5): error C2653: 'PhysicsBackend': is not a class or namespace name [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(106,21): error C3861: 'SetRestitution': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(107,5): error C2653: 'PhysicsBackend': is not a class or namespace name [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(107,21): error C3861: 'SetSolverIterations': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyPhysicsWorld.cpp(109,5): error C2065: 'm_bGravityEnabled': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  Generating Code...
+  Compiling...
+  ApplyProgressIndicator.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(31,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(31,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(32,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(32,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(38,28): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(38,50): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(51,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(51,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(55,14): error C3646: 'm_sStatusText': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.h(55,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyProgressIndicator.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(15,48): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(15,70): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,58): error C2275: 'RWS::ApplyProgressIndicator': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(30,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(32,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(34,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(39,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(44,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(50,21): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(54,29): error C2065: 'm_sStatusText': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(55,21): error C2065: 'm_sStatusText': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(59,21): error C2065: 'm_sStatusText': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(66,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(71,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(75,26): error C2600: 'RWS::ApplyProgressIndicator::~ApplyProgressIndicator': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(89,38): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyProgressIndicator.cpp(89,60): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyTowerCatapult.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(29,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(29,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(30,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(30,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(36,24): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(36,46): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(49,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.h(49,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyTowerCatapult.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(16,40): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(16,62): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,58): error C2275: 'RWS::ApplyTowerCatapult': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(29,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(31,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(33,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(38,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(43,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(48,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(52,22): error C2600: 'RWS::ApplyTowerCatapult::~ApplyTowerCatapult': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(66,34): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyTowerCatapult.cpp(66,56): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  ApplyWin32Keyboard.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(31,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(31,5): warning C4183: 'RWS_MAKENEWCLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(32,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(32,5): warning C4183: 'RWS_DECLARE_CLASS': missing return type; assumed to be a member function returning 'int' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(38,24): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(38,46): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(51,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.h(51,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../ApplyWin32Keyboard.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(15,40): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(15,62): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,5): error C2065: 'CAttributeCommandIterator': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,31): error C2146: syntax error: missing ';' before identifier 'it' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,34): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,58): error C2275: 'RWS::ApplyWin32Keyboard': expected an expression instead of a type [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,42): error C3861: 'RWS_CLASS_INDEX': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(29,31): error C3861: 'it': identifier not found [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(31,13): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(33,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(38,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(43,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(48,17): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(53,20): error C2065: 'm_keyStates': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(58,11): error C2065: 'it': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(62,22): error C2600: 'RWS::ApplyWin32Keyboard::~ApplyWin32Keyboard': cannot define a compiler-generated special member function (must be declared in the class first) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(76,34): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyWin32Keyboard.cpp(76,56): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  Astar.cpp
+  AudioManager.cpp
+  AudioStreamEntity.cpp
+  BehaviourLoader.cpp
+  BinkPlayer.cpp
+  Bird.cpp
+  CEventTrigger.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CEventTrigger.h(11,1): error C1083: Cannot open include file: 'RwsUtils.h': No such file or directory [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../CEventTrigger.cpp')
+  
+  CLogic_OR.cpp
+  CThunder.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5): error C2665: 'RWS::CLogic_OR::CLogic_OR': no overloaded function could convert all the argument types [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../CLogic_OR.cpp')
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(68,1):
+      could be 'RWS::CLogic_OR::CLogic_OR(const RWS::CLogic_OR &)'
+          C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+          'RWS::CLogic_OR::CLogic_OR(const RWS::CLogic_OR &)': cannot convert argument 1 from 'const RWS::CAttributePacket' to 'const RWS::CLogic_OR &'
+              C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+              Reason: cannot convert from 'const RWS::CAttributePacket' to 'const RWS::CLogic_OR'
+              C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+              No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(40,5):
+      or       'RWS::CLogic_OR::CLogic_OR(int)'
+          C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+          'RWS::CLogic_OR::CLogic_OR(int)': cannot convert argument 1 from 'const RWS::CAttributePacket' to 'int'
+              C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+              No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CLogic_OR.h(33,5):
+      while trying to match the argument list '(const RWS::CAttributePacket)'
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CThunder.h(11,1): error C1083: Cannot open include file: 'RwsUtils.h': No such file or directory [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../CThunder.cpp')
+  
+  CWaypoint.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\CWaypoint.h(12,1): error C1083: Cannot open include file: 'RwsUtils.h': No such file or directory [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../CWaypoint.cpp')
+  
+  CameraState.cpp
+  Cannon.cpp
+  Cannonball.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\Cannonball.cpp(149,9): error C2065: 'CTowerCatapult': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\Cannonball.cpp(149,25): error C2065: 'pTower': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\Cannonball.cpp(149,46): error C2061: syntax error: identifier 'CTowerCatapult' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\Cannonball.cpp(150,13): error C2065: 'pTower': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\Cannonball.cpp(153,13): error C2065: 'pTower': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  CollisionFilter.cpp
+  CollisionGeometry.cpp
+  CollisionTrigger.cpp
+  Debris.cpp
+  Generating Code...
+  Compiling...
+  Fade.cpp
+  FernandoActor.cpp
+  Fish.cpp
+  Flotsam.cpp
+  FmvScene.cpp
+  FontSystem.cpp
+  GUIHealthBar.cpp
+  GUIMap.cpp
+  GlobalFunctions.cpp
+  HUD.cpp
+  HavokMemoryManager.cpp
+  HealthDebris.cpp
+  InputManager.cpp
+  Lifebuoy.cpp
+  LoadLevel.cpp
+  LoadingScreen.cpp
+  LocalizationManager.cpp
+  MenuBehavior.cpp
+  MenuDelegate.cpp
+  MenuGetFrameDelegate.cpp
+  Generating Code...
+  Compiling...
+  MenuGetTimeDelegate.cpp
+  MenuSetFrameDelegate.cpp
+  MenuSetTimeDelegate.cpp
+  MissionIndicator.cpp
+  Ocean.cpp
+  OceanTile.cpp
+  Ocean_W32.cpp
+  ParticleBank.cpp
+  ParticleEmitter.cpp
+  ParticleScript.cpp
+  PathFindingMap.cpp
+  PathFindingResource.cpp
+  PerformanceVisualizer.cpp
+  PhysicsBackend.cpp
+  PhysicsEntity.cpp
+  PhysicsResource.cpp
+  PhysicsWorld.cpp
+  PlayerShip.cpp
+  ProfilerBehaviour.cpp
+  RealtimeProfiler.cpp
+  Generating Code...
+  Compiling...
+  RenderBehaviourWorld.cpp
+  RenderPlatform.cpp
+  Rt2dMaestro.cpp
+  Rt2dMaestroStream.cpp
+  RwStudioStream.cpp
+  RwsAssets.cpp
+  SaveGameManager.cpp
+  Scene.cpp
+  SceneManager.cpp
+  Ship.cpp
+  ShipEnemy.cpp
+  ShipPlayer.cpp
+  ShipPlayerInputProxy.cpp
+  ShowText.cpp
+  ShowTextManager.cpp
+  Soldier.cpp
+  Spawnable.cpp
+  SpeakEntity.cpp
+  SpeakManager.cpp
+  SpeakStreamDefs.cpp
+  Generating Code...
+  Compiling...
+  StaticCollisionData.cpp
+  TextureResource.cpp
+  TowerCatapult.cpp
+  Trigger.cpp
+  TxdDecode.cpp
+  WbCamera.cpp
+  WbRender.cpp
+  WorldGeometry.cpp
+  WorldGeometryResource.cpp
+  WorldResource.cpp
+  WorldSpawn.cpp
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(53,14): error C3646: 'm_sMenuName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMenuBehavior.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(53,14): error C3646: 'm_sMissionName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyMissionIndicator.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(51,14): error C3646: 'm_sAudioCue': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyBirdSeaGull.h(51,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(53,14): error C3646: 'm_sSkinName': unknown override specifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\ApplyFernandoActor.h(53,5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  (compiling source file '../WorldSpawn.cpp')
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(97,30): error C2504: 'CEventHandler': base class undefined [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(107,18): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(107,40): error C2143: syntax error: missing ',' before '&' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(100,5): error C2665: '`anonymous-namespace'::CEventTrigger::CEventTrigger': no overloaded function could convert all the argument types [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(108,1):
+      could be '`anonymous-namespace'::CEventTrigger::CEventTrigger(const `anonymous-namespace'::CEventTrigger &)'
+          C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(100,5):
+          '`anonymous-namespace'::CEventTrigger::CEventTrigger(const `anonymous-namespace'::CEventTrigger &)': cannot convert argument 1 from 'const RWS::CAttributePacket' to 'const `anonymous-namespace'::CEventTrigger &'
+              C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(100,5):
+              Reason: cannot convert from 'const RWS::CAttributePacket' to 'const `anonymous-namespace'::CEventTrigger'
+              C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(100,5):
+              No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(100,5):
+      while trying to match the argument list '(const RWS::CAttributePacket)'
+  
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(108,4): error C2059: syntax error: ':' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(108,6): error C2059: syntax error: 'public' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(108,32): error C2143: syntax error: missing ';' before '{' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(108,32): error C2447: '{': missing function header (old-style formal list?) [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(185,149): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(185,166): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(185,166): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(185,196): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(186,43): error C2061: syntax error: identifier 'CParticleEntityStub' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(208,45): error C2061: syntax error: identifier 'ApplyAudioGlobalMixer' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(216,28): error C2065: 'mixer': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(216,48): error C2061: syntax error: identifier 'ApplyAudioGlobalMixer' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(217,9): error C2065: 'mixer': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(218,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(218,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(218,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(221,22): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(221,45): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(222,16): error C2065: 'mixer': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(222,29): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(236,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(236,37): error C2061: syntax error: identifier 'ApplyTowerCatapult' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(237,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(238,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(238,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(238,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(239,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(239,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(240,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(240,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(241,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(241,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(254,28): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(254,40): error C2061: syntax error: identifier 'ApplyCollisionTrigger' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(255,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(256,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(256,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(256,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(257,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(257,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(258,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(258,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(259,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(259,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(272,24): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(272,36): error C2061: syntax error: identifier 'ApplyMenuBehavior' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(273,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(274,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(274,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(274,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(275,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(275,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(276,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(276,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(277,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(277,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(290,28): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(290,40): error C2061: syntax error: identifier 'ApplyMissionIndicator' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(291,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(292,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(292,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(292,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(293,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(293,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(294,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(294,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(295,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(295,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(311,24): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(311,36): error C2061: syntax error: identifier 'ApplyHealthDebris' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(312,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(313,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(313,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(313,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(314,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(314,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(315,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(315,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(316,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(316,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(332,23): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(332,35): error C2061: syntax error: identifier 'ApplyBirdSeaGull' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(333,9): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(334,9): error C2065: 'CAttributePacket': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(334,26): error C2146: syntax error: missing ';' before identifier 'packet' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(334,26): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(335,17): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(335,40): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(336,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(336,38): error C2065: 'packet': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(337,16): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(337,9): error C2541: 'delete': cannot delete objects that are not pointers [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(353,25): error C2065: 'apply': undeclared identifier [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(353,37): error C2061: syntax error: identifier 'ApplyFernandoActor' [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\WorldSpawn.cpp(353,37): error C1003: error count exceeds 100; stopping compilation [C:\Users\mnkhprre\Documents\GitHub\CannonCruise\code\build_win32\CannonCruiseLib.vcxproj]
+  eventproxy.cpp
+  cattributehandler.cpp
+  cclassfactory.cpp
+  clinearmemorymanager.cpp
+  csystemcommands.cpp
+  ceventhandler.cpp
+  memoryhandler.cpp
+  cresourcemanager.cpp
+  streamhandler.cpp
+  Generating Code...
+  Compiling...
+  attachplugins.cpp
+  gamemanager.cpp
+  gameplugin.cpp
+  havokstart.cpp
+  rwstartengine.cpp
+  startup.cpp
+  systemservices.cpp
+  videomode.cpp
+  enginewin.cpp
+  rwreg.cpp
+  win.cpp
+  AnimHelper.cpp
+  SkinSafe.cpp
+  Audio.cpp
+  rwaudresource.cpp
+  rwgfxresource.cpp
+  txtresource.cpp
+  cmaterialevent.cpp
+  camerahelper.cpp
+  clumphelper.cpp
+  Generating Code...
+  Compiling...
+  framehelper.cpp
+  skinhelper.cpp
+  havokimpl.cpp
+  rw_librw.cpp
+  rwstubs.cpp
+  Generating Code...
+HATA: Derleme basarisiz!
+Press any key to continue . . . 

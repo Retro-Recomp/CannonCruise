@@ -12,6 +12,7 @@
 
 #include "PhysicsWorld.h"
 #include "PhysicsBackend.h"
+#include "framework/core/eventhandler/ceventhandler.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 #include <cassert>
 
@@ -207,13 +208,17 @@ CPhysicsWorldBehaviour::~CPhysicsWorldBehaviour()
 }
 
 // ---------------------------------------------------------------------------
-// HandleEvents currently steps on every delivered message. The original handler
-// filters by message ID; restore that contract after verifying the message ID.
+// Physics event filter – only advance physics on the physics update message.
+// The original binary (sub_43BB10) compares the incoming message ID with
+// dword_635C68 and updates the world only on a match.
+// The constant iMsgPhysicsUpdate (0x0002) is defined in
+// framework/core/eventhandler/ceventhandler.h alongside iMsgRunningTick (0x0001).
 // ---------------------------------------------------------------------------
 void CPhysicsWorldBehaviour::HandleEvents(const RWS::CMsg& msg)
 {
-    // iMsgPhysicsUpdate
-    if (m_pPhysicsWorld)
+    // Only advance physics on the physics update message ID.
+    // Unrelated messages (e.g. render, input, AI) must not advance the world.
+    if (m_pPhysicsWorld && msg.Id == iMsgPhysicsUpdate)
     {
         m_pPhysicsWorld->Update(1.0f / 60.0f);
     }

@@ -17,12 +17,6 @@
 #include "MissionIndicator.h"
 #include "TowerCatapult.h"
 #include "CollisionTrigger.h"
-#include "ApplyTowerCatapult.h"
-#include "ApplyMenuBehavior.h"
-#include "ApplyMissionIndicator.h"
-#include "ApplyHealthDebris.h"
-#include "ApplyBirdSeaGull.h"
-#include "ApplyFernandoActor.h"
 #include "framework/core/attributehandler/cattributehandler.h"
 
 #include <cstdio>
