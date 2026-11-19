@@ -62,3 +62,26 @@ docs/html/
 docs/latex/
 docs/xml/
 docs/doxygen-warnings.log
+
+# ---- Original game data and redistributables (obtain separately) ----
+/Streams/
+/Sound/
+/Video/Win32/
+/GFX/anim/
+/Localiza/
+/Setup/
+/DLLs/
+/DirectX/
+/CANNONCR.QZ_
+/CannonCruise.W_X
+/CannonCruise.exe
+/CannonCruise_PT.exe
+/CannonCruise_TR.exe
+/CannonCruise_crack.exe
+/CannonCruise.exe.c
+/CannonCruise_cutter.exe.rzdb
+/Config.exe
+/Setup.exe
+/DSETUP.DLL
+/binkw32.dll
+/cdcode.key
