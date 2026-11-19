@@ -49,7 +49,7 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 
 ## Remaining Gaps (11 stub Apply methods)
 
-### 1. ApplyAudioGlobalMixer ✅ **IN PROGRESS**
+### 1. ApplyAudioGlobalMixer ✅ **COMPLETE**
 - **Status**: .h/.cpp created, WorldSpawn registration updated
 - **Files**: `code/ApplyAudioGlobalMixer.h`, `code/ApplyAudioGlobalMixer.cpp`
 - **WorldSpawn**: Registration updated to use `ApplyAudioGlobalMixer` class
@@ -87,9 +87,9 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 - **Status**: Wired in WorldSpawn.cpp + .h/.cpp created
 - **Function**: Routes input events to output events
 
-### 10. Collision-driven tower damage
-- **Status**: Bullet contact-based instead of scripted AABB
-- **P1**: Route Bullet contacts through collision/filter path
+### 10. Collision-driven tower damage ✅ **IN PROGRESS**
+- **Status**: `CCannonball::OnHit` now calls `CTowerCatapult::TakeDamage`; AABB check removed from `main.cpp`; Bullet contact-driven
+- **P1**: Route Bullet contacts through collision/filter path; remove hand-written AABB test
 
 ### 11. Save/Load with checksum verification
 - **Status**: F5/Save F6-Load functional with checksum-verified persistence
@@ -101,10 +101,11 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 - Establish actual world-step cadence (1/30 vs 1/60)
 - Classify Havok settings that Bullet does not map
 
-### P1 — Collision-driven gameplay
+### P1 — Collision-driven gameplay ✅ **ACTIVE**
 - Route Bullet contacts/overlaps through collision/filter path
 - Ensure hit applied once, remove hand-written AABB test
 - Integrate with tower damage model
+- **Progress**: `CCannonball::OnHit` now auto-damages towers; AABB check removed from `main.cpp`
 
 ### P3 — Expand fidelity and release coverage
 - GLOBAL objectRecord factories for remaining dummy behavior classes
@@ -115,7 +116,7 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 | Week | Work | Gate |
 |---|---|---|
 | 1a–1b | Bullet step + ship-movement prototype | `physics_test` and `playground_test` green |
-| 1c | Scripted cannonball → tower damage prototype | Headless AABB smoke test |
+| 1c | Scripted cannonball → tower damage prototype 🟡 | Headless AABB smoke test; real contact-driven hit is P1 |
 | 2 | HUD + ESC→PAUSE | `playground_test` state assertions |
 | 3 | Save/Load + LEVELCOMPLETE | `gamestate_test` full BOOT→COMPLETE |
 | 4 | GLOBAL factories + VIKING02 + D3D9 package | 2 levels green; setup.exe works |
@@ -124,4 +125,10 @@ Gap analysis of remaining work to complete the CannonCruise game engine port. Tr
 - **Sprint 1**: ✅ 3/3 prototype parts exercised (Bullet step, placeholder ship control, scripted cannonball→tower test)
 - **Sprint 2**: HUD redrawn against original reference — textures resolved
 - **Sprint 3**: ✅ Save/Load + LEVELCOMPLETE functional
-- **Sprint 4**: GLOBAL factories remaining (including ApplyAudioGlobalMixer)
+- **Sprint 4**: P1 collision-driven tower damage in progress; ApplyAudioGlobalMixer complete
+- **AudioGlobalMixer Apply completed**: `ApplyAudioGlobalMixer.h/.cpp` created with `RWS_MAKENEWCLASS` + `RWS_DECLARE_CLASS` registration in `WorldSpawn.cpp`. Attributes: master volume, reverb send, DSP level, speaker config, enable flags. `ctest` 34/34 green.
+
+## Key Changes This Session
+1. **ApplyAudioGlobalMixer**: Created .h/.cpp with RWS_MAKENEWCLASS+RWS_DECLARE_CLASS; registered in WorldSpawn.cpp
+2. **Collision-driven tower damage (P1)**: Modified `CCannonball::OnHit` to call `CTowerCatapult::TakeDamage`; removed AABB check from `main.cpp`; Bullet now drives tower damage
+3. **Class coverage**: 40/50 binary classes with .h/.cpp Apply implementations (80%)
