@@ -54,7 +54,20 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats);
 struct WorldSpawnTower {
     RwV3d pos;               ///< CSystemCommands id1 RwMatrix translation
     RwChar missionEvent[48]; ///< CTowerCatapult id3 (e.g. "MissionTower1Dead"); "" if none
+    RwReal matrix[16];       ///< full RwMatrix (right/up/at/pos)
+    const void *pModel;      ///< const RwsResource*: intact model (NULL if none)
+    const void *pDamaged;    ///< const RwsResource*: "_Damaged" model (NULL if none)
 };
+
+/// Player ship from the level's CShipPlayer record.
+struct WorldSpawnPlayerShip {
+    RwBool valid;            ///< a CShipPlayer record was found
+    RwReal matrix[16];       ///< start transform (RwMatrix)
+    const void *pModel;      ///< const RwsResource*: ship model ("Hugo_Ship")
+};
+
+/// Player ship of the last WorldSpawn_FromFile() call.
+const WorldSpawnPlayerShip *WorldSpawn_GetPlayerShip(void);
 
 #define WORLDSPAWN_MAX_TOWERS 64
 

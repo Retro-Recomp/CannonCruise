@@ -106,6 +106,9 @@ void RenderPlatform_SetCameraPose(const RwReal position[3],
  */
 RwBool RenderPlatform_AddClump(void *pClump);
 
+/// Removes a clump added with RenderPlatform_AddClump (does not destroy it).
+RwBool RenderPlatform_RemoveClump(void *pClump);
+
 /**
  * @brief World render -- called BETWEEN BeginFrame and EndFrame
  * (world->render(); NULL platform no-op).

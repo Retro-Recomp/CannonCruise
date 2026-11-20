@@ -439,6 +439,14 @@ RwBool RenderPlatform_AddClump(void *pClump) {
     return TRUE;
 }
 
+RwBool RenderPlatform_RemoveClump(void *pClump) {
+    if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
+        return FALSE;
+    }
+    s_pWorld->removeClump(static_cast<rw::Clump *>(pClump));
+    return TRUE;
+}
+
 void RenderPlatform_RenderScene(void) {
     if (RenderPlatform_IsInitialized() != TRUE) {
         return;

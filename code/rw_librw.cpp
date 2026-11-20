@@ -572,6 +572,56 @@ RwBool RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos) {
     return TRUE;
 }
 
+// Axis-aligned bounds of all atomics (morph target 0) relative to the
+// clump's root frame (i.e. the model's own space, before its placement).
+RwBool RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax) {
+    if (!clump || !pMin || !pMax) {
+        return FALSE;
+    }
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    rw::Frame *pRoot = pClump->getFrame();
+    rw::Matrix invRoot;
+    if (pRoot) {
+        rw::Matrix::invert(&invRoot, pRoot->getLTM());
+    } else {
+        invRoot.setIdentity();
+    }
+    RwBool any = FALSE;
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        rw::Geometry *pGeo = pAtomic->geometry;
+        if (!pGeo || pGeo->numMorphTargets < 1 || !pGeo->morphTargets[0].vertices) {
+            continue;
+        }
+        rw::Matrix toRoot;
+        rw::Frame *pFrame = pAtomic->getFrame();
+        if (pFrame) {
+            rw::Matrix::mult(&toRoot, pFrame->getLTM(), &invRoot);
+        } else {
+            toRoot.setIdentity();
+        }
+        const rw::V3d *pV = pGeo->morphTargets[0].vertices;
+        for (rw::int32 i = 0; i < pGeo->numVertices; ++i) {
+            rw::V3d p;
+            rw::V3d::transformPoints(&p, &pV[i], 1, &toRoot);
+            if (any == FALSE) {
+                pMin->x = pMax->x = p.x;
+                pMin->y = pMax->y = p.y;
+                pMin->z = pMax->z = p.z;
+                any = TRUE;
+            } else {
+                if (p.x < pMin->x) pMin->x = p.x;
+                if (p.y < pMin->y) pMin->y = p.y;
+                if (p.z < pMin->z) pMin->z = p.z;
+                if (p.x > pMax->x) pMax->x = p.x;
+                if (p.y > pMax->y) pMax->y = p.y;
+                if (p.z > pMax->z) pMax->z = p.z;
+            }
+        }
+    }
+    return any;
+}
+
 RwInt32 RpClumpPortCountAtomics(RpClump *clump) {
     if (!clump) {
         return 0;

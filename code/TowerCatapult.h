@@ -77,7 +77,11 @@ public:
   /**
    * @brief BBox halves for collision checks (width/depth/height).
    */
-  static RwV3d GetHalfExtents() { return {8.0f, 18.0f, 8.0f}; }
+  static RwV3d GetHalfExtents() { return {1.5f, 4.0f, 1.5f}; }
+
+  /// Height of the box centre above the tower origin (Viking_firetower spans
+  /// y -2..5.9 around its origin, about 2.2 m wide).
+  static RwReal GetCenterOffsetY() { return 2.0f; }
 
   /**
    * @brief Queries total number of active catapult towers in the simulation.

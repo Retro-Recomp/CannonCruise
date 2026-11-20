@@ -26,7 +26,7 @@ RwReal s_mapMinX = 0.0f;
 RwReal s_mapMaxX = 0.0f;
 RwReal s_mapMinZ = 0.0f;
 RwReal s_mapMaxZ = 0.0f;
-const RwReal kShipScale = 4.0f;    ///< longboat model scale (game world meters)
+const RwReal kShipScale = 0.5f;    ///< hull scale: matches Hugo_Ship (~4.6 m long)
 const RwReal kMapClearance = 22.0f;
 
 const RwReal kMaxSpeed = 18.0f;    ///< full throttle target speed (units/s)

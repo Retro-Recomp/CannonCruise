@@ -52,6 +52,7 @@ RpClump*    RpClumpStreamReadMemory(const void *pData, RwUInt32 size);
 RwBool      RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]);
 RwBool      RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos);
 RwInt32     RpClumpPortCountAtomics(RpClump *clump);
+RwBool      RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax);
 // Added for CollisionTrigger (phantom AABB) -- real data is returned in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump *clump);
 

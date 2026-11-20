@@ -19,6 +19,7 @@
 #include "TowerCatapult.h"
 #include "CollisionTrigger.h"
 #include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/csystemcommands.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -311,7 +312,49 @@ namespace {
 WorldSpawnTower s_towers[WORLDSPAWN_MAX_TOWERS];
 RwUInt32 s_towerCount = 0;
 
-void CollectTower(const RwStudioObject *pObj) {
+// Clump resources referenced by the packet's CSystemCommands GUIDs, in
+// record order (model first, then collision hull, damaged model ...).
+const RwsResource *FindModel(const RWS::CAttributePacket &packet,
+                             const char *pNameContains, RwBool bSkipHulls) {
+    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands");
+         !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 0 || it->GetDataSize() != 16) {
+            continue;
+        }
+        const RwsResource *pRes = RwsResources_Find(
+            static_cast<const RwUInt8 *>(it->GetCommandData()));
+        if (!pRes || pRes->embeddedType != rwsRESOURCE_CLUMP) {
+            continue;
+        }
+        if (bSkipHulls == TRUE && std::strstr(pRes->name, "Hull") != 0) {
+            continue;
+        }
+        if (pNameContains == 0 || std::strstr(pRes->name, pNameContains) != 0) {
+            return pRes;
+        }
+    }
+    return 0;
+}
+
+WorldSpawnPlayerShip s_playerShip;
+
+void CollectPlayerShip(const RwStudioObject *pObj,
+                       const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CShipPlayer") != 0 ||
+        s_playerShip.valid == TRUE) {
+        return;
+    }
+    if (RWS::CSystemCommands::ExtractMatrix(packet, s_playerShip.matrix) !=
+        TRUE) {
+        return;
+    }
+    s_playerShip.pModel = FindModel(packet, 0, TRUE);
+    s_playerShip.valid = TRUE;
+}
+
+void CollectTower(const RwStudioObject *pObj,
+                  const RWS::CAttributePacket &packet) {
     if (pObj->behaviourCount == 0 ||
         std::strcmp(pObj->behaviours[0].className, "CTowerCatapult") != 0 ||
         s_towerCount >= WORLDSPAWN_MAX_TOWERS) {
@@ -319,42 +362,42 @@ void CollectTower(const RwStudioObject *pObj) {
     }
     WorldSpawnTower tower;
     std::memset(&tower, 0, sizeof(tower));
-    RwBool bHasPos = FALSE;
-    for (RwUInt32 b = 0; b < pObj->behaviourCount; ++b) {
-        const RwStudioBehaviour &beh = pObj->behaviours[b];
-        const RwBool isSys = std::strcmp(beh.className, "CSystemCommands") == 0;
-        const RwBool isTower = std::strcmp(beh.className, "CTowerCatapult") == 0;
-        for (RwUInt32 p = 0; p < beh.propCount; ++p) {
-            const RwStudioProperty &prop = beh.props[p];
-            if (isSys && prop.id == 1 && prop.size == 8 + 64 && bHasPos == FALSE) {
-                RwReal m[16];
-                std::memcpy(m, prop.value, sizeof(m));
-                tower.pos.x = m[12];
-                tower.pos.y = m[13];
-                tower.pos.z = m[14];
-                bHasPos = TRUE;
-            } else if (isTower && prop.id == 3 && prop.size > 12) {
-                RwUInt32 i = 0;
-                const RwUInt32 maxLen = prop.size - 8 < rwstudioMAX_PROPVALUE
-                                            ? prop.size - 8
-                                            : rwstudioMAX_PROPVALUE;
-                for (; i + 1 < sizeof(tower.missionEvent) && i < maxLen; ++i) {
-                    const RwUInt8 c = prop.value[i];
-                    if (c < 0x20 || c >= 0x7F) {
-                        break;
-                    }
-                    tower.missionEvent[i] = (RwChar)c;
-                }
-                tower.missionEvent[i] = '\0';
-            }
+    if (RWS::CSystemCommands::ExtractMatrix(packet, tower.matrix) != TRUE) {
+        return;
+    }
+    tower.pos.x = tower.matrix[12];
+    tower.pos.y = tower.matrix[13];
+    tower.pos.z = tower.matrix[14];
+    // id3: mission death event (string) on mission towers, a number otherwise.
+    for (RWS::CAttributeCommandIterator it(packet, "CTowerCatapult");
+         !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 3 || it->GetDataSize() <= 4) {
+            continue;
         }
+        const RwUInt8 *pStr = static_cast<const RwUInt8 *>(it->GetCommandData());
+        RwUInt32 i = 0;
+        for (; i + 1 < sizeof(tower.missionEvent) && i < it->GetDataSize(); ++i) {
+            if (pStr[i] < 0x20 || pStr[i] >= 0x7F) {
+                break;
+            }
+            tower.missionEvent[i] = (RwChar)pStr[i];
+        }
+        tower.missionEvent[i] = '\0';
+        break;
     }
-    if (bHasPos == TRUE) {
-        s_towers[s_towerCount++] = tower;
+    tower.pModel = FindModel(packet, 0, TRUE);
+    tower.pDamaged = FindModel(packet, "_Damaged", TRUE);
+    if (tower.pDamaged == tower.pModel) {
+        tower.pDamaged = 0;
     }
+    s_towers[s_towerCount++] = tower;
 }
 
 } // namespace
+
+const WorldSpawnPlayerShip *WorldSpawn_GetPlayerShip(void) {
+    return &s_playerShip;
+}
 
 RwUInt32 WorldSpawn_GetTowers(const WorldSpawnTower **ppTowers) {
     if (ppTowers) {
@@ -421,6 +464,7 @@ RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath) {
 
 RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_towerCount = 0;
+    std::memset(&s_playerShip, 0, sizeof(s_playerShip));
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
@@ -444,10 +488,11 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
             continue;
         }
         ++stats.objectRecords;
-        CollectTower(pObj);
         const RwUInt8 *pRaw = 0;
         const RwUInt32 rawSize = RwStudioFileGetObjectRaw(pFile, &pRaw);
         const RWS::CAttributePacket packet(pRaw, rawSize);
+        CollectTower(pObj, packet);
+        CollectPlayerShip(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances, 1, rawSize > 0 ? &packet : 0);
