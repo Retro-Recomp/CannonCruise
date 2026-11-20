@@ -41,6 +41,9 @@ void HUD_RegisterTowerDestroyed(RwBool bMissionTower = TRUE);
 /** @brief Sets how many towers the mission requires (shown as n/total). */
 void HUD_SetTowersTotal(RwInt32 total);
 
+/** @brief Number of towers the mission requires. */
+RwInt32 HUD_GetTowersTotal(void);
+
 /** @brief Applies a score delta, clamped to [0, INT32_MAX]. */
 void HUD_AddScore(RwInt32 amount);
 

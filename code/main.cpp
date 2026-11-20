@@ -325,6 +325,45 @@ static void RenderPauseOverlay(RwInt32 selection) {
     RenderPlatform_EndOverlay2D();
 }
 
+// LEVELCOMPLETE summary: dim backdrop + parchment panel with the mission
+// result. Same visual language as the pause overlay.
+static void RenderLevelCompleteOverlay(RwInt32 score, RwInt32 towersDown,
+                                       RwInt32 towersTotal, RwInt32 shots,
+                                       RwInt32 hits) {
+    const RwReal kScreenW = 1280.0f, kScreenH = 720.0f;
+    RenderPlatform_BeginOverlay2D();
+    RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, kScreenH,
+                                   0x90000000u);
+    const RwReal pw = 480.0f, ph = 300.0f;
+    const RwReal px = (kScreenW - pw) * 0.5f;
+    const RwReal py = (kScreenH - ph) * 0.5f - 20.0f;
+    RenderPlatform_DrawOverlayQuad(px - 5, py - 5, pw + 10, ph + 10,
+                                   0xFF1A0F08u);
+    RenderPlatform_DrawOverlayQuad(px, py, pw, ph, 0xFFC7A05Eu);
+    const char *title = "LEVEL COMPLETE";
+    const RwReal titleW = (RwReal)std::strlen(title) * 6.0f * 3.0f;
+    ShowText_DrawBitmapText(title, px + (pw - titleW) * 0.5f, py + 22.0f, 3,
+                            0x4A, 0x28, 0x10, 0xFF);
+    const RwInt32 accuracy = shots > 0 ? (hits * 100) / shots : 0;
+    char line[64];
+    const RwReal lx = px + 70.0f;
+    std::snprintf(line, sizeof(line), "SCORE      %d", score);
+    ShowText_DrawBitmapText(line, lx, py + 100.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    std::snprintf(line, sizeof(line), "TOWERS     %d/%d", towersDown,
+                  towersTotal);
+    ShowText_DrawBitmapText(line, lx, py + 140.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    std::snprintf(line, sizeof(line), "ACCURACY   %d%% (%d/%d)", accuracy,
+                  hits, shots);
+    ShowText_DrawBitmapText(line, lx, py + 180.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    ShowText_DrawBitmapText("ENTER - QUIT TO DESKTOP", px + 110.0f,
+                            py + ph - 32.0f, 1, 0x6A, 0x4A, 0x28, 0xFF);
+    RenderPlatform_EndOverlay2D();
+}
+
+// Shot statistics for the LEVELCOMPLETE summary.
+static RwInt32 s_shotsFired = 0;
+static RwInt32 s_shotsHit = 0;
+
 int main(int argc, char **argv) {
     // Diagnostics: stdout UNBUFFERED -- stdio buffer flushed only on exit;
     // otherwise last output was lost on crash (e.g. 0xC0000005); needed to
@@ -1568,8 +1607,22 @@ int main(int argc, char **argv) {
                 s_downPrev = down;
                 s_enterPrev = enter;
             }
+            if (s_gameState == GAMESTATE_LEVELCOMPLETE) {
+                // Starts TRUE so a key still held when the level ends (e.g.
+                // the fire key) does not dismiss the summary immediately.
+                static RwBool s_lcPrev = TRUE;
+                const RwBool confirm = RwPlatformKeyDown(RW_KEY_ENTER) ||
+                                       RwPlatformKeyDown(' ');
+                if (confirm == TRUE && s_lcPrev == FALSE) {
+                    std::printf("LevelComplete: QUIT TO DESKTOP selected\n");
+                    bQuitApp = TRUE;
+                }
+                s_lcPrev = confirm;
+            }
+            // World is frozen while paused and on the summary screen.
             const RwBool bSimActive =
-                (s_gameState == GAMESTATE_PAUSE) ? FALSE : TRUE;
+                (s_gameState == GAMESTATE_PAUSE ||
+                 s_gameState == GAMESTATE_LEVELCOMPLETE) ? FALSE : TRUE;
             // The port advances Bullet by a fixed 1/60 s per active frame.
             // This does not enforce 60 FPS or establish original cadence parity.
             {
@@ -1594,7 +1647,29 @@ int main(int argc, char **argv) {
                 } else {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
-                    RwV3d fwd = {std::sin(ss.yaw), 0.25f, std::cos(ss.yaw)};
+                    RwReal aimYaw = ss.yaw;
+                    // CANNONCRUISE_AUTOAIM=1 (test only): aim at the nearest
+                    // alive mission tower instead of the bow direction.
+                    static const RwBool s_autoAim =
+                        std::getenv("CANNONCRUISE_AUTOAIM") != nullptr ? TRUE : FALSE;
+                    if (s_autoAim == TRUE) {
+                        RwReal bestD2 = -1.0f;
+                        for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                            const RwBool bMission = (ti < s_towerIsMission.size())
+                                                        ? s_towerIsMission[ti] : TRUE;
+                            if (bMission != TRUE || s_towers[ti]->IsDestroyed()) {
+                                continue;
+                            }
+                            const RwV3d &tp = s_towers[ti]->GetWorldPosition();
+                            const RwReal ddx = tp.x - ss.pos.x, ddz = tp.z - ss.pos.z;
+                            const RwReal d2 = ddx * ddx + ddz * ddz;
+                            if (bestD2 < 0.0f || d2 < bestD2) {
+                                bestD2 = d2;
+                                aimYaw = std::atan2(ddx, ddz);
+                            }
+                        }
+                    }
+                    RwV3d fwd = {std::sin(aimYaw), 0.25f, std::cos(aimYaw)};
                     RwReal len = std::sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
                     if (len > 0.0f) {
                         fwd.x /= len; fwd.y /= len; fwd.z /= len;
@@ -1617,6 +1692,7 @@ int main(int argc, char **argv) {
                         pBall->Spawn(spawnData);
                         s_cannonballs.push_back(pBall);
                         RWS::HUD_UseAmmo(1);
+                        ++s_shotsFired;
                         std::printf("CannonCruise: fired cannonball from "
                                     "(%.1f,%.1f,%.1f) vel=(%.1f,%.1f,%.1f)%s\n",
                                     firePos.x, firePos.y, firePos.z,
@@ -1678,6 +1754,7 @@ if (bSimActive == TRUE) {
                     std::printf("CannonCruise: HIT tower #%zu at (%.1f,%.1f,%.1f) (ball=(%.1f,%.1f,%.1f)\n",
                         ti, tp.x, tp.y, tp.z, bp.x, bp.y, bp.z);
                     pT->TakeDamage(100.0f); // 100 damage -- 50 left of 150 HP
+                    ++s_shotsHit;
                     if (pT->IsDestroyed()) {
                         const RwBool bMission = (ti < s_towerIsMission.size())
                                                     ? s_towerIsMission[ti] : TRUE;
@@ -1909,9 +1986,14 @@ if (bSimActive == TRUE) {
                 }
                 // Read current game metrics from HUD
                 RwUInt32 score = static_cast<RwUInt32>(RWS::HUD_GetScore());
-                RwUInt32 accuracy = 0; // TODO: track shot accuracy
-                RwUInt32 rating = 0;   // TODO: compute star rating
+                const RwUInt32 accuracy = s_shotsFired > 0
+                    ? (RwUInt32)((s_shotsHit * 100) / s_shotsFired) : 0u;
+                RwUInt32 rating = 0;   // TODO: original star-rating rule unknown
                 afterGame.ShowSummary(score, accuracy, rating);
+                RenderLevelCompleteOverlay(RWS::HUD_GetScore(),
+                                           RWS::HUD_GetTowersDestroyed(),
+                                           RWS::HUD_GetTowersTotal(),
+                                           s_shotsFired, s_shotsHit);
             }
         }
         if (RenderPlatform_RenderTestQuad(0.0f, 0.0f, 0.25f, 0.25f,

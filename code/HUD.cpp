@@ -114,6 +114,8 @@ RwInt32 HUD_GetScore(void) { return s_score; }
 
 RwInt32 HUD_GetTowersDestroyed(void) { return s_towersDestroyed; }
 
+RwInt32 HUD_GetTowersTotal(void) { return s_towersTotal; }
+
 void HUD_SetShipHeading(RwReal yaw) {
     if (std::isfinite(yaw)) {
         s_shipYaw = std::remainder(yaw, 6.2831853071795864769f);
