@@ -17,6 +17,8 @@
 
 /// RenderWare chunk id of an embedded clump (.dff).
 #define rwsRESOURCE_CLUMP 0x0010
+/// RenderWare chunk id of an embedded hierarchical animation (.anm).
+#define rwsRESOURCE_HANIM 0x001B
 
 /// One embedded resource of the current level.
 struct RwsResource {
@@ -36,6 +38,9 @@ RwBool RwsResources_Add(const RwUInt8 guid[16], RwUInt32 embeddedType,
 
 /// @return The resource with this GUID, or NULL.
 const RwsResource *RwsResources_Find(const RwUInt8 guid[16]);
+
+/// @return The first resource with this exact asset name, or NULL.
+const RwsResource *RwsResources_FindByName(const RwChar *pName);
 
 /// @return Number of registered resources.
 RwUInt32 RwsResources_Count(void);

@@ -474,6 +474,10 @@ int main(int argc, char **argv) {
     std::vector<const void *> s_towerDamaged; // RwsResource* "_Damaged"
     std::vector<std::vector<RwReal> > s_towerMatrices; // record transforms
     RpClump *s_pShipClump = nullptr;       // Hugo_Ship model (NULL: placeholder)
+    // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
+    void *s_pShipAnimator = nullptr;
+    RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
+            s_shipClipWheel = -1, s_shipClipGun = -1;
     std::vector<CCannonball *> s_cannonballs;
 
     // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL load -> FMV
@@ -1416,6 +1420,24 @@ int main(int argc, char **argv) {
                         std::printf("CannonCruise: player ship model %s "
                                     "(%d atomics)\n", pRes->name,
                                     (int)RpClumpPortCountAtomics(s_pShipClump));
+                        s_pShipAnimator = RpClumpPortAnimatorCreate(s_pShipClump);
+                        for (RwUInt32 ci = 0;
+                             s_pShipAnimator != nullptr && ci < pDataShip->clipCount; ++ci) {
+                            const RwsResource *pAnim = static_cast<const RwsResource *>(
+                                pDataShip->clips[ci].pAnim);
+                            const RwInt32 node = pDataShip->clips[ci].nodeId;
+                            const RwInt32 idx = RpClumpPortAnimatorAddClip(
+                                s_pShipAnimator, pAnim->pData, pAnim->size, node);
+                            // Node tags of Hugo_Ship: 100/200 wings, 300 wheel,
+                            // 400 rudder, 500 gun base (+600 barrel).
+                            if (node == 100) s_shipClipWingL = idx;
+                            else if (node == 200) s_shipClipWingR = idx;
+                            else if (node == 300) s_shipClipWheel = idx;
+                            else if (node == 400) s_shipClipRudder = idx;
+                            else if (node == 500) s_shipClipGun = idx;
+                            std::printf("  clip %s -> node %d: %s\n", pAnim->name,
+                                        (int)node, idx >= 0 ? "ok" : "FAILED");
+                        }
                         RwV3d bmin, bmax;
                         if (RpClumpPortGetLocalBounds(s_pShipClump, &bmin, &bmax) == TRUE) {
                             std::printf("  ship bounds x[%.2f..%.2f] y[%.2f..%.2f] z[%.2f..%.2f]\n",
@@ -1930,6 +1952,15 @@ if (bSimActive == TRUE) {
                     followOrbit += (RwReal)mdx * 0.0035f;
                 }
                 followOrbit *= 0.94f; // clamp -- turns behind the ship
+                // CANNONCRUISE_DRIVE=throttle,rudder (headless tests): fixed input.
+                static const char *s_driveEnv = std::getenv("CANNONCRUISE_DRIVE");
+                if (s_driveEnv != nullptr) {
+                    float dThrottle = 0.0f, dRudder = 0.0f;
+                    if (std::sscanf(s_driveEnv, "%f,%f", &dThrottle, &dRudder) >= 1) {
+                        throttle = dThrottle;
+                        rudder = dRudder;
+                    }
+                }
                 PlayerShip_Update(kDt, (RwReal)frame * kDt, throttle,
                                   rudder);
                 PlayerShipState shipState;
@@ -2058,6 +2089,22 @@ if (bSimActive == TRUE) {
                                           shipNow.pos.x, shipNow.pos.y,
                                           shipNow.pos.z, 1.0f};
                     RpClumpPortSetMatrix(s_pShipClump, m);
+                    if (s_pShipAnimator != nullptr) {
+                        // Clips are 0.4 s pose ranges (0.4 wraps to 0, so stay
+                        // inside 0.02..0.38):
+                        //  wings  0 = spread (at rest) .. folded back (full speed)
+                        //  rudder/wheel 0.2 = centred, +-0.18 = full rudder
+                        //  gun    0.2 = pointing forward
+                        RwReal speedNorm = std::fabs(shipNow.speed) / 18.0f;
+                        if (speedNorm > 1.0f) speedNorm = 1.0f;
+                        const RwReal wingT = 0.02f + speedNorm * 0.36f;
+                        const RwReal rudderT = 0.2f + shipNow.rudder * 0.18f;
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingL, wingT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingR, wingT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipRudder, rudderT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWheel, rudderT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, 0.2f);
+                    }
                 }
             } else {
                 PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)

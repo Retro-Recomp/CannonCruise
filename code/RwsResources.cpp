@@ -65,4 +65,18 @@ const RwsResource *RwsResources_Find(const RwUInt8 guid[16]) {
     return it == table.end() ? 0 : &it->second.info;
 }
 
+const RwsResource *RwsResources_FindByName(const RwChar *pName) {
+    if (!pName) {
+        return 0;
+    }
+    std::map<std::string, Entry> &table = Table();
+    for (std::map<std::string, Entry>::const_iterator it = table.begin();
+         it != table.end(); ++it) {
+        if (std::strcmp(it->second.info.name, pName) == 0) {
+            return &it->second.info;
+        }
+    }
+    return 0;
+}
+
 RwUInt32 RwsResources_Count(void) { return (RwUInt32)Table().size(); }

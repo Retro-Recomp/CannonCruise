@@ -184,6 +184,9 @@ RwBool RwEngineInit(RwMemoryFunctions *memFuncs, RwUInt32 flags,
     // Geometry MESH plugin — builds meshHeader from the streamRead EXTENSION;
     // GL3 instance/render crashes without meshHeader (there was no instance in NULL).
     rw::registerMeshPlugin();
+    // HAnim: frame node IDs/hierarchies stored in models (e.g. Hugo_Ship's
+    // tag100 = left wing) and the keyframe interpolator for .anm files.
+    rw::registerHAnimPlugin();
     return TRUE;
 }
 
@@ -627,6 +630,122 @@ RwInt32 RpClumpPortCountAtomics(RpClump *clump) {
         return 0;
     }
     return reinterpret_cast<rw::Clump *>(clump)->countAtomics();
+}
+
+// ---------------------------------------------------------------------------
+// Clump animator: plays HAnim clips (.anm) on sub-trees of a rigid model's
+// hierarchy. A clip covers the node with the given ID (the "_tagNNN" in its
+// file name) and the nodes that follow it in hierarchy order; its pose at a
+// time t is written to those nodes' frames as their local matrices.
+// CannonCruise drives most clips as poses (time = control value, e.g. the
+// rudder angle), not as looping playback.
+// ---------------------------------------------------------------------------
+namespace {
+
+struct PortClip {
+    rw::Animation *anim;
+    rw::AnimInterpolator *interp;
+    rw::int32 firstNode;
+    rw::int32 numNodes;
+};
+
+struct PortAnimator {
+    rw::Clump *clump;
+    rw::HAnimHierarchy *hier;
+    std::vector<PortClip> clips;
+};
+
+} // namespace
+
+void *RpClumpPortAnimatorCreate(RpClump *clump) {
+    if (!clump) {
+        return 0;
+    }
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    rw::HAnimHierarchy *pHier = rw::HAnimHierarchy::get(pClump);
+    if (!pHier) {
+        return 0;
+    }
+    pHier->attach(); // node -> frame links
+    PortAnimator *pAnimator = new PortAnimator();
+    pAnimator->clump = pClump;
+    pAnimator->hier = pHier;
+    return pAnimator;
+}
+
+RwInt32 RpClumpPortAnimatorAddClip(void *animator, const void *pData,
+                                   RwUInt32 size, RwInt32 nodeId) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || !pData || size == 0) {
+        return -1;
+    }
+    const rw::int32 first = pAnimator->hier->getIndex(nodeId);
+    if (first < 0) {
+        return -1;
+    }
+    rw::StreamMemory mem;
+    mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
+    rw::Animation *pAnim = rw::Animation::streamRead(&mem);
+    mem.close();
+    if (!pAnim || !pAnim->interpInfo) {
+        return -1;
+    }
+    const rw::int32 n = pAnim->getNumNodes();
+    if (n <= 0 || first + n > pAnimator->hier->numNodes) {
+        pAnim->destroy();
+        return -1;
+    }
+    rw::AnimInterpolator *pInterp = rw::AnimInterpolator::create(
+        n, pAnim->interpInfo->interpKeyFrameSize);
+    if (!pInterp) {
+        pAnim->destroy();
+        return -1;
+    }
+    PortClip clip = {pAnim, pInterp, first, n};
+    pAnimator->clips.push_back(clip);
+    return (RwInt32)pAnimator->clips.size() - 1;
+}
+
+RwReal RpClumpPortAnimatorClipDuration(void *animator, RwInt32 clip) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || clip < 0 || clip >= (RwInt32)pAnimator->clips.size()) {
+        return 0.0f;
+    }
+    return pAnimator->clips[(size_t)clip].anim->duration;
+}
+
+RwBool RpClumpPortAnimatorSetPose(void *animator, RwInt32 clip, RwReal t) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || clip < 0 || clip >= (RwInt32)pAnimator->clips.size()) {
+        return FALSE;
+    }
+    PortClip &c = pAnimator->clips[(size_t)clip];
+    c.interp->setCurrentAnim(c.anim); // rewinds to 0
+    if (t > 0.0f) {
+        c.interp->addTime(t);
+    }
+    for (rw::int32 i = 0; i < c.numNodes; ++i) {
+        rw::Frame *pFrame = pAnimator->hier->nodeInfo[c.firstNode + i].frame;
+        if (!pFrame) {
+            continue;
+        }
+        rw::Matrix local;
+        c.interp->applyCB(&local, c.interp->getInterpFrame(i));
+        pFrame->transform(&local, rw::COMBINEREPLACE);
+    }
+    return TRUE;
+}
+
+void RpClumpPortAnimatorDestroy(void *animator) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator) {
+        return;
+    }
+    for (size_t i = 0; i < pAnimator->clips.size(); ++i) {
+        pAnimator->clips[i].interp->destroy();
+        pAnimator->clips[i].anim->destroy();
+    }
+    delete pAnimator;
 }
 
 RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {

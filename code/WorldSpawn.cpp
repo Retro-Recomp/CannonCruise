@@ -350,6 +350,30 @@ void CollectPlayerShip(const RwStudioObject *pObj,
         return;
     }
     s_playerShip.pModel = FindModel(packet, 0, TRUE);
+    // Animation clips: node ID from the "_tagNNN" part of the asset name.
+    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands");
+         !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 0 || it->GetDataSize() != 16 ||
+            s_playerShip.clipCount >= 16) {
+            continue;
+        }
+        const RwsResource *pRes = RwsResources_Find(
+            static_cast<const RwUInt8 *>(it->GetCommandData()));
+        if (!pRes || pRes->embeddedType != rwsRESOURCE_HANIM) {
+            continue;
+        }
+        const char *pTag = std::strstr(pRes->name, "_tag");
+        if (!pTag) {
+            continue;
+        }
+        const int nodeId = std::atoi(pTag + 4);
+        if (nodeId <= 0) {
+            continue;
+        }
+        s_playerShip.clips[s_playerShip.clipCount].pAnim = pRes;
+        s_playerShip.clips[s_playerShip.clipCount].nodeId = nodeId;
+        ++s_playerShip.clipCount;
+    }
     s_playerShip.valid = TRUE;
 }
 
@@ -406,7 +430,7 @@ RwUInt32 WorldSpawn_GetTowers(const WorldSpawnTower **ppTowers) {
     return s_towerCount;
 }
 
-// Pass 1: register the level's embedded models by GUID. Object records may
+// Pass 1: register the level's embedded models and animations by GUID. Object records may
 // come before the assets they reference, so this runs over the whole file
 // before any object is created.
 namespace {
@@ -414,13 +438,13 @@ namespace {
 // Finds the sized clump chunk [u32 len+12][u32 0x10][u32 len][u32 libid][body]
 // in a model asset's resource bytes. Usually at offset 0; on some assets the
 // meta's texture-folder string precedes it, so scan 4-byte aligned offsets.
-RwBool FindClumpChunk(const std::vector<RwUInt8> &buf, RwUInt32 *pBodyOffset,
-                      RwUInt32 *pBodySize) {
+RwBool FindClumpChunk(const std::vector<RwUInt8> &buf, RwUInt32 chunkId,
+                      RwUInt32 *pBodyOffset, RwUInt32 *pBodySize) {
     const RwUInt32 n = (RwUInt32)buf.size();
     for (RwUInt32 off = 0; off + 16 <= n; off += 4) {
         RwUInt32 hdr[3];
         std::memcpy(hdr, &buf[off], sizeof(hdr));
-        if (hdr[1] == rwsRESOURCE_CLUMP && hdr[0] == hdr[2] + 12 &&
+        if (hdr[1] == chunkId && hdr[0] == hdr[2] + 12 &&
             hdr[2] > 0 && hdr[2] <= n - off - 16) {
             *pBodyOffset = off + 16;
             *pBodySize = hdr[2];
@@ -441,8 +465,13 @@ RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath) {
     RwStudioAsset asset;
     std::vector<RwUInt8> buf;
     while (RwStudioFileNextAsset(pFile, &asset) == TRUE) {
-        if (asset.chunkType != rwstudioID_ASSETRECORD ||
-            std::strcmp(asset.rwIdName, "rwID_CLUMP") != 0 ||
+        RwUInt32 chunkId = 0;
+        if (std::strcmp(asset.rwIdName, "rwID_CLUMP") == 0) {
+            chunkId = rwsRESOURCE_CLUMP;
+        } else if (std::strcmp(asset.rwIdName, "rwID_HANIMANIMATION") == 0) {
+            chunkId = rwsRESOURCE_HANIM;
+        }
+        if (asset.chunkType != rwstudioID_ASSETRECORD || chunkId == 0 ||
             asset.resourceLength < 16) {
             continue;
         }
@@ -453,8 +482,8 @@ RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath) {
             continue;
         }
         RwUInt32 bodyOffset = 0, bodySize = 0;
-        if (FindClumpChunk(buf, &bodyOffset, &bodySize) == TRUE) {
-            RwsResources_Add(asset.guid, rwsRESOURCE_CLUMP, asset.typeName,
+        if (FindClumpChunk(buf, chunkId, &bodyOffset, &bodySize) == TRUE) {
+            RwsResources_Add(asset.guid, chunkId, asset.typeName,
                              &buf[bodyOffset], bodySize);
         }
     }

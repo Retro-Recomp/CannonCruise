@@ -64,6 +64,12 @@ struct WorldSpawnPlayerShip {
     RwBool valid;            ///< a CShipPlayer record was found
     RwReal matrix[16];       ///< start transform (RwMatrix)
     const void *pModel;      ///< const RwsResource*: ship model ("Hugo_Ship")
+    /// HAnim clips of the ship ("Wing_Left_tag100.anm" -> node 100).
+    struct Clip {
+        const void *pAnim;   ///< const RwsResource* (rwsRESOURCE_HANIM)
+        RwInt32 nodeId;      ///< from the "_tagNNN" name suffix
+    } clips[16];
+    RwUInt32 clipCount;
 };
 
 /// Player ship of the last WorldSpawn_FromFile() call.

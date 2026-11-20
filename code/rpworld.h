@@ -53,6 +53,14 @@ RwBool      RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]);
 RwBool      RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos);
 RwInt32     RpClumpPortCountAtomics(RpClump *clump);
 RwBool      RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax);
+// HAnim clip animator for rigid hierarchical models (rw_librw.cpp).
+// Create returns NULL when the clump has no HAnim hierarchy.
+void*       RpClumpPortAnimatorCreate(RpClump *clump);
+RwInt32     RpClumpPortAnimatorAddClip(void *animator, const void *pData,
+                                       RwUInt32 size, RwInt32 nodeId);
+RwReal      RpClumpPortAnimatorClipDuration(void *animator, RwInt32 clip);
+RwBool      RpClumpPortAnimatorSetPose(void *animator, RwInt32 clip, RwReal t);
+void        RpClumpPortAnimatorDestroy(void *animator);
 // Added for CollisionTrigger (phantom AABB) -- real data is returned in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump *clump);
 
