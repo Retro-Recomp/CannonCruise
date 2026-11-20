@@ -15,7 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [NULL, D3D9]
+        # Quoted: a bare NULL is YAML null and became an empty value.
+        platform: ['NULL', 'D3D9']
     steps:
       - uses: actions/checkout@v4
 
