@@ -8,12 +8,14 @@ drag, collision) → summary screen → back to map.
 > For detail/history see `ROADMAP.md`; no unverified
 > claim is **written here**.
 
-## Where we are today (2026-11-14)
+## Where we are today (updated 2026-11-20)
+
+> Rows marked 2026-11-20 were re-checked; see [GAP_ANALYSIS.md](GAP_ANALYSIS.md) for the current gap list.
 
 | Area | Status | Evidence |
 |---|---|---|
 | Build (NULL + D3D9, Win32, VS 2026) | ✅ | `build_cannoncruise.cmd`; 0 errors |
-| ctest | ✅ 34/34 | NULL + D3D9 configurations |
+| ctest | ✅ 34/34 with game data, 16/16 without (2026-11-20) | `tests/` restored; asset tests disabled when `CANNONCRUISE_DATA_ROOT` has no `Streams/` |
 | D3D9 runtime | ✅ | Build script had copied Windows DLLs beside the EXE, shadowing the system runtime; copying only `binkw32.dll` restores HAL detection. Clean-output run reached the main menu. |
 | Renders the world | ✅ | world/clump call is real; boat is in the RpWorld pipeline, not im3d |
 | GLOBAL.RWS inventory | ✅ resolved | `globalassets_test`: 56 chunks, 1 txd = 4 textures, 46 objectRecords, `Loading.anm` |
@@ -24,12 +26,12 @@ drag, collision) → summary screen → back to map.
 | Ocean grid + waves | ✅ | `COceanTile` |
 | Spawn chain (97 objects) | ✅ | `WorldSpawn_FromFile` |
 | Ship (placeholder) | 🟡 independent wood texture, shaped longboat, cannon, mast/rigging + ocean-grid bounds | Hand-built curved hull, deck, rails, benches, cannon, mast and rigging use generated `CC_ShipHull`; no level texture atlas is sampled |
-| `CPhysicsWorld::Update` | ✅ real Bullet step | `btDiscreteDynamicsWorld`, `CPhysicsWorld::Create()` + `Update(1/60)` each frame |
+| `CPhysicsWorld::Update` | ✅ real Bullet step (2026-11-20) | World is created by the level's `CPhysicsWorldBehaviour`; until 2026-11-20 the RWS parser dropped that class (long name), so no world existed and nothing was simulated |
 | Player ship | 🟡 bounded movement prototype | `PlayerShip_Update` manually integrates throttle/rudder; steering is speed-dependent and the hull center is clamped inside the water grid; Bullet mirrors the transform |
 | Menu → World → Esc menu | 🟡 Partial | Menu is navigable, PAUSE menu not fully wired from the menu architecture |
-| Single scene fully playable | ✅ | Player ship moves; projectile-to-tower damage via Bullet collision detection + HUD_RegisterTowerDestroyed + LEVELCOMPLETE transition; Save/Load functional; ESC→PAUSE wired; HUD operational |
+| Single scene playable | ✅ VIKING01 (2026-11-20) | Towers from level data; cannonball AABB hit check after the Bullet step; all mission towers down → LEVELCOMPLETE summary (quit only; no return to map yet) |
 | Global objectRecord classes | ❌ | `CAudioManager`, `CDifficultyLevels`, `CEventProxy`, `CSystemCommands` without factories |
-| Save/Load (Slot0) | ✅ | F5/Save F6-Load wired; data includes level-unlocked bitflags, high score, coins; checksum-verified |
+| Save/Load (Slot0) | 🟡 debug only | F5 writes score with a checksum (level-unlocked and coins are constants); F6 only prints the file, nothing is applied |
 
 ### D3D9 window: world works, it just doesn't look fixed (misdiagnosis fixed 2026-11-14)
 

@@ -4,12 +4,18 @@ Source code of the CannonCruisePC game rebuilt by reverse engineering.
 The original 2004 32-bit Windows game (`CannonCruise.exe`) is being rewritten
 in C++14 based on Ghidra and IDA analyses (`CC.asm`, `CC_ida.asm`).
 
-**Status:** Active development — Phase 4 (build/link) verified: macOS/Clang
-`CannonCruiseLib` + link verification target; Windows Win32 build with VS 18
-(2026) and ctest 33/33 passed (NULL and D3D9 platforms). In D3D9, actual
-rendering of the game with a real window was visually verified (island + ocean +
-VIEW camera afterward); GLOBAL.RWS contents were resolved and the LOADING
-screen works with the original art (parchment, wave border, Hugo).
+**Status (2026-11-20):** Active development. Windows Win32 builds (VS 18,
+NULL and D3D9) compile cleanly; ctest is 34/34 with the original game data and
+16/16 (18 asset tests disabled) without it. One mission is playable end to end
+on VIKING01: towers are placed from the level data, cannonballs fly under
+Bullet physics, destroying the six mission towers shows the LEVELCOMPLETE
+summary. Many level objects (mines, ammo crates, enemy ships' behaviour,
+flotsam …) are still not spawned or not configured — see
+[GAP_ANALYSIS.md](GAP_ANALYSIS.md). The macOS build has not been re-verified
+recently.
+
+The `.asm` dumps (`CC.asm`, `CC_ida.asm`) and the original game files are not
+in git; obtain them separately.
 
 ## Directory layout
 
@@ -86,23 +92,31 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Tests
 
-SDK-independent tests live under `tests/`. All run with CMake/ctest:
+Tests live under `tests/` and run with CMake/ctest. 18 of the 34 tests read
+the original game files; point `CANNONCRUISE_DATA_ROOT` at the folder that
+contains `Streams/` (default: the repository root). Without the data those
+tests are reported as "Not Run (Disabled)" and the rest must pass — this is
+what CI does.
 
-```bash
+```bat
 cd code
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j8
-ctest --test-dir build --output-on-failure
+cmake -B build -A Win32 -DCANNONCRUISE_RW_PLATFORM=NULL ^
+      -DCANNONCRUISE_DATA_ROOT=C:/path/to/CannonCruise-data
+cmake --build build --config Release --parallel 8
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-Coverage: `havok_memory_manager` (allocator), `ceventhandler` (RegisterMsg/
-LinkMsg/SendMsg/lifecycle), `cclassfactory` (Register/Create/Shutdown),
-`cattributehandler` (instance registry + packet predictors),
-`worldcycle_test` (VIKING01/IDUNA03/BEAVER01 load→clump→unload stress,
-Phase 4.6s), `fmvscene_test` (FMV transition graph, 8 identifiers),
-`globalassets_test` (GLOBAL.RWS inventory: embedded txd + external resources),
-`globaldump_test` (GLOBAL embedded txd → PNG dump). The whole package
-runs with **ctest 33/33**. You can also compile a single test with a
+Expected: 34/34 with data, 16/16 without. CI
+([.github/workflows/build.yml](.github/workflows/build.yml)) builds NULL and
+D3D9 and runs ctest on NULL.
+
+Headless gameplay switches for `CannonCruise.exe <Streams/LEVEL.RWS>`:
+`CANNONCRUISE_SHIP=x,y,z,yaw` (spawn), `CANNONCRUISE_AUTOFIRE=N` (fire every
+N frames), `CANNONCRUISE_AUTOAIM=1` (aim at the nearest mission tower). For
+example `SHIP=25,0,-150,0 AUTOFIRE=40 AUTOAIM=1` on VIKING01 destroys all six
+mission towers and reaches LEVELCOMPLETE.
+
+You can also compile a single test with a
 sanitizer manually:
 
 ```bash
@@ -118,7 +132,8 @@ c++ -std=c++14 -fsanitize=address,undefined \
   is written against RenderWare types (`RpClump*`, `RwFrame*` etc.).
 - **Havok Physics 2.2.1:** the `code/havok/` stub headers match the binary naming
   (`hkWorld`, `hkRigidBody` — no `hkp` prefix). `CPhysicsWorld` /
-  `CPhysicsEntity` currently use `void*`; awaiting SDK integration.
+  `CPhysicsEntity` use `void*` handles backed by Bullet (`PhysicsBackend.cpp`);
+  the Havok SDK itself is not used.
 - **Framework:** `RWS::CEventHandler`, `CAttributeHandler`, `CClassFactory`
   mimic RenderWare Studio behavior; `FUN_*` binary addresses are preserved in
   code comments.
