@@ -43,4 +43,19 @@ RwBool GameBehaviours_Register();
  */
 RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats);
 
+/// Tower placement read from a CTowerCatapult object record.
+struct WorldSpawnTower {
+    RwV3d pos;               ///< CSystemCommands id1 RwMatrix translation
+    RwChar missionEvent[48]; ///< CTowerCatapult id3 (e.g. "MissionTower1Dead"); "" if none
+};
+
+#define WORLDSPAWN_MAX_TOWERS 64
+
+/**
+ * @brief Towers found by the last WorldSpawn_FromFile() call.
+ * @param ppTowers Receives a pointer to the internal array (valid until the next call).
+ * @return Number of towers (0 when the level has none).
+ */
+RwUInt32 WorldSpawn_GetTowers(const WorldSpawnTower **ppTowers);
+
 #endif // CANNONCRUISE_WORLDSPAWN_H

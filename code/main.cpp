@@ -429,6 +429,7 @@ int main(int argc, char **argv) {
     COcean *pOcean = nullptr; // quit-cleanup notification (setup below)
     // Sprint 1 -- test towers for the player's cannon + cannonball records
     std::vector<CTowerCatapult *> s_towers;
+    std::vector<RwBool> s_towerIsMission; // parallel to s_towers
     std::vector<CCannonball *> s_cannonballs;
 
     // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL load -> FMV
@@ -1366,11 +1367,42 @@ int main(int argc, char **argv) {
                             "(%.1f, %.1f, %.1f) yaw=%.2f\n",
                             (double)shipPos.x, (double)shipPos.y,
                             (double)shipPos.z, (double)shipYaw);
-                // Sprint 1 -- spawn towers exercising the Bullet functionality:
-                // tests getting hit by a rising "catapult tower" candidate.
-                // Toward the Vatican bay side: at the blue island entrance two
-                // castle towers are located.
-                {
+                // Towers: placed from the level's CTowerCatapult records
+                // (CSystemCommands matrix). Towers carrying a mission death
+                // event (id3 "MissionTowerNDead") are the mission targets; if a
+                // level has towers but none carry an event, all of them count.
+                const WorldSpawnTower *pDataTowers = nullptr;
+                const RwUInt32 dataTowerCount = WorldSpawn_GetTowers(&pDataTowers);
+                RwInt32 missionTowerCount = 0;
+                for (RwUInt32 ti = 0; ti < dataTowerCount; ++ti) {
+                    if (pDataTowers[ti].missionEvent[0] != '\0') {
+                        ++missionTowerCount;
+                    }
+                }
+                for (RwUInt32 ti = 0; ti < dataTowerCount; ++ti) {
+                    const WorldSpawnTower &dt = pDataTowers[ti];
+                    CTowerCatapult *pT = new CTowerCatapult();
+                    pT->SetWorldPosition(dt.pos);
+                    s_towers.push_back(pT);
+                    const RwBool bMission =
+                        (missionTowerCount == 0 || dt.missionEvent[0] != '\0')
+                            ? TRUE : FALSE;
+                    s_towerIsMission.push_back(bMission);
+                    std::printf("CannonCruise: tower #%u at (%.1f,%.1f,%.1f)%s %s\n",
+                                ti, dt.pos.x, dt.pos.y, dt.pos.z,
+                                bMission == TRUE ? " [mission]" : "",
+                                dt.missionEvent);
+                }
+                if (dataTowerCount > 0) {
+                    RWS::HUD_SetTowersTotal(missionTowerCount > 0
+                                                ? missionTowerCount
+                                                : (RwInt32)dataTowerCount);
+                }
+                // Fallback for levels without tower records (IDUNA/NORDIC
+                // missions are not tower-based): keep the two placeholder
+                // towers derived from the world bounds so the level stays
+                // playable until those mission types are ported.
+                if (dataTowerCount == 0) {
                     WorldGeometryBounds bb2;
                     if (WorldGeometry_GetLastBounds(&bb2) == TRUE) {
                         const RwReal tcx = (bb2.min[0] + bb2.max[0]) * 0.5f;
@@ -1386,7 +1418,10 @@ int main(int argc, char **argv) {
                         pT2->SetWorldPosition(t2);
                         s_towers.push_back(pT1);
                         s_towers.push_back(pT2);
-                        std::printf("CannonCruise: spawned 2 towers at "
+                        s_towerIsMission.push_back(TRUE);
+                        s_towerIsMission.push_back(TRUE);
+                        RWS::HUD_SetTowersTotal(2);
+                        std::printf("CannonCruise: no tower records; spawned 2 placeholder towers at "
                                     "(%.1f,%.1f,%.1f) and (%.1f,%.1f,%.1f)\n",
                                     t1.x, t1.y, t1.z, t2.x, t2.y, t2.z);
                     }
@@ -1548,7 +1583,12 @@ int main(int argc, char **argv) {
             }
             // Sprint 1 -- player fires cannon with ' '; ship sails with arrows;
             // cannonball is simulated with Bullet. A tower hit takes damage.
-            if (bSimActive == TRUE && RwPlatformKeyDown(' ')) {
+            // CANNONCRUISE_AUTOFIRE=N fires every N frames (headless hit tests).
+            static const char *s_autoFireEnv = std::getenv("CANNONCRUISE_AUTOFIRE");
+            const int autoFireEvery = s_autoFireEnv ? std::atoi(s_autoFireEnv) : 0;
+            const RwBool bAutoFire =
+                (autoFireEvery > 0 && frame % autoFireEvery == 0) ? TRUE : FALSE;
+            if (bSimActive == TRUE && (RwPlatformKeyDown(' ') || bAutoFire == TRUE)) {
                 if (RWS::HUD_GetAmmo() <= 0) {
                     RWS::HUD_FlashNoAmmo();
                 } else {
@@ -1559,9 +1599,13 @@ int main(int argc, char **argv) {
                     if (len > 0.0f) {
                         fwd.x /= len; fwd.y /= len; fwd.z /= len;
                     }
-                    RwV3d firePos = {ss.pos.x + fwd.x * 6.0f,
+                    // Spawn ahead of the bow: the kinematic hull is 4.6 * kShipScale(4)
+                    // = 18.4 m long from the centre, so a ball spawned closer gets
+                    // trapped inside the hull and rides along with the ship.
+                    const RwReal kMuzzleOffset = 20.0f;
+                    RwV3d firePos = {ss.pos.x + fwd.x * kMuzzleOffset,
                                      ss.pos.y + 2.5f,
-                                     ss.pos.z + fwd.z * 6.0f};
+                                     ss.pos.z + fwd.z * kMuzzleOffset};
                     SCannonballSpawnData spawnData;
                     std::memset(&spawnData, 0, sizeof(spawnData));
                     spawnData.m_Pos = firePos;
@@ -1594,6 +1638,9 @@ if (bSimActive == TRUE) {
     const RwReal ballRadius = 0.8f;
     const RwReal towerHalf = 18.0f;
     const RwReal towerHalfSpace = 8.0f;
+    // Bullet keeps the ball outside the tower's box (it bounces off the
+    // surface), so treat resting contact within this slop as a hit.
+    const RwReal kContactSlop = 0.3f;
     for (size_t ti = 0; ti < s_towers.size(); ++ti) {
         CTowerCatapult *pT = s_towers[ti];
         if (pT->IsDestroyed()) continue;
@@ -1610,7 +1657,7 @@ if (bSimActive == TRUE) {
             const RwReal ax = std::fabs(dx) - (towerHalfSpace + ballRadius);
             const RwReal ay = std::fabs(dy) - (towerHalf + ballRadius);
             const RwReal az = std::fabs(dz) - (towerHalfSpace + ballRadius);
-            if (ax < 0 && ay < 0 && az < 0) {
+            if (ax < kContactSlop && ay < kContactSlop && az < kContactSlop) {
                 // Damage already applied via Bullet contact -- skip duplicate.
                 bool alreadyDamaged = FALSE;
                 for (size_t di = 0; di < s_cannonballs.size(); ++di) {
@@ -1622,7 +1669,7 @@ if (bSimActive == TRUE) {
                     const RwReal oax = std::fabs(otherbp.x - tp.x) - (towerHalfSpace + ballRadius);
                     const RwReal oay = std::fabs(otherbp.y - (tp.y + 18.0f)) - (towerHalf + ballRadius);
                     const RwReal oaz = std::fabs(otherbp.z - tp.z) - (towerHalfSpace + ballRadius);
-                    if (oax < 0 && oay < 0 && oaz < 0) {
+                    if (oax < kContactSlop && oay < kContactSlop && oaz < kContactSlop) {
                         alreadyDamaged = TRUE;
                         break;
                     }
@@ -1632,13 +1679,33 @@ if (bSimActive == TRUE) {
                         ti, tp.x, tp.y, tp.z, bp.x, bp.y, bp.z);
                     pT->TakeDamage(100.0f); // 100 damage -- 50 left of 150 HP
                     if (pT->IsDestroyed()) {
-                        RWS::HUD_RegisterTowerDestroyed();
-                        std::printf("CannonCruise: tower #%zu DESTROYED; score tick\n", ti);
+                        const RwBool bMission = (ti < s_towerIsMission.size())
+                                                    ? s_towerIsMission[ti] : TRUE;
+                        RWS::HUD_RegisterTowerDestroyed(bMission);
+                        std::printf("CannonCruise: tower #%zu DESTROYED%s; score tick\n",
+                                    ti, bMission == TRUE ? " (mission)" : "");
                     }
                     // Cannonball is destroyed after dealing damage
                     pB->OnHit(pT, 0);
                 }
             }
+        }
+    }
+    // All mission towers down -> LEVELCOMPLETE (summary screen state).
+    if (s_gameState == GAMESTATE_GAMEPLAY && !s_towers.empty()) {
+        RwBool bAllDown = TRUE;
+        for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+            const RwBool bMission = (ti < s_towerIsMission.size())
+                                        ? s_towerIsMission[ti] : TRUE;
+            if (bMission == TRUE && !s_towers[ti]->IsDestroyed()) {
+                bAllDown = FALSE;
+                break;
+            }
+        }
+        if (bAllDown == TRUE) {
+            s_gameState = GAMESTATE_LEVELCOMPLETE;
+            std::printf("CannonCruise: all mission towers destroyed -> LEVELCOMPLETE (score=%d)\n",
+                        RWS::HUD_GetScore());
         }
     }
 }
@@ -1885,6 +1952,7 @@ if (bSimActive == TRUE) {
     speakMgr.StopSpeak();
     for (auto *t : s_towers) { delete t; }
     s_towers.clear();
+    s_towerIsMission.clear();
     for (auto *b : s_cannonballs) { delete b; }
     s_cannonballs.clear();
     PlayerShip_Shutdown(); // PhysicsWorld dtor assert'i i�in rigid body temizligi

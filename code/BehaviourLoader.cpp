@@ -72,6 +72,11 @@ RwInt32 BehaviourLoader::ProcessObject(const RwStudioObject *pObject,
             }
             for (RwUInt32 p = 0; p < pBeh->propCount; ++p) {
                 const RwStudioProperty &prop = pBeh->props[p];
+                // Apply adaptors were written for scalar/vec3 records only;
+                // longer records (matrices, strings) are read by WorldSpawn.
+                if (prop.size > 20) {
+                    continue;
+                }
                 s_Entries[i].apply(pInstance, prop.id, prop.value);
             }
             break;

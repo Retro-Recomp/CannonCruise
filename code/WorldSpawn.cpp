@@ -298,7 +298,70 @@ RwBool GameBehaviours_Register() {
     return TRUE;
 }
 
+// ---- Tower placements (CTowerCatapult object records) ----
+// Record layout (VIKING01 hexdump): first behaviour CTowerCatapult; its
+// attribute block (2nd CTowerCatapult segment) holds id3 = mission death
+// event string on mission towers; CSystemCommands id1 (72-byte record) is the
+// entity RwMatrix, translation at floats 12..14.
+namespace {
+
+WorldSpawnTower s_towers[WORLDSPAWN_MAX_TOWERS];
+RwUInt32 s_towerCount = 0;
+
+void CollectTower(const RwStudioObject *pObj) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CTowerCatapult") != 0 ||
+        s_towerCount >= WORLDSPAWN_MAX_TOWERS) {
+        return;
+    }
+    WorldSpawnTower tower;
+    std::memset(&tower, 0, sizeof(tower));
+    RwBool bHasPos = FALSE;
+    for (RwUInt32 b = 0; b < pObj->behaviourCount; ++b) {
+        const RwStudioBehaviour &beh = pObj->behaviours[b];
+        const RwBool isSys = std::strcmp(beh.className, "CSystemCommands") == 0;
+        const RwBool isTower = std::strcmp(beh.className, "CTowerCatapult") == 0;
+        for (RwUInt32 p = 0; p < beh.propCount; ++p) {
+            const RwStudioProperty &prop = beh.props[p];
+            if (isSys && prop.id == 1 && prop.size == 8 + 64 && bHasPos == FALSE) {
+                RwReal m[16];
+                std::memcpy(m, prop.value, sizeof(m));
+                tower.pos.x = m[12];
+                tower.pos.y = m[13];
+                tower.pos.z = m[14];
+                bHasPos = TRUE;
+            } else if (isTower && prop.id == 3 && prop.size > 12) {
+                RwUInt32 i = 0;
+                const RwUInt32 maxLen = prop.size - 8 < rwstudioMAX_PROPVALUE
+                                            ? prop.size - 8
+                                            : rwstudioMAX_PROPVALUE;
+                for (; i + 1 < sizeof(tower.missionEvent) && i < maxLen; ++i) {
+                    const RwUInt8 c = prop.value[i];
+                    if (c < 0x20 || c >= 0x7F) {
+                        break;
+                    }
+                    tower.missionEvent[i] = (RwChar)c;
+                }
+                tower.missionEvent[i] = '\0';
+            }
+        }
+    }
+    if (bHasPos == TRUE) {
+        s_towers[s_towerCount++] = tower;
+    }
+}
+
+} // namespace
+
+RwUInt32 WorldSpawn_GetTowers(const WorldSpawnTower **ppTowers) {
+    if (ppTowers) {
+        *ppTowers = s_towers;
+    }
+    return s_towerCount;
+}
+
 RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
+    s_towerCount = 0;
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
     if (pStats) {
@@ -321,6 +384,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
             continue;
         }
         ++stats.objectRecords;
+        CollectTower(pObj);
         void *pInstances[64];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances,
