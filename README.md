@@ -78,7 +78,7 @@ cmake --build build-null --config Release --parallel
 ctest --test-dir build-null -C Release --output-on-failure
 ```
 
-37 tests; 20 of them read the original game files from
+38 tests; 21 of them read the original game files from
 `CANNONCRUISE_DATA_ROOT`. Without the data those are reported as *Not Run*
 and the other 17 must pass — that is what [CI](.github/workflows/build.yml)
 runs.
