@@ -40,6 +40,8 @@
 #include <rw.h>
 
 #include <cstdio>
+#include <cstring>
+#include <vector>
 
 namespace
 {
@@ -600,4 +602,117 @@ RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {
     }
     return reinterpret_cast<RwTexDictionary *>(
         rw::TexDictionary::streamRead(&p->file));
+}
+
+// ---------------------------------------------------------------------------
+// Image texture dictionary (Localiza\Win\win_<lang>.txd, the font atlas).
+// Not a native txd, so rw::TexDictionary::streamRead fails on it:
+//   PITEXDICTIONARY (0x23) header, u32 0x00010001, u32 1,
+//   IMAGE (0x18) { STRUCT { width, height, depth, stride } pixels },
+//   TEXTURE (0x06) { STRUCT flags, STRING name ("brady48.png"), ... }.
+// Builds a dictionary holding one texture made from the image.
+// ---------------------------------------------------------------------------
+RwTexDictionary *RwTexDictionaryReadImageFile(const char *path) {
+    if (!path) {
+        return 0;
+    }
+    FILE *pFile = std::fopen(path, "rb");
+    if (!pFile) {
+        return 0;
+    }
+    std::vector<RwUInt8> buf;
+    std::fseek(pFile, 0, SEEK_END);
+    const long fileSize = std::ftell(pFile);
+    std::fseek(pFile, 0, SEEK_SET);
+    if (fileSize > 0) {
+        buf.resize((size_t)fileSize);
+        if (std::fread(&buf[0], 1, buf.size(), pFile) != buf.size()) {
+            buf.clear();
+        }
+    }
+    std::fclose(pFile);
+    const RwUInt32 n = (RwUInt32)buf.size();
+    RwUInt32 u[3];
+    if (n < 12) {
+        return 0;
+    }
+    std::memcpy(u, &buf[0], 4);
+    // 0x23 = rwID_PITEXDICTIONARY (platform-independent dictionary of
+    // images), not the native rw::ID_TEXDICTIONARY (0x16).
+    const RwUInt32 kPiTexDictionary = 0x23;
+    if (u[0] != kPiTexDictionary) {
+        return 0;
+    }
+    // Find IMAGE chunk and its STRUCT (4-byte aligned scan after the header).
+    RwUInt32 imgOff = 0;
+    for (RwUInt32 off = 12; off + 40 <= n; off += 4) {
+        std::memcpy(u, &buf[off], 12);
+        if (u[0] == rw::ID_IMAGE && u[1] <= n - off - 12) {
+            RwUInt32 s[2];
+            std::memcpy(s, &buf[off + 12], 8);
+            if (s[0] == rw::ID_STRUCT && s[1] == 16) {
+                imgOff = off;
+                break;
+            }
+        }
+    }
+    if (imgOff == 0) {
+        return 0;
+    }
+    RwInt32 info[4]; // width, height, depth, stride
+    std::memcpy(info, &buf[imgOff + 24], sizeof(info));
+    const RwInt32 w = info[0], h = info[1], depth = info[2], stride = info[3];
+    const RwUInt32 pixOff = imgOff + 40;
+    if (w <= 0 || h <= 0 || depth != 32 || stride < w * 4 ||
+        (unsigned long long)stride * (unsigned long long)h > (unsigned long long)(n - pixOff)) {
+        return 0;
+    }
+    // Texture name: first STRING chunk after the pixels.
+    char name[32] = "win_font";
+    for (RwUInt32 off = pixOff + (RwUInt32)(stride * h); off + 12 <= n;
+         off += 4) {
+        std::memcpy(u, &buf[off], 12);
+        if (u[0] == rw::ID_STRING && u[1] > 0 && u[1] <= n - off - 12) {
+            const char *pStr = reinterpret_cast<const char *>(&buf[off + 12]);
+            RwUInt32 i = 0;
+            for (; i + 1 < sizeof(name) && i < u[1] && pStr[i] != '\0'; ++i) {
+                name[i] = pStr[i];
+            }
+            name[i] = '\0';
+            char *pDot = std::strrchr(name, '.');
+            if (pDot) {
+                *pDot = '\0'; // "brady48.png" -> "brady48"
+            }
+            break;
+        }
+    }
+    rw::Image *pImg = rw::Image::create(w, h, 32);
+    if (!pImg) {
+        return 0;
+    }
+    pImg->allocate();
+    for (RwInt32 y = 0; y < h; ++y) {
+        std::memcpy(pImg->pixels + (size_t)y * (size_t)pImg->stride,
+                    &buf[pixOff + (RwUInt32)(y * stride)], (size_t)w * 4u);
+    }
+    // The NULL (headless) driver cannot pick a raster format; keep the
+    // texture by name without a raster there.
+    rw::Raster *pRaster = rw::Raster::createFromImage(pImg);
+    pImg->destroy();
+    rw::Texture *pTex = rw::Texture::create(pRaster);
+    if (!pTex) {
+        if (pRaster) {
+            pRaster->destroy();
+        }
+        return 0;
+    }
+    std::strncpy(pTex->name, name, sizeof(pTex->name) - 1);
+    pTex->name[sizeof(pTex->name) - 1] = '\0';
+    rw::TexDictionary *pDict = rw::TexDictionary::create();
+    if (!pDict) {
+        pTex->destroy();
+        return 0;
+    }
+    pDict->add(pTex);
+    return reinterpret_cast<RwTexDictionary *>(pDict);
 }

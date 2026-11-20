@@ -505,6 +505,8 @@ RwBool           RwTexDictionaryDestroy(RwTexDictionary *dict);
 RwTexDictionary* RwTexDictionarySetCurrent(RwTexDictionary *dict);
 RwTexDictionary* RwTexDictionaryGetCurrent(void);
 RwTexDictionary* RwTexDictionaryStreamRead(RwStream *stream);
+// Port: image-based dictionary (Localiza\Win\win_<lang>.txd font atlas).
+RwTexDictionary* RwTexDictionaryReadImageFile(const char *path);
 RwBool           RwStreamFindChunk(RwStream *stream, RwUInt32 type, RwUInt32 *lengthOut, RwUInt32 *versionOut);
 
 typedef void* (*RwPluginObjectConstructor)(void *object, RwInt32 offsetInObject, RwInt32 sizeInObject);

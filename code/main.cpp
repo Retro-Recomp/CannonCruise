@@ -614,7 +614,10 @@ int main(int argc, char **argv) {
                             0.0f, 0.0f, (RwReal)kScreenW, (RwReal)kScreenH,
                             "FMV");
                         RenderPlatform_EndOverlay2D();
-                        if (pShotPath != nullptr && fmvShown == 0) {
+                        // Frame 30 (~1 s): the first frames can still show
+                        // stale render-target memory before the video texture
+                        // is drawn.
+                        if (pShotPath != nullptr && fmvShown == 30) {
                             RenderPlatform_RequestScreenshot(pShotPath);
                         }
                         RenderPlatform_EndFrame();

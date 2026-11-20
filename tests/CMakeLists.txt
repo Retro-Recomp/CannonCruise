@@ -463,6 +463,16 @@ add_test(NAME attributepacket_test COMMAND attributepacket_test)
 add_test(NAME attributepacket_data_test COMMAND attributepacket_test
     ${CANNONCRUISE_DATA_ROOT}/Streams/VIKING01.RWS)
 
+# Font atlas: Localiza/Win/win_eng.txd (platform-independent image dictionary).
+add_executable(fontatlas_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/fontatlas_test.cpp
+)
+target_include_directories(fontatlas_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
+target_link_libraries(fontatlas_test PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
+add_test(NAME fontatlas_test COMMAND fontatlas_test
+    ${CANNONCRUISE_DATA_ROOT}/Localiza/Win/win_eng.txd)
+
 # ---------------------------------------------------------------------------
 # Game-data wiring: every test resolves Streams/ through RwsAssets
 # (CANNONCRUISE_STREAMS = folder that contains Streams/). Tests listed in
@@ -473,6 +483,7 @@ get_property(_cc_all_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${_cc_all_tests} PROPERTIES
     ENVIRONMENT "CANNONCRUISE_STREAMS=${CANNONCRUISE_DATA_ROOT}/")
 set(CANNONCRUISE_DATA_TESTS
+    fontatlas_test
     attributepacket_data_test
     rwlibrw_test
     rwstudio_test
