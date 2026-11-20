@@ -91,3 +91,12 @@ cc_code.txt
 setup.txt
 Setup.uni
 Config.ini
+
+# ---- Local build/test logs and one-off scratch files ----
+build_output*.txt
+build_final*.txt
+build_physics*.txt
+build_script.txt
+test_output.txt
+*.log
+code/build_fix*/
