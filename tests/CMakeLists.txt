@@ -481,8 +481,9 @@ set(CANNONCRUISE_DATA_TESTS
     fmvscene_test)
 # The sentinel scan walks up from the working directory, so run it one level
 # below the data root (exercises the "../" prefix).
-set_tests_properties(rwsassets_test PROPERTIES
-    WORKING_DIRECTORY "${CANNONCRUISE_DATA_ROOT}/Streams")
-if(NOT CANNONCRUISE_HAVE_DATA)
+if(CANNONCRUISE_HAVE_DATA)
+    set_tests_properties(rwsassets_test PROPERTIES
+        WORKING_DIRECTORY "${CANNONCRUISE_DATA_ROOT}/Streams")
+else()
     set_tests_properties(${CANNONCRUISE_DATA_TESTS} PROPERTIES DISABLED TRUE)
 endif()
