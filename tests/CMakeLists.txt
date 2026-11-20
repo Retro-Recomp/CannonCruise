@@ -473,6 +473,16 @@ target_link_libraries(fontatlas_test PRIVATE
 add_test(NAME fontatlas_test COMMAND fontatlas_test
     ${CANNONCRUISE_DATA_ROOT}/Localiza/Win/win_eng.txd)
 
+# Level texture pack: names must get their own pixels (IMAGE precedes name).
+add_executable(levelpack_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/levelpack_test.cpp
+)
+target_include_directories(levelpack_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
+target_link_libraries(levelpack_test PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
+add_test(NAME levelpack_test COMMAND levelpack_test
+    ${CANNONCRUISE_DATA_ROOT}/Streams/VIKING01.RWS)
+
 # ---------------------------------------------------------------------------
 # Game-data wiring: every test resolves Streams/ through RwsAssets
 # (CANNONCRUISE_STREAMS = folder that contains Streams/). Tests listed in
@@ -483,6 +493,7 @@ get_property(_cc_all_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${_cc_all_tests} PROPERTIES
     ENVIRONMENT "CANNONCRUISE_STREAMS=${CANNONCRUISE_DATA_ROOT}/")
 set(CANNONCRUISE_DATA_TESTS
+    levelpack_test
     fontatlas_test
     attributepacket_data_test
     rwlibrw_test
