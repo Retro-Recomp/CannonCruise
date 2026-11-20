@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -35,6 +37,8 @@ public:
      */
     ApplyAudioObject(const CAttributePacket& packet);
 
+    virtual ~ApplyAudioObject();
+
     /**
      * @brief Applies audio object events.
      * @param msg Event message container.
@@ -52,7 +56,7 @@ private:
     RwBool m_bLoop;            ///< Whether sound should loop
     RwReal m_fVolume;          ///< Sound volume (0.0 to 1.0)
     RwReal m_fPitch;           ///< Sound pitch shift
-    RwString m_sSoundFile;     ///< Sound file path
+    char m_sSoundFile[256];     ///< Sound file path
 };
 
 } // namespace RWS

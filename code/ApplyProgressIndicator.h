@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -37,6 +39,8 @@ public:
      */
     ApplyProgressIndicator(const CAttributePacket& packet);
 
+    virtual ~ApplyProgressIndicator();
+
     /**
      * @brief Applies progress indicator events.
      * @param msg Event message container.
@@ -52,7 +56,7 @@ public:
 
 private:
     RwReal m_fProgress;        ///< Progress percentage (0.0 to 1.0)
-    RwString m_sStatusText;    ///< Status text display
+    char m_sStatusText[256];    ///< Status text display
     RwInt32 m_progressMode;    ///< Display mode (0=percentage, 1=text, 2=dual)
     RwBool m_bVisible;         ///< Whether the progress indicator is visible
 };

@@ -115,6 +115,8 @@ namespace
         case 263: return VK_LEFT;
         case 264: return VK_DOWN;
         case 265: return VK_UP;
+        case 294: return VK_F5;
+        case 295: return VK_F6;
         default:  return key; // ASCII 'A'-'Z' / ' ' → VK equivalent
         }
     }

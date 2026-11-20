@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -34,6 +36,8 @@ public:
      * @param packet Attribute packet with difficulty settings.
      */
     ApplyDifficultyLevels(const CAttributePacket& packet);
+
+    virtual ~ApplyDifficultyLevels();
 
     /**
      * @brief Applies difficulty levels events.

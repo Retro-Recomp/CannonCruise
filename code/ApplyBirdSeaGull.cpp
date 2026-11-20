@@ -15,7 +15,7 @@ ApplyBirdSeaGull::ApplyBirdSeaGull(const CAttributePacket& packet)
       m_fSpeed(5.0f),
       m_bMigration(FALSE)
 {
-    memset(this, 0, sizeof(*this));
+    m_sAudioCue[0] = '\0';
 
     // Read bird sea gull attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyBirdSeaGull));

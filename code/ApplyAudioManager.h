@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -35,6 +37,8 @@ public:
      * @param packet Attribute packet with audio manager settings.
      */
     ApplyAudioManager(const CAttributePacket& packet);
+
+    virtual ~ApplyAudioManager();
 
     /**
      * @brief Applies audio manager events.

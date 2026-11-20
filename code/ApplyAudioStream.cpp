@@ -19,13 +19,13 @@ ApplyAudioStream::ApplyAudioStream(const CAttributePacket& packet)
       m_fPlaybackRate(1.0f),
       m_dwBufferSize(44100)
 {
+    m_sSourceFile[0] = '\0';
     // Binary constructor (FUN_0044d9d0) does:
     // 1. Zero-out the object
     // 2. Read source file path from packet attributes
     // 3. Read volume, playback rate, loop flag, and buffer size
     // 5. Store all settings for later streaming playback
 
-    memset(this, 0, sizeof(*this));
 
     // Read audio stream attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyAudioStream));
@@ -61,12 +61,12 @@ ApplyAudioStream::ApplyAudioStream(const CAttributePacket& packet)
             m_fPlaybackRate = *reinterpret_cast<const RwReal*>(
                 it->GetCommandData());
             break;
-        case 2: // Note: some packets reuse case numbers, handle loop here
+        case 3:
             // Loop flag
             m_bLoop = *reinterpret_cast<const RwInt32*>(
                 it->GetCommandData()) != 0;
             break;
-        case 3:
+        case 4:
             // Buffer size in bytes (typically 44100 for 1 second at 44.1kHz)
             m_dwBufferSize = *reinterpret_cast<const RwUInt32*>(
                 it->GetCommandData());

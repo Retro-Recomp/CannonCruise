@@ -29,7 +29,6 @@ ApplyAudioGlobalMixer::ApplyAudioGlobalMixer(const CAttributePacket& packet)
     // 6. Read DSP enable flag from packet
     // 7. Read reverb enable flag from packet
 
-    memset(this, 0, sizeof(*this));
 
     // Read audio global mixer attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyAudioGlobalMixer));

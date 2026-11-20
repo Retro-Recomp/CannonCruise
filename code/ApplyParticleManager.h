@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -36,6 +38,8 @@ public:
      * @param packet Attribute packet with particle system settings.
      */
     ApplyParticleManager(const CAttributePacket& packet);
+
+    virtual ~ApplyParticleManager();
 
     /**
      * @brief Applies particle manager events.

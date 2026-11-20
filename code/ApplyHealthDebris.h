@@ -7,6 +7,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -33,6 +35,8 @@ public:
      * @param packet Attribute packet with debris settings.
      */
     ApplyHealthDebris(const CAttributePacket& packet);
+
+    virtual ~ApplyHealthDebris();
 
     /**
      * @brief Applies health debris events.

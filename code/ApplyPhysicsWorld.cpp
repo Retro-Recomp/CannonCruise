@@ -29,7 +29,6 @@ ApplyPhysicsWorld::ApplyPhysicsWorld(const CAttributePacket& packet)
     // 3. Store gravity, friction, restitution, solver iterations
     // 4. Initialize bounds if present
 
-    memset(this, 0, sizeof(*this));
     m_gravityEnabled = TRUE;
 
     // Read physics attributes from packet
@@ -100,13 +99,10 @@ RwBool ApplyPhysicsWorld::Apply(const CAttributePacket& packet)
     // Apply the read attributes (already done in constructor for simplicity)
     // In a full implementation, this would update the live physics world.
 
-    // Initialize physics backend with the configured settings
-    PhysicsBackend::SetGravity(m_fGravity * m_bGravityEnabled);
-    PhysicsBackend::SetFriction(m_fFriction);
-    PhysicsBackend::SetRestitution(m_fRestitution);
-    PhysicsBackend::SetSolverIterations(m_solverIterations);
-
-    m_bGravityEnabled = TRUE;  // Mark as applied
+    // TODO: forward these settings to the live world once the Apply path
+    // has access to its PhysicsWorldHandle (PhysicsWorld_SetGravity etc.).
+    // PhysicsBackend exposes only per-world C functions, no global setters.
+    (void)packet;
     return TRUE;
 }
 

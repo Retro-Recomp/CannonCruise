@@ -23,7 +23,6 @@ ApplyTowerCatapult::ApplyTowerCatapult(const CAttributePacket& packet)
     // 3. Initialize tower position to origin
     // 4. Set destroyed flag to FALSE
 
-    memset(this, 0, sizeof(*this));
 
     // Read tower catapult attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyTowerCatapult));

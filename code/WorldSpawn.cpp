@@ -85,21 +85,14 @@ RwBool ApplyPhysicsWorld(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 // === Stub behavior classes — consumes .RWS 0x0704 records ===
 // None of these classes runs the ACTUAL game; they only provide runtime instantiation
 // ("spawn" instead of binary.RWS "skip"). If needed, real
-// Event Trigger behavior — routes input events to output events.
-// Can be used in .RWS to connect entities by name.
 // implementations can replace them later.
-class CEventTrigger : public CEventHandler
-{
+class CEventTriggerStub : public RWS::CEventHandler {
 public:
-    RWS_MAKENEWCLASS(CEventTrigger);
-    RWS_DECLARE_CLASS(CEventTrigger);
-
-    CEventTrigger() {}
-    virtual ~CEventTrigger() {}
-
-    virtual void HandleEvents(const RWS::CMsg &msg);
-    RwBool Apply(const CAttributePacket& packet);
-}; : public RWS::CEventHandler {
+    CEventTriggerStub() {}
+    virtual ~CEventTriggerStub() {}
+    virtual void HandleEvents(const RWS::CMsg &) {}
+};
+class CParticleEntityStub : public RWS::CEventHandler {
 public:
     CParticleEntityStub() {}
     virtual ~CParticleEntityStub() {}
@@ -165,9 +158,6 @@ public:
     virtual ~CDirectorsCameraStub() {}
     virtual void HandleEvents(const RWS::CMsg &) {}
 };
-// AudioGlobalMixer Apply class — provides real Apply logic for the
-// audio global mixer (configured via .RWS 0x0704 records). Uses the
-// new ApplyAudioGlobalMixer class with RWS_MAKENEWCLASS + RWS_DECLARE_CLASS.
 class CAudioGlobalMixerStub : public RWS::CEventHandler {
 public:
     CAudioGlobalMixerStub() {}
@@ -175,8 +165,8 @@ public:
     virtual void HandleEvents(const RWS::CMsg &) {}
 };
 
-void *CreateEventTrigger() { return new CEventTrigger; }
-RwBool ApplyEventTrigger(void *obj, RwUInt32 msg, const RwUInt8 *data) { CEventTrigger *trigger = static_cast<CEventTrigger *>(obj); if (trigger) { CAttributePacket packet; return trigger->Apply(packet); } return TRUE; }
+void *CreateEventTrigger() { return new CEventTriggerStub; }
+RwBool ApplyEventTrigger(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 void *CreateParticleEntity() { return new CParticleEntityStub; }
 RwBool ApplyParticleEntity(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 void *CreateParticleManager() { return new CParticleManagerStub; }
@@ -199,161 +189,47 @@ void *CreateCameraShaker() { return new CCameraShakerStub; }
 RwBool ApplyCameraShaker(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 void *CreateDirectorsCamera() { return new CDirectorsCameraStub; }
 RwBool ApplyDirectorsCamera(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
-void *CreateAudioGlobalMixer() { return new ApplyAudioGlobalMixer; }
-RwBool ApplyAudioGlobalMixer(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    // Cast to the new ApplyAudioGlobalMixer class and apply attributes
-    // The binary routes this to the singleton audio mixer target
-    ApplyAudioGlobalMixer *mixer = static_cast<ApplyAudioGlobalMixer *>(pObject);
-    if (mixer) {
-        CAttributePacket packet;
-        // Parse the attribute packet data and apply to the mixer
-        // This is a simplified adapter; full parsing would use CAttributeCommandIterator
-        std::memcpy(&packet, pValue, sizeof(packet));
-        return mixer->Apply(packet);
-    }
-    return TRUE;
-}
+void *CreateAudioGlobalMixer() { return new CAudioGlobalMixerStub; }
+RwBool ApplyAudioGlobalMixer(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 // `Create + Apply` helpers — directly create the .RWS behavior classes
 // (no object registration for the specials); misapplies become no-ops.
 void *CreateTowerCatapult() { return new CTowerCatapult(); }
 
-RwBool ApplyTowerCatapult(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyTowerCatapult *apply = new ApplyTowerCatapult;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyTowerCatapult(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateCollisionTrigger() { return new CCollisionTrigger(); }
 
-RwBool ApplyCollisionTrigger(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyCollisionTrigger *apply = new ApplyCollisionTrigger;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyCollisionTrigger(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateMenuBehavior() { return new CMenuBehavior(); }
 
-RwBool ApplyMenuBehavior(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyMenuBehavior *apply = new ApplyMenuBehavior;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyMenuBehavior(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateMissionIndicator() { return new CMissionIndicator(); }
 
-RwBool ApplyMissionIndicator(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyMissionIndicator *apply = new ApplyMissionIndicator;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyMissionIndicator(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateHealthDebris() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CHealthDebris(emptyPacket);
 }
 
-RwBool ApplyHealthDebris(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyHealthDebris *apply = new ApplyHealthDebris;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyHealthDebris(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateBirdSeaGull() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CBirdSeaGull(emptyPacket);
 }
 
-RwBool ApplyBirdSeaGull(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyBirdSeaGull *apply = new ApplyBirdSeaGull;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyBirdSeaGull(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 void *CreateFernandoActor() {
     RWS::CAttributePacket emptyPacket;
     return new RWS::CFernandoActor(emptyPacket);
 }
 
-RwBool ApplyFernandoActor(void *pObject, RwUInt32 id, const RwUInt8 *pValue)
-{
-    if (!pObject || !pValue) {
-        return FALSE;
-    }
-    ApplyFernandoActor *apply = new ApplyFernandoActor;
-    if (apply) {
-        CAttributePacket packet;
-        memcpy(&packet, pValue, sizeof(packet));
-        RwBool result = apply->Apply(packet);
-        delete apply;
-        return result;
-    }
-    return TRUE;
-}
+RwBool ApplyFernandoActor(void *, RwUInt32, const RwUInt8 *) { return TRUE; }
 
 } // namespace
 
@@ -373,7 +249,7 @@ RwBool GameBehaviours_Register() {
          &ApplyParticleManager},
         {"CParticleEntity", sizeof(CParticleEntityStub), &CreateParticleEntity,
          &ApplyParticleEntity},
-        {"CEventTrigger", sizeof(CEventTrigger), &CreateEventTrigger,
+        {"CEventTrigger", sizeof(CEventTriggerStub), &CreateEventTrigger,
          &ApplyEventTrigger},
         {"CWin32Keyboard", sizeof(CWin32KeyboardStub), &CreateWin32Keyboard,
          &ApplyWin32Keyboard},
@@ -393,7 +269,7 @@ RwBool GameBehaviours_Register() {
          &ApplyCameraShaker},
         {"CDirectorsCamera", sizeof(CDirectorsCameraStub), &CreateDirectorsCamera,
          &ApplyDirectorsCamera},
-        {"AudioGlobalMixer", sizeof(ApplyAudioGlobalMixer),
+        {"AudioGlobalMixer", sizeof(CAudioGlobalMixerStub),
          &CreateAudioGlobalMixer, &ApplyAudioGlobalMixer},
         // `.RWS` behaviors detected in the audit (450+ instances):
         {"CTowerCatapult", sizeof(CTowerCatapult), &CreateTowerCatapult,

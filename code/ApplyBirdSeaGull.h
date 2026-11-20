@@ -7,6 +7,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -34,6 +36,8 @@ public:
      */
     ApplyBirdSeaGull(const CAttributePacket& packet);
 
+    virtual ~ApplyBirdSeaGull();
+
     /**
      * @brief Applies sea gull events.
      * @param msg Event message container.
@@ -48,7 +52,7 @@ public:
     RwBool Apply(const CAttributePacket& packet);
 
 private:
-    RwString m_sAudioCue;     ///< Audio cue for gull sounds
+    char m_sAudioCue[256];     ///< Audio cue for gull sounds
     RwReal m_fFlightHeight;   ///< Default flight height
     RwReal m_fSpeed;          ///< Default flight speed
     RwBool m_bMigration;      ///< Whether bird migrates

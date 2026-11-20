@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -36,6 +38,8 @@ public:
      * @param packet Attribute packet with keyboard settings.
      */
     ApplyWin32Keyboard(const CAttributePacket& packet);
+
+    virtual ~ApplyWin32Keyboard();
 
     /**
      * @brief Applies win32 keyboard events.

@@ -23,7 +23,6 @@ ApplyWin32Keyboard::ApplyWin32Keyboard(const CAttributePacket& packet)
     // 3. Read key repeat rate from packet attributes
     // 4. Initialize key state array to FALSE
 
-    memset(this, 0, sizeof(*this));
 
     // Read win32 keyboard attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyWin32Keyboard));
@@ -50,7 +49,7 @@ ApplyWin32Keyboard::ApplyWin32Keyboard(const CAttributePacket& packet)
         case 3:
             // Key state array (256 bytes, one per key)
             // For simplicity, just mark all as FALSE initially
-            memset(m_keyStates, 0, 256 * sizeof(RwBool));
+            memset(m_bKeyStates, 0, sizeof(m_bKeyStates));
             break;
         default:
             break;

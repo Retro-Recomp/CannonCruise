@@ -8,7 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
-#include "RwsUtils.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -40,6 +41,9 @@ public:
      * @param pos World position (unused in binary but stored for symmetry).
      */
     CThunder(const RwV3d& pos = RwV3d{ 0.0f, 0.0f, 0.0f });
+
+    /// Packet constructor required by RWS_MAKENEWCLASS (attributes not parsed yet).
+    explicit CThunder(const CAttributePacket&) : CThunder(RwV3d{ 0.0f, 0.0f, 0.0f }) {}
 
     /**
      * @brief Destructor — stops audio and cleans up.

@@ -19,13 +19,13 @@ ApplyFMVBehavior::ApplyFMVBehavior(const CAttributePacket& packet)
       m_fEndTime(0.0f),
       m_bTransition(FALSE)
 {
+    m_sVideoFile[0] = '\0';
     // Binary constructor (FUN_0045F580) does:
     // 1. Zero-out the object
     // 2. Read video file path from packet attributes
     // 3. Read start time, end time, and transition flag from packet
     // 5. Store all settings for FMV playback configuration
 
-    memset(this, 0, sizeof(*this));
 
     // Read FMV behavior attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyFMVBehavior));
@@ -56,12 +56,12 @@ ApplyFMVBehavior::ApplyFMVBehavior(const CAttributePacket& packet)
             m_fStartTime = *reinterpret_cast<const RwReal*>(
                 it->GetCommandData());
             break;
-        case 1: // Note: some packets reuse case numbers
+        case 2:
             // End time in video (seconds)
             m_fEndTime = *reinterpret_cast<const RwReal*>(
                 it->GetCommandData());
             break;
-        case 2:
+        case 3:
             // Transition enable flag
             m_bTransition = *reinterpret_cast<const RwInt32*>(
                 it->GetCommandData()) != 0;

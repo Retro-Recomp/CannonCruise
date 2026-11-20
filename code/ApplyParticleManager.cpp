@@ -24,7 +24,6 @@ ApplyParticleManager::ApplyParticleManager(const CAttributePacket& packet)
     // 3. Read enable flag from packet
     // 4. Read max particles and emission rate
 
-    memset(this, 0, sizeof(*this));
     m_bEnabled = TRUE;
 
     // Read particle system attributes from packet

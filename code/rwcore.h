@@ -453,6 +453,9 @@ RwBool    RwPlatformKeyDown(int key);
 // 4.6r menu state machine: confirm/cancel (GLFW).
 #define RW_KEY_ESCAPE 256
 #define RW_KEY_ENTER  257
+// Debug save/load (GLFW_KEY_F5 / GLFW_KEY_F6).
+#define RW_KEY_F5     294
+#define RW_KEY_F6     295
 // 4.6q mouse look: cursor capture (GLFW_CURSOR_DISABLED) + frame delta.
 // GL3: real; NULL: FALSE.
 RwBool    RwPlatformSetMouseCapture(RwBool capture);

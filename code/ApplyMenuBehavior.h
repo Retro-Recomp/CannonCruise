@@ -7,6 +7,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -34,6 +36,8 @@ public:
      */
     ApplyMenuBehavior(const CAttributePacket& packet);
 
+    virtual ~ApplyMenuBehavior();
+
     /**
      * @brief Applies menu behavior events.
      * @param msg Event message container.
@@ -50,7 +54,7 @@ public:
 private:
     RwBool m_bPaused;           ///< Whether menu is paused
     RwInt32 m_nSelectedIndex;   ///< Currently selected menu index
-    RwString m_sMenuName;       ///< Menu name identifier
+    char m_sMenuName[256];       ///< Menu name identifier
 };
 
 } // namespace RWS

@@ -18,13 +18,13 @@ ApplyAudioObject::ApplyAudioObject(const CAttributePacket& packet)
       m_fVolume(1.0f),
       m_fPitch(1.0f)
 {
+    m_sSoundFile[0] = '\0';
     // Binary constructor (FUN_0044bef0) does:
     // 1. Zero-out the object
     // 2. Read sound file path from packet attributes
     // 3. Read volume, loop flag, and pitch from packet
     // 5. Store all settings for later playback
 
-    memset(this, 0, sizeof(*this));
 
     // Read audio object attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyAudioObject));

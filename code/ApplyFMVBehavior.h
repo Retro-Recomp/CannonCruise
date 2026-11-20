@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -36,6 +38,8 @@ public:
      */
     ApplyFMVBehavior(const CAttributePacket& packet);
 
+    virtual ~ApplyFMVBehavior();
+
     /**
      * @brief Applies FMV behavior events.
      * @param msg Event message container.
@@ -50,7 +54,7 @@ public:
     RwBool Apply(const CAttributePacket& packet);
 
 private:
-    RwString m_sVideoFile;      ///< Video file path
+    char m_sVideoFile[256];      ///< Video file path
     RwBool m_bLoop;             ///< Whether video should loop
     RwReal m_fStartTime;        ///< Start time in video (seconds)
     RwReal m_fEndTime;          ///< End time in video (seconds)
