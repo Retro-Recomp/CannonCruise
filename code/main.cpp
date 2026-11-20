@@ -2104,6 +2104,7 @@ if (bSimActive == TRUE) {
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipRudder, rudderT);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWheel, rudderT);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, 0.2f);
+                        RpClumpPortAnimatorUpdate(s_pShipAnimator);
                     }
                 }
             } else {

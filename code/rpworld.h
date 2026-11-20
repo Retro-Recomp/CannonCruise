@@ -60,6 +60,8 @@ RwInt32     RpClumpPortAnimatorAddClip(void *animator, const void *pData,
                                        RwUInt32 size, RwInt32 nodeId);
 RwReal      RpClumpPortAnimatorClipDuration(void *animator, RwInt32 clip);
 RwBool      RpClumpPortAnimatorSetPose(void *animator, RwInt32 clip, RwReal t);
+// Refreshes skinned bone matrices after the frame's poses are set.
+void        RpClumpPortAnimatorUpdate(void *animator);
 void        RpClumpPortAnimatorDestroy(void *animator);
 // Added for CollisionTrigger (phantom AABB) -- real data is returned in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump *clump);

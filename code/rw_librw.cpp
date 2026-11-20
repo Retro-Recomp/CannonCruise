@@ -40,6 +40,7 @@
 #include <rw.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -187,6 +188,9 @@ RwBool RwEngineInit(RwMemoryFunctions *memFuncs, RwUInt32 flags,
     // HAnim: frame node IDs/hierarchies stored in models (e.g. Hugo_Ship's
     // tag100 = left wing) and the keyframe interpolator for .anm files.
     rw::registerHAnimPlugin();
+    // Skin: Hugo_Ship's wings (fan segments are bones) are skinned meshes;
+    // without the plugin the skin data is dropped and they stay in bind pose.
+    rw::registerSkinPlugin();
     return TRUE;
 }
 
@@ -652,10 +656,13 @@ struct PortClip {
 struct PortAnimator {
     rw::Clump *clump;
     rw::HAnimHierarchy *hier;
+    rw::Atomic *skinAtomic; // first skinned atomic (NULL: rigid model)
     std::vector<PortClip> clips;
 };
 
 } // namespace
+
+void RpClumpPortAnimatorUpdate(void *animator);
 
 void *RpClumpPortAnimatorCreate(RpClump *clump) {
     if (!clump) {
@@ -670,7 +677,44 @@ void *RpClumpPortAnimatorCreate(RpClump *clump) {
     PortAnimator *pAnimator = new PortAnimator();
     pAnimator->clump = pClump;
     pAnimator->hier = pHier;
+    pAnimator->skinAtomic = 0;
+    // Skinned atomics (e.g. the fan wings) take their bone matrices from the
+    // hierarchy, so bind it (RpSkinAtomicSetHAnimHierarchy).
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        if (pAtomic->geometry && rw::Skin::get(pAtomic->geometry)) {
+            rw::Skin::setHierarchy(pAtomic, pHier);
+            if (!pAnimator->skinAtomic) {
+                pAnimator->skinAtomic = pAtomic;
+            }
+        }
+    }
+    RpClumpPortAnimatorUpdate(pAnimator);
     return pAnimator;
+}
+
+// Recomputes the hierarchy's bone matrices from the node frames (their LTMs
+// in the skinned atomic's space, as LOCALSPACEMATRICES expects). Call after
+// the poses of a frame are set.
+void RpClumpPortAnimatorUpdate(void *animator) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || !pAnimator->skinAtomic || !pAnimator->hier->matrices) {
+        return;
+    }
+    rw::HAnimHierarchy *pHier = pAnimator->hier;
+    rw::Matrix invSpace;
+    rw::Frame *pSpace = pAnimator->skinAtomic->getFrame();
+    if (pSpace) {
+        rw::Matrix::invert(&invSpace, pSpace->getLTM());
+    } else {
+        invSpace.setIdentity();
+    }
+    for (rw::int32 i = 0; i < pHier->numNodes; ++i) {
+        rw::Frame *pFrame = pHier->nodeInfo[i].frame;
+        if (pFrame) {
+            rw::Matrix::mult(&pHier->matrices[i], pFrame->getLTM(), &invSpace);
+        }
+    }
 }
 
 RwInt32 RpClumpPortAnimatorAddClip(void *animator, const void *pData,
