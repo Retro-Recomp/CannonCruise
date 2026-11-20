@@ -1,144 +1,146 @@
 # CannonCruise
 
-Source code of the CannonCruisePC game rebuilt by reverse engineering.
-The original 2004 32-bit Windows game (`CannonCruise.exe`) is being rewritten
-in C++14 based on Ghidra and IDA analyses (`CC.asm`, `CC_ida.asm`).
+[![build](https://github.com/mnkhprre/CannonCruise/actions/workflows/build.yml/badge.svg)](https://github.com/mnkhprre/CannonCruise/actions/workflows/build.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-**Status (2026-11-20):** Active development. Windows Win32 builds (VS 18,
-NULL and D3D9) compile cleanly; ctest is 36/36 with the original game data and
-17/17 (19 asset tests disabled) without it. One mission is playable end to end
-on VIKING01: towers are placed from the level data, cannonballs fly under
-Bullet physics, destroying the six mission towers shows the LEVELCOMPLETE
-summary. Many level objects (mines, ammo crates, enemy ships' behaviour,
-flotsam …) are still not spawned or not configured — see
-[GAP_ANALYSIS.md](GAP_ANALYSIS.md). The macOS build has not been re-verified
-recently.
+A C++14 reimplementation of **Hugo: Cannon Cruise** (ITE Media, 2004, Windows),
+rebuilt from disassembly of the original 32-bit executable. The game's
+RenderWare 3.6 / RenderWare Studio code is rewritten against
+[librw](https://github.com/aap/librw) and its Havok physics against
+[Bullet](https://github.com/bulletphysics/bullet3).
 
-The `.asm` dumps (`CC.asm`, `CC_ida.asm`) and the original game files are not
-in git; obtain them separately.
+> **No game data is included.** You need your own copy of the original game;
+> the port reads its `Streams/`, `Video/`, `Sound/` and `Localiza/` folders.
 
-## Directory layout
+## Status
 
-| Path | Contents |
+Work in progress — one mission can be played from start to finish.
+
+| Area | State |
 |---|---|
-| `code/` | Rewritten source code (game + framework) |
-| `code/framework/` | RenderWare Studio framework core (event/attribute/stream/memory) |
-| `code/havok/` | Havok Physics 2.2.1 stub headers (Phase 4.3) |
-| `code/rwstubs.cpp` | RenderWare SDK link stubs (Phase 4.5) |
-| `code/build/` | CMake outputs (not tracked) |
-| `CC.asm` / `CC_ida.asm` | Ghidra / IDA reverse engineering dumps (reference) |
-| `tests/` | SDK-independent unit tests (e.g. Havok allocator) |
-| `tools/`, `validation/` | Interface audit scripts and validation JSON outputs |
-| `DLLs/`, `Streams/`, `Sound/`, `Localiza/`, `Setup/` | Original game files (reference/assets) |
+| Boot flow | GLOBAL → intro video (Bink) → main menu → map menu → level, same order as the original |
+| Levels | All 15 levels (Viking, Beaver, Iduna, Nordic) load and run |
+| Player ship | Original `Hugo_Ship` model at its level start position; physics via Bullet |
+| Towers | Original `Viking_firetower` models placed from level data; damaged model when destroyed |
+| Mission | VIKING01: destroying the six mission towers ends the level with a summary screen |
+| Object data | Level records are parsed into attribute packets; models are resolved by GUID |
+| Missing | Enemy ship AI, mines and pickups, tutorial text boxes, camera modes (binoculars, cannon view), sky, returning to the map after a level |
 
-## Build
+The full gap list is in [GAP_ANALYSIS.md](GAP_ANALYSIS.md).
 
-### macOS (verified)
+## Building (Windows)
 
-```bash
-cd code
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j8
-./build/CannonCruise        # link verification entry — should print "link verification OK"
-```
-
-- The `CannonCruiseLib` static library + `CannonCruise` link verification target are produced.
-- The target links all archive objects with `-Wl,-force_load`; a missing symbol
-  produces a link error. Also, the `CannonCruise` target links only
-  dynamically against system libraries (game SDKs are not linked yet).
-
-### Windows (validated — VS 18 2026)
+Requirements: Visual Studio 2022 or 2026 with the C++ workload, CMake 3.16+,
+Git (bullet3 and librw are fetched by CMake). The game is 32-bit, so build
+for **Win32**.
 
 ```bat
 cd code
-cmake -B build -G "Visual Studio 18 2026" -A Win32 -DCANNONCRUISE_RW_PLATFORM=NULL
-cmake --build build --config Release --parallel 8
-ctest --test-dir build -C Release --output-on-failure
+cmake -B build -A Win32 -DCANNONCRUISE_RW_PLATFORM=D3D9
+cmake --build build --config Release --parallel
 ```
 
-- `CANNONCRUISE_RW_PLATFORM`: `NULL` (headless) | `D3D9` (windowed) | `GL3`.
-- D3D9: real-time windowed rendering — Pull-and-write: world assets +
-  GLOBAL + LOADING visible from the first frames after loading
-  (`CANNONCRUISE_CAM=FOLLOW|FREE|AUTO|DATA`). Screenshot support:
-  `CANNONCRUISE_SCREENSHOT=<file.png>` (CAMERATEXTURE RT → systemmem
-  surface → PNG; `EndFrame` before swap). For a loading-screen frame use
-  `CANNONCRUISE_SCREENSHOT_LOADING=<file.png>`, for a game world frame use
-  `CANNONCRUISE_SCREENSHOT`.
-- The loading screen is fixed at **30 fps** (`std::chrono::steady_clock` +
-  `sleep_for`); frame count is `CANNONCRUISE_LOADING_FRAMES` (default 100;
-  `0` = skip). Esc/Space/Enter early exit.
-- **Caution — tracked build outputs:** `code/build_win32_v180/` ships with the
-  repo and contains a stale CMakeCache (generated with the VS 17 2022 generator,
-  D3D9); it cannot be used in place with VS 18. Clean path: use a new build
-  directory (`cmake -B build_win32 ...`) and delete it when done; or the
-  `CMakeCache.txt`/`CMakeFiles/`/`*.vcxproj*` inside `build_win32_v180/` can be
-  deleted and reconfigured (the tracked outputs remain in git).
-- D3D9 note: the D3D9 screenshot path that reads the backbuffer via
-  `GetRenderTargetData` was moved to the `CAMERATEXTURE` raster (scene → camera
-  texture RT → systemmem surface → PNG); `EndFrame` copies the camera RT to the
-  backbuffer with `StretchRect` before `showRaster` — otherwise the window stays
-  black (backbuffer SWAPEFFECT_DISCARD).
-- `build_cannoncruise.cmd` contains the VS 18 recipe and works with the D3D9 platform;
-  the `build_win32/` and `build_d3d9/` directories are in gitignore (safe to delete).
+`CANNONCRUISE_RW_PLATFORM` selects the renderer: `D3D9` (window),
+`NULL` (headless, used for tests) or `GL3`. [BUILDING.md](BUILDING.md) has the
+detailed recipe and dependency list.
 
-## Documents
+## Running
 
-- [ROADMAP_NEXT.md](ROADMAP_NEXT.md) — current roadmap (where we are + this week)
-- [ROADMAP.md](ROADMAP.md) — historical phase log (Phases 1–4.6ab)
-- [ROADMAP_MACOS.md](ROADMAP_MACOS.md) — macOS port roadmap
-- [BUILDING.md](BUILDING.md) — Windows/MSVC build recipe and dependency inventory
-- [SDK_INTERFACE_AUDIT.md](SDK_INTERFACE_AUDIT.md) — RenderWare/Havok interface audit
-- [LICENSE](LICENSE) — GPL-3.0
+Copy `binkw32.dll` from your game install next to `CannonCruise.exe` and start
+it **from the game folder** (the one that contains `Streams/`):
+
+```bat
+cd C:\Games\CannonCruise
+path\to\code\build\Release\CannonCruise.exe
+path\to\code\build\Release\CannonCruise.exe Streams\VIKING01.RWS
+```
+
+Without arguments the full boot runs (intro video, menus); with a level file
+it starts that level directly.
+
+| Key | Action |
+|---|---|
+| W / S | Throttle / reverse |
+| A / D | Rudder |
+| Space | Fire cannon |
+| Mouse | Orbit the camera |
+| Esc | Pause menu |
+| Enter / arrows | Menus |
+| F5 / F6 | Debug save / load |
 
 ## Tests
 
-Tests live under `tests/` and run with CMake/ctest. 19 of the 36 tests read
-the original game files; point `CANNONCRUISE_DATA_ROOT` at the folder that
-contains `Streams/` (default: the repository root). Without the data those
-tests are reported as "Not Run (Disabled)" and the rest must pass — this is
-what CI does.
-
 ```bat
 cd code
-cmake -B build -A Win32 -DCANNONCRUISE_RW_PLATFORM=NULL ^
-      -DCANNONCRUISE_DATA_ROOT=C:/path/to/CannonCruise-data
-cmake --build build --config Release --parallel 8
-ctest --test-dir build -C Release --output-on-failure
+cmake -B build-null -A Win32 -DCANNONCRUISE_RW_PLATFORM=NULL ^
+      -DCANNONCRUISE_DATA_ROOT=C:/Games/CannonCruise
+cmake --build build-null --config Release --parallel
+ctest --test-dir build-null -C Release --output-on-failure
 ```
 
-Expected: 36/36 with data, 17/17 without. CI
-([.github/workflows/build.yml](.github/workflows/build.yml)) builds NULL and
-D3D9 and runs ctest on NULL.
+37 tests; 20 of them read the original game files from
+`CANNONCRUISE_DATA_ROOT`. Without the data those are reported as *Not Run*
+and the other 17 must pass — that is what [CI](.github/workflows/build.yml)
+runs.
 
-Headless gameplay switches for `CannonCruise.exe <Streams/LEVEL.RWS>`:
-`CANNONCRUISE_SHIP=x,y,z,yaw` (spawn), `CANNONCRUISE_AUTOFIRE=N` (fire every
-N frames), `CANNONCRUISE_AUTOAIM=1` (aim at the nearest mission tower). For
-example `SHIP=25,0,-150,0 AUTOFIRE=40 AUTOAIM=1` on VIKING01 destroys all six
-mission towers and reaches LEVELCOMPLETE.
+### Debug switches
 
-You can also compile a single test with a
-sanitizer manually:
+Environment variables read by `CannonCruise.exe`, useful for headless runs:
 
-```bash
-c++ -std=c++14 -fsanitize=address,undefined \
-    tests/havok_memory_manager_test.cpp code/HavokMemoryManager.cpp \
-    -Icode -o /tmp/havok_test && /tmp/havok_test
-```
+| Variable | Effect |
+|---|---|
+| `CANNONCRUISE_SHIP=x,y,z,yaw` | Override the player start |
+| `CANNONCRUISE_DRIVE=throttle,rudder` | Fixed steering input |
+| `CANNONCRUISE_AUTOFIRE=N` | Fire every N frames |
+| `CANNONCRUISE_AUTOAIM=1` | Aim at the nearest mission tower |
+| `CANNONCRUISE_SCREENSHOT=file.png` | Save a frame (`CANNONCRUISE_SHOT_FRAME=n` picks which) |
+| `CANNONCRUISE_FRAMES=n` | Quit after n frames |
+| `CANNONCRUISE_LOADING_FRAMES=0` | Skip the loading screen |
+| `CANNONCRUISE_STREAMS=dir` | Folder that contains `Streams/` |
 
-## Architecture notes
+Example — play VIKING01 to the end without input:
+`CANNONCRUISE_SHIP=25,0,-150,0 CANNONCRUISE_AUTOFIRE=40 CANNONCRUISE_AUTOAIM=1`.
 
-- **RenderWare 3.6 / RenderWare Studio:** local stub headers (`code/rwcore.h`
-  etc.) provide declarations; the real SDK libraries are not linked. Game code
-  is written against RenderWare types (`RpClump*`, `RwFrame*` etc.).
-- **Havok Physics 2.2.1:** the `code/havok/` stub headers match the binary naming
-  (`hkWorld`, `hkRigidBody` — no `hkp` prefix). `CPhysicsWorld` /
-  `CPhysicsEntity` use `void*` handles backed by Bullet (`PhysicsBackend.cpp`);
-  the Havok SDK itself is not used.
-- **Framework:** `RWS::CEventHandler`, `CAttributeHandler`, `CClassFactory`
-  mimic RenderWare Studio behavior; `FUN_*` binary addresses are preserved in
-  code comments.
+## Repository layout
 
-## Warning
+| Path | Contents |
+|---|---|
+| `code/` | Game code and the CMake project |
+| `code/framework/` | RenderWare Studio framework (events, attributes, class factory, streams) |
+| `code/havok/` | Havok 2.2.1 interface headers, implemented on Bullet |
+| `tests/` | ctest suite |
+| `docs/` | Class audit, binary-vs-port gap analysis, Havok→Bullet notes |
+| `tools/` | Analysis and audio extraction scripts (vgmstream) |
+| `mapping/`, `validation/` | Address map and SDK interface audit outputs |
 
-This project involves reverse engineering; the original game is protected by copyright.
-The original game files in the repository are for analysis/reference purposes only.
+Disassembly listings (`CC.asm`, `CC_ida.asm`) and the original executable are
+not in the repository.
+
+## How it works
+
+- **Level files** (`Streams/*.RWS`) are RenderWare Studio containers: asset
+  records (textures, models, animations, collision) and object records. Each
+  object record is passed to its class as an attribute packet; models are
+  looked up by the GUIDs in its `CSystemCommands` block.
+- **Rendering** goes through librw (D3D9 or GL3); `rw_librw.cpp` adapts the
+  RenderWare 3.6 C API the game code was written against.
+- **Physics**: `CPhysicsWorld` / `CPhysicsEntity` keep the original Havok-style
+  interface; `PhysicsBackend.cpp` implements it with Bullet.
+- Original function addresses (`FUN_*`, `sub_*`) are kept in comments next to
+  the reimplemented code.
+
+## Documents
+
+- [GAP_ANALYSIS.md](GAP_ANALYSIS.md) — what works and what is missing
+- [ROADMAP_NEXT.md](ROADMAP_NEXT.md) — current roadmap
+- [ROADMAP.md](ROADMAP.md) — phase history
+- [BUILDING.md](BUILDING.md) — build recipe and dependencies
+- [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md) — binary vs port class comparison
+- [SDK_INTERFACE_AUDIT.md](SDK_INTERFACE_AUDIT.md) — RenderWare/Havok interface audit
+
+## Legal
+
+This is an unofficial fan project for preservation and study. Hugo and
+Hugo: Cannon Cruise are trademarks of their respective owners; the original
+game and its assets are copyrighted and are not distributed here. The code in
+this repository is licensed under the [GPL-3.0](LICENSE).
