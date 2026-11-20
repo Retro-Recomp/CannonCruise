@@ -252,19 +252,22 @@ void BinkPlayer_Wait(void *pBink, int (*pIdle)(void))
     if (pBink == nullptr || g_api.Wait == nullptr) {
         return;
     }
-    // Infinite loop protection — Bink frame accelerator returns 0 once per frame
-    // so this limit is never reached; added for safety anyway.
-    // After 100 iterations decode proceeds.
-    for (int i = 0; i < 100; ++i)
+    // BinkWait returns non-zero until the next frame is due (30 fps for the
+    // game's videos), so spin on it like the binary does. The previous
+    // 100-iteration cap ran out in microseconds and the videos played at
+    // render speed (Jingle: 459 frames in ~1.7 s instead of ~15 s). The cap is
+    // now a time limit, only as protection against a stuck decoder.
+    const DWORD kMaxWaitMs = 250;
+    const DWORD start = ::GetTickCount();
+    while (g_api.Wait((HBINK)pBink) != 0)
     {
-        if (g_api.Wait((HBINK)pBink) == 0) {
-            return;
-        }
         if (pIdle != nullptr && pIdle() != 0) {
             return;
         }
+        if (::GetTickCount() - start > kMaxWaitMs) {
+            return;
+        }
     }
-    // finite wait end: decode proceeds without blocking
 }
 
 // --------------------------------------------------------------------------

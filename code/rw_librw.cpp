@@ -261,6 +261,12 @@ RwBool RwPlatformKeyDown(int key) {
                : FALSE;
 #elif defined(RW_D3D9)
     // GetAsyncKeyState — key state read independently of the message queue.
+    // GetAsyncKeyState reads the keyboard system-wide; ignore it unless our
+    // window is in front, otherwise typing in another application drives the
+    // game (e.g. Space/Enter confirming the main menu unseen).
+    if (s_hwnd == nullptr || ::GetForegroundWindow() != s_hwnd) {
+        return FALSE;
+    }
     return (GetAsyncKeyState(GLFWKeyToVK(key)) & 0x8000) ? TRUE : FALSE;
 #else
     (void)key;
