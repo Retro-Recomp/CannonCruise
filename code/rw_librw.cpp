@@ -508,6 +508,69 @@ RpClump *RpClumpStreamRead(RwStream *stream) {
     return reinterpret_cast<RpClump *>(rw::Clump::streamRead(&p->file));
 }
 
+// Clump from an in-memory chunk payload (after the 12-byte rwID_CLUMP
+// header), e.g. a model embedded in a Streams/*.RWS asset record.
+RpClump *RpClumpStreamReadMemory(const void *pData, RwUInt32 size) {
+    if (!pData || size == 0) {
+        return 0;
+    }
+    rw::StreamMemory mem;
+    mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
+    rw::Clump *pClump = rw::Clump::streamRead(&mem);
+    mem.close();
+    return reinterpret_cast<RpClump *>(pClump);
+}
+
+RwBool RpClumpDestroy(RpClump *clump) {
+    if (!clump) {
+        return FALSE;
+    }
+    reinterpret_cast<rw::Clump *>(clump)->destroy();
+    return TRUE;
+}
+
+// Port helpers working on the librw clump directly (the RwFrame shim in
+// rwstubs.cpp does not share librw's frame layout).
+RwBool RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]) {
+    if (!clump || !m) {
+        return FALSE;
+    }
+    rw::Frame *pFrame = reinterpret_cast<rw::Clump *>(clump)->getFrame();
+    if (!pFrame) {
+        return FALSE;
+    }
+    rw::Matrix mat;
+    mat.right = rw::makeV3d(m[0], m[1], m[2]);
+    mat.up = rw::makeV3d(m[4], m[5], m[6]);
+    mat.at = rw::makeV3d(m[8], m[9], m[10]);
+    mat.pos = rw::makeV3d(m[12], m[13], m[14]);
+    mat.optimize();
+    pFrame->transform(&mat, rw::COMBINEREPLACE);
+    return TRUE;
+}
+
+RwBool RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos) {
+    if (!clump || !pPos) {
+        return FALSE;
+    }
+    rw::Frame *pFrame = reinterpret_cast<rw::Clump *>(clump)->getFrame();
+    if (!pFrame) {
+        return FALSE;
+    }
+    const rw::Matrix *pLtm = pFrame->getLTM();
+    pPos->x = pLtm->pos.x;
+    pPos->y = pLtm->pos.y;
+    pPos->z = pLtm->pos.z;
+    return TRUE;
+}
+
+RwInt32 RpClumpPortCountAtomics(RpClump *clump) {
+    if (!clump) {
+        return 0;
+    }
+    return reinterpret_cast<rw::Clump *>(clump)->countAtomics();
+}
+
 RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {
     if (!stream) {
         return 0;

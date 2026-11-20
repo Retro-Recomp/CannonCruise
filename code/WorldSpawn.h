@@ -36,6 +36,13 @@ struct WorldSpawnStats {
 RwBool GameBehaviours_Register();
 
 /**
+ * @brief Registers the RWS file's embedded clumps in RwsResources (by GUID).
+ *        Called by WorldSpawn_FromFile before objects are created.
+ * @return Number of registered resources.
+ */
+RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath);
+
+/**
  * @brief Creates+applies all 0x0704 records in RWS file.
  * @param pPath  RWS file path.
  * @param pStats Statistics (optional).

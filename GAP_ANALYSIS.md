@@ -33,9 +33,11 @@ checked is marked as such. The binary-vs-source class comparison lives in
    class's commands (tested on a real VIKING01 tower record). Remaining:
    - `iMsgRunningTick` is never sent by `main.cpp`, so framework objects
      (fish, flotsam, enemy ships …) are created but never update.
-   - `CSystemCommands::ExtractClump` still returns 0: resource GUIDs
-     (CSystemCommands command 0) are not mapped to 0x0716 asset records, so
-     spawned objects have no model.
+   - Models are resolved but not drawn: `WorldSpawn_RegisterResources`
+     registers each level's embedded clumps by GUID (VIKING01: 64),
+     `CSystemCommands::ExtractClump` returns the object's first model and
+     `ClumpHelper` builds a librw clump placed at the record's matrix. These
+     clumps are not added to the RenderPlatform scene yet.
    - Command ids in most ported `HandleAttributes` switches are guesses and
      must be checked against the data before relying on them.
 5. **Spawning:** one entity per record (the record's first class).

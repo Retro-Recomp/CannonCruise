@@ -47,6 +47,11 @@ RpClump*    RpClumpForAllAtomics(RpClump *clump, RpAtomicCallBack callback, void
 RwFrame*    RpClumpGetFrame(RpClump *clump);
 RpClump*    RpClumpSetFrame(RpClump *clump, RwFrame *frame);
 RpClump*    RpClumpStreamRead(RwStream *stream);
+// Port extensions (rw_librw.cpp; operate on the librw clump directly):
+RpClump*    RpClumpStreamReadMemory(const void *pData, RwUInt32 size);
+RwBool      RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]);
+RwBool      RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos);
+RwInt32     RpClumpPortCountAtomics(RpClump *clump);
 // Added for CollisionTrigger (phantom AABB) -- real data is returned in librw
 const RwSphere* RpClumpGetBoundingSphere(const RpClump *clump);
 

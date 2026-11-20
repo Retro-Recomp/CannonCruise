@@ -172,11 +172,22 @@ namespace RWS
         }
     };
 
-    /// Registers className so the spawner builds it from its attribute packet.
-    /// Requires RWS_MAKENEWCLASS(className) in the class.
+    /// RWS creation sequence: construct from the packet, then let the object
+    /// (a CAttributeHandler) consume the same packet.
+    template <class T>
+    void* MakeNewAndApply(const CAttributePacket& packet)
+    {
+        T* pObject = new T(packet);
+        pObject->HandleAttributes(packet);
+        return pObject;
+    }
+
+    /// Registers className so the spawner builds it from its attribute packet
+    /// (constructor + HandleAttributes). className must derive from
+    /// CAttributeHandler and have a (const CAttributePacket&) constructor.
     #define RWS_REGISTER_PACKET_CLASS(className)                               \
         static RWS::CAutoRegisterPacketClass s_autoRegisterPacket_##className( \
-            #className, &className::MakeNewClass, sizeof(className))
+            #className, &RWS::MakeNewAndApply<className>, sizeof(className))
 
     /**
      * @def RWS_REGISTER_CLASS(className[, factory[, size]])

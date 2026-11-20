@@ -10,6 +10,7 @@
 #include "PhysicsWorld.h"
 #include "RenderBehaviourWorld.h"
 #include "RwStudioStream.h"
+#include "RwsResources.h"
 #include "Bird.h"
 #include "FernandoActor.h"
 #include "HealthDebris.h"
@@ -20,7 +21,9 @@
 #include "framework/core/attributehandler/cattributehandler.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <vector>
 
 namespace {
 
@@ -360,8 +363,65 @@ RwUInt32 WorldSpawn_GetTowers(const WorldSpawnTower **ppTowers) {
     return s_towerCount;
 }
 
+// Pass 1: register the level's embedded models by GUID. Object records may
+// come before the assets they reference, so this runs over the whole file
+// before any object is created.
+namespace {
+
+// Finds the sized clump chunk [u32 len+12][u32 0x10][u32 len][u32 libid][body]
+// in a model asset's resource bytes. Usually at offset 0; on some assets the
+// meta's texture-folder string precedes it, so scan 4-byte aligned offsets.
+RwBool FindClumpChunk(const std::vector<RwUInt8> &buf, RwUInt32 *pBodyOffset,
+                      RwUInt32 *pBodySize) {
+    const RwUInt32 n = (RwUInt32)buf.size();
+    for (RwUInt32 off = 0; off + 16 <= n; off += 4) {
+        RwUInt32 hdr[3];
+        std::memcpy(hdr, &buf[off], sizeof(hdr));
+        if (hdr[1] == rwsRESOURCE_CLUMP && hdr[0] == hdr[2] + 12 &&
+            hdr[2] > 0 && hdr[2] <= n - off - 16) {
+            *pBodyOffset = off + 16;
+            *pBodySize = hdr[2];
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+} // namespace
+
+RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath) {
+    RwsResources_Clear();
+    RwStudioFile *pFile = pPath ? RwStudioFileOpen(pPath) : 0;
+    if (!pFile) {
+        return 0;
+    }
+    RwStudioAsset asset;
+    std::vector<RwUInt8> buf;
+    while (RwStudioFileNextAsset(pFile, &asset) == TRUE) {
+        if (asset.chunkType != rwstudioID_ASSETRECORD ||
+            std::strcmp(asset.rwIdName, "rwID_CLUMP") != 0 ||
+            asset.resourceLength < 16) {
+            continue;
+        }
+        buf.resize(asset.resourceLength);
+        if (RwStudioAssetReadResource(pFile, &asset, &buf[0],
+                                      asset.resourceLength) !=
+            asset.resourceLength) {
+            continue;
+        }
+        RwUInt32 bodyOffset = 0, bodySize = 0;
+        if (FindClumpChunk(buf, &bodyOffset, &bodySize) == TRUE) {
+            RwsResources_Add(asset.guid, rwsRESOURCE_CLUMP, asset.typeName,
+                             &buf[bodyOffset], bodySize);
+        }
+    }
+    RwStudioFileClose(pFile);
+    return RwsResources_Count();
+}
+
 RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_towerCount = 0;
+    WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
     if (pStats) {

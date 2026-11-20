@@ -11,6 +11,10 @@
 // ============================================================================
 
 #include "RwStudioStream.h"
+#include "RwsResources.h"
+#include "WorldSpawn.h"
+#include "framework/core/attributehandler/csystemcommands.h"
+#include "framework/toolkits/world/helpers/clumphelper.h"
 #include "framework/core/attributehandler/cattributehandler.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 
@@ -228,6 +232,39 @@ static void TestViking(const char *pPath) {
     }
     CHECK(guids == 6);
     CHECK(gotMatrix == TRUE);
+
+    // ---- models: GUID -> embedded clump -> RpClump at the record's matrix ----
+    const RwUInt32 nRes = WorldSpawn_RegisterResources(pPath);
+    std::printf("VIKING01: %u embedded clump resources\n", nRes);
+    CHECK(nRes > 0);
+    const RwsResource *pTowerRes = static_cast<const RwsResource *>(
+        RWS::CSystemCommands::ExtractClump(packet));
+    CHECK(pTowerRes != 0);
+    if (pTowerRes) {
+        std::printf("tower model: %s (%u bytes)\n", pTowerRes->name,
+                    pTowerRes->size);
+        CHECK(std::strstr(pTowerRes->name, "Viking_firetower") != 0);
+        CHECK(std::strstr(pTowerRes->name, "Hull") == 0);
+        RpClump *pClump = RWS::ClumpHelper::CreateClumpFromResource(pTowerRes);
+        CHECK(pClump != 0);
+        if (pClump) {
+            CHECK(RpClumpPortCountAtomics(pClump) > 0);
+            RWS::ClumpHelper::HandleAttributes(pClump, packet);
+            RwV3d pos = {0.0f, 0.0f, 0.0f};
+            CHECK(RpClumpPortGetPosition(pClump, &pos) == TRUE);
+            CHECK(std::fabs(pos.x - 100.0f) < 0.01f && std::fabs(pos.y) < 0.01f &&
+                  std::fabs(pos.z + 200.0f) < 0.01f);
+            RWS::ClumpHelper::DestroyClump(pClump);
+        }
+    }
+    if (!ammo.empty()) {
+        const CAttributePacket ammoModelPacket(&ammo[0], (RwUInt32)ammo.size());
+        const RwsResource *pAmmoRes = static_cast<const RwsResource *>(
+            RWS::CSystemCommands::ExtractClump(ammoModelPacket));
+        CHECK(pAmmoRes != 0 && std::strstr(pAmmoRes->name, "Crate_Weapons") != 0);
+    }
+    // A packet without CSystemCommands GUIDs has no model.
+    CHECK(RWS::CSystemCommands::ExtractClump(CAttributePacket()) == 0);
 
     // The real CAmmoCrate packet factory accepts the record.
     if (!ammo.empty()) {

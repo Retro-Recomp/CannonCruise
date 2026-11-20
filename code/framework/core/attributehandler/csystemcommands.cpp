@@ -9,6 +9,10 @@
 // ============================================================================
 
 #include "csystemcommands.h"
+#include "cattributehandler.h"
+#include "RwsResources.h"
+
+#include <cstring>
 #include <cassert>
 #include <cstring>
 
@@ -68,5 +72,43 @@ namespace RWS
         assert(pAtomic != 0 && "Failed PRE-condition: pAtomic");
 
         RpAtomicSetFlags(pAtomic, flags);
+    }
+
+    const void* CSystemCommands::ExtractClump(const CAttributePacket& packet)
+    {
+        for (CAttributeCommandIterator it(packet, "CSystemCommands");
+             !it.IsFinished(); ++it)
+        {
+            if (it->GetCommandId() != 0 || it->GetDataSize() != 16)
+            {
+                continue;
+            }
+            const RwsResource* pRes = RwsResources_Find(
+                static_cast<const RwUInt8*>(it->GetCommandData()));
+            // Resources are listed model first (then collision hull, damaged
+            // model, animations), so the first clump is the visible model.
+            if (pRes && pRes->embeddedType == rwsRESOURCE_CLUMP)
+            {
+                return pRes;
+            }
+        }
+        return 0;
+    }
+
+    RwBool CSystemCommands::ExtractMatrix(const CAttributePacket& packet,
+                                          RwReal outMatrix[16])
+    {
+        for (CAttributeCommandIterator it(packet, "CSystemCommands");
+             !it.IsFinished(); ++it)
+        {
+            if (it->GetCommandId() == CMD_LoadMatrix &&
+                it->GetDataSize() == 16 * sizeof(RwReal))
+            {
+                std::memcpy(outMatrix, it->GetCommandData(),
+                            16 * sizeof(RwReal));
+                return TRUE;
+            }
+        }
+        return FALSE;
     }
 }
