@@ -62,24 +62,36 @@ namespace RWS
     {
         RwUInt32    m_CommandId;     ///< Command id
         const void* m_pCommandData;  ///< Command data pointer
+        RwUInt32    m_DataSize;      ///< Command data size (bytes)
 
         /// @return Command id
         RwUInt32    GetCommandId()   const { return m_CommandId; }
         /// @return Command data pointer
         const void* GetCommandData() const { return m_pCommandData; }
+        /// @return Command data size (bytes)
+        RwUInt32    GetDataSize()    const { return m_DataSize; }
     };
 
     /**
      * @class CAttributeCommandIterator
      * @brief Iterator over the commands inside a `CAttributePacket`.
      *
-     * Used inside `CAttributeHandler::HandleAttributes()` to walk the packet commands
-     * for parsing:
+     * Packet layout = body of a Streams/*.RWS 0x0704 object record:
+     * `[u32 field0]` then items `[u32 len][u32 word][len-8 bytes]`.
+     * - word 0x20000000 / 0x80000000: class-name segment; the commands that
+     *   follow belong to that class (an object carries one block per class
+     *   it is made of, e.g. CTowerCatapult, CSystemCommands, CCannon …).
+     * - word 0x40000000: GUID segment (skipped).
+     * - any other word: a command; word = command id, payload = len-8 bytes.
+     *
+     * With a class name only that class's commands are returned
+     * (`RWS_CLASS_INDEX(CFlotsam)` expands to "CFlotsam"); with 0, all.
      * ```cpp
-     * for (CAttributeCommandIterator it(packet); !it.IsFinished(); ++it)
+     * for (CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(CFish));
+     *      !it.IsFinished(); ++it)
      * {
-     *     if (it->GetCommandId() == CMD_SET_HEALTH)
-     *         m_Health = *static_cast<const RwReal*>(it->GetCommandData());
+     *     if (it->GetCommandId() == 0)
+     *         m_swimSpeed = *static_cast<const RwReal*>(it->GetCommandData());
      * }
      * ```
      */
@@ -87,27 +99,30 @@ namespace RWS
     {
     public:
         /**
-         * @brief Initializes the iterator.
+         * @brief Initializes the iterator on the first matching command.
          * @param packet     Packet to parse.
-         * @param classIndex Index of the target class within the packet.
+         * @param pClassName Class whose commands to return; 0 = all commands.
          */
-        CAttributeCommandIterator(const CAttributePacket& packet, RwUInt32 classIndex = 0)
-            : m_bFinished(true)
-        {
-            m_Current.m_CommandId = 0;
-            m_Current.m_pCommandData = 0;
-        }
+        CAttributeCommandIterator(const CAttributePacket& packet,
+                                  const char* pClassName = 0);
 
         /// @return TRUE if all commands have been processed
         RwBool IsFinished() const { return m_bFinished; }
         /// @brief Advances to the next command
-        void operator++() { m_bFinished = true; }
+        void operator++() { Advance(); }
         /// @return Pointer to the current command entry
         const CAttributeCommandEntry* operator->() const { return &m_Current; }
 
     private:
-        RwBool               m_bFinished; ///< Iterator finished flag
-        CAttributeCommandEntry m_Current; ///< Current command entry
+        void Advance();
+
+        const RwUInt8*         m_pData;      ///< Packet bytes
+        RwUInt32               m_Size;       ///< Packet size
+        RwUInt32               m_Offset;     ///< Next item offset
+        const char*            m_pClassName; ///< Filter (0 = none)
+        RwBool                 m_bInClass;   ///< Inside a matching class block
+        RwBool                 m_bFinished;  ///< Iterator finished flag
+        CAttributeCommandEntry m_Current;    ///< Current command entry
     };
 
     /**

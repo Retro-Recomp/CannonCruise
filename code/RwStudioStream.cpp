@@ -19,6 +19,8 @@
 
 #include "RwStudioStream.h"
 
+#include <vector>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -32,6 +34,7 @@ struct RwStudioFile {
     RwChar classNames[rwstudioMAX_CLASSES][48];
     RwBool hasObject;         // was the last NextAsset a 0x0704?
     RwStudioObject object;    // last object schema (Phase 4.6f)
+    std::vector<RwUInt8> objectRaw; // raw 0x0704 body (attribute packet)
 };
 
 namespace
@@ -270,6 +273,20 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
         // error silently leaves a half object behind.
         RwStudioObject &obj = pFile->object;
         std::memset(&obj, 0, sizeof(obj));
+        // Keep the raw body: it is the object's CAttributePacket.
+        {
+            const RwUInt32 bodyStart = RwStreamTell(pFile->pStream);
+            const RwUInt32 bodyLen = pFile->chunkEndPos > bodyStart
+                                         ? pFile->chunkEndPos - bodyStart
+                                         : 0;
+            pFile->objectRaw.resize(bodyLen);
+            if (bodyLen > 0 &&
+                RwStreamRead(pFile->pStream, &pFile->objectRaw[0], bodyLen) !=
+                    bodyLen) {
+                pFile->objectRaw.clear();
+            }
+            RwStreamSeekAbs(pFile->pStream, bodyStart);
+        }
         if (RwStreamRead(pFile->pStream, &obj.objectIndex, 4) != 4) {
             RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
             return TRUE;
@@ -454,4 +471,18 @@ const RwStudioObject *RwStudioFileGetObject(const RwStudioFile *pFile) {
         return 0;
     }
     return &pFile->object;
+}
+
+RwUInt32 RwStudioFileGetObjectRaw(const RwStudioFile *pFile,
+                                  const RwUInt8 **ppData) {
+    if (!pFile || !pFile->hasObject || pFile->objectRaw.empty()) {
+        if (ppData) {
+            *ppData = 0;
+        }
+        return 0;
+    }
+    if (ppData) {
+        *ppData = &pFile->objectRaw[0];
+    }
+    return (RwUInt32)pFile->objectRaw.size();
 }

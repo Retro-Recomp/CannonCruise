@@ -451,6 +451,18 @@ target_include_directories(inputmanager_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_
 target_link_libraries(inputmanager_test PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
 add_test(NAME inputmanager_test COMMAND inputmanager_test)
 
+# Attribute packets: CAttributeCommandIterator over synthetic records (no
+# data) and over a real VIKING01 tower record + packet factory (data).
+add_executable(attributepacket_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/attributepacket_test.cpp
+)
+target_include_directories(attributepacket_test PRIVATE ${SDK_INCLUDE_DIRS} ${CODE_DIR})
+target_link_libraries(attributepacket_test PRIVATE
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,CannonCruiseLib>")
+add_test(NAME attributepacket_test COMMAND attributepacket_test)
+add_test(NAME attributepacket_data_test COMMAND attributepacket_test
+    ${CANNONCRUISE_DATA_ROOT}/Streams/VIKING01.RWS)
+
 # ---------------------------------------------------------------------------
 # Game-data wiring: every test resolves Streams/ through RwsAssets
 # (CANNONCRUISE_STREAMS = folder that contains Streams/). Tests listed in
@@ -461,6 +473,7 @@ get_property(_cc_all_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${_cc_all_tests} PROPERTIES
     ENVIRONMENT "CANNONCRUISE_STREAMS=${CANNONCRUISE_DATA_ROOT}/")
 set(CANNONCRUISE_DATA_TESTS
+    attributepacket_data_test
     rwlibrw_test
     rwstudio_test
     renderworld_test

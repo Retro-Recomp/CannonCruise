@@ -6,6 +6,7 @@
 #include "BehaviourLoader.h"
 
 #include "attributehandler/cclassfactory.h"
+#include "attributehandler/cattributehandler.h"
 
 #include <cstring>
 
@@ -53,38 +54,50 @@ void *BehaviourLoader::Create(const char *pClassName) {
 
 RwInt32 BehaviourLoader::ProcessObject(const RwStudioObject *pObject,
                                        void **ppInstances,
-                                       RwInt32 maxInstances) {
+                                       RwInt32 maxInstances,
+                                       const RWS::CAttributePacket *pPacket) {
     if (!pObject) {
         return -1;
     }
-    RwInt32 applied = 0;
-    for (RwUInt32 b = 0; b < pObject->behaviourCount; ++b) {
-        const RwStudioBehaviour *pBeh = &pObject->behaviours[b];
-        // class name -> factory (binary: CClassFactory::Create)
-        void *pInstance = Create(pBeh->className);
-        if (!pInstance) {
-            continue; // unknown class: Process property continues to skip
+    if (pObject->behaviourCount == 0) {
+        return 0;
+    }
+    // One record = one entity. Its class is the first (0x20000000) segment;
+    // the other blocks (CSystemCommands, CAttributeHandler, base classes,
+    // components such as CCannon) only carry that entity's attributes.
+    const char *pOwner = pObject->behaviours[0].className;
+    void *pInstance = (pPacket != 0)
+                          ? RWS::CClassFactory::Create(pOwner, *pPacket)
+                          : Create(pOwner);
+    if (!pInstance) {
+        return 0; // unknown class: binary skips the record's properties
+    }
+    // apply virtual (vtable slot1): the owner's properties may be split over
+    // several blocks of the same name (e.g. CTowerCatapult around
+    // CSystemCommands), so apply all of them.
+    for (RwUInt32 i = 0; i < s_EntryCount; ++i) {
+        if (std::strcmp(s_Entries[i].className, pOwner) != 0) {
+            continue;
         }
-        // apply virtual (vtable slot1): property registrations
-        for (RwUInt32 i = 0; i < s_EntryCount; ++i) {
-            if (std::strcmp(s_Entries[i].className, pBeh->className) != 0) {
+        for (RwUInt32 b = 0; b < pObject->behaviourCount; ++b) {
+            const RwStudioBehaviour *pBeh = &pObject->behaviours[b];
+            if (std::strcmp(pBeh->className, pOwner) != 0) {
                 continue;
             }
             for (RwUInt32 p = 0; p < pBeh->propCount; ++p) {
                 const RwStudioProperty &prop = pBeh->props[p];
                 // Apply adaptors were written for scalar/vec3 records only;
-                // longer records (matrices, strings) are read by WorldSpawn.
+                // longer records (matrices, strings) go through the packet.
                 if (prop.size > 20) {
                     continue;
                 }
                 s_Entries[i].apply(pInstance, prop.id, prop.value);
             }
-            break;
         }
-        if (ppInstances && applied < maxInstances) {
-            ppInstances[applied] = pInstance;
-        }
-        ++applied;
+        break;
     }
-    return applied;
+    if (ppInstances && maxInstances > 0) {
+        ppInstances[0] = pInstance;
+    }
+    return 1;
 }

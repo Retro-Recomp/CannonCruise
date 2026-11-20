@@ -17,6 +17,100 @@
 
 namespace RWS
 {
+    // ========================================================================
+    // CAttributeCommandIterator — walks a 0x0704 object-record body
+    // (layout documented in cattributehandler.h).
+    // ========================================================================
+    namespace
+    {
+        const RwUInt32 kSegClassStart  = 0x20000000u;
+        const RwUInt32 kSegGuid        = 0x40000000u;
+        const RwUInt32 kSegClassRepeat = 0x80000000u;
+
+        RwUInt32 ReadU32(const RwUInt8* p)
+        {
+            RwUInt32 v;
+            std::memcpy(&v, p, sizeof(v));
+            return v;
+        }
+
+        // Compares the NUL-terminated name stored in a segment payload.
+        RwBool SegmentNameEquals(const RwUInt8* pName, RwUInt32 maxLen,
+                                 const char* pWanted)
+        {
+            RwUInt32 i = 0;
+            for (; i < maxLen && pName[i] != 0; ++i)
+            {
+                if (pWanted[i] == 0 || pWanted[i] != (char)pName[i])
+                {
+                    return FALSE;
+                }
+            }
+            return (pWanted[i] == 0) ? TRUE : FALSE;
+        }
+    }
+
+    CAttributeCommandIterator::CAttributeCommandIterator(
+        const CAttributePacket& packet, const char* pClassName)
+        : m_pData(static_cast<const RwUInt8*>(packet.GetData())),
+          m_Size(packet.GetSize()),
+          m_Offset(4), // skip field0
+          m_pClassName(pClassName),
+          m_bInClass(pClassName == 0 ? TRUE : FALSE),
+          m_bFinished(FALSE)
+    {
+        m_Current.m_CommandId = 0;
+        m_Current.m_pCommandData = 0;
+        m_Current.m_DataSize = 0;
+        if (m_pData == 0 || m_Size < 4)
+        {
+            m_bFinished = TRUE;
+            return;
+        }
+        Advance();
+    }
+
+    void CAttributeCommandIterator::Advance()
+    {
+        while (m_Offset + 8 <= m_Size)
+        {
+            const RwUInt32 len = ReadU32(m_pData + m_Offset);
+            const RwUInt32 word = ReadU32(m_pData + m_Offset + 4);
+            if (len < 8 || len > m_Size - m_Offset)
+            {
+                break; // lost alignment: stop rather than read garbage
+            }
+            const RwUInt8* pPayload = m_pData + m_Offset + 8;
+            const RwUInt32 payloadLen = len - 8;
+            m_Offset += len;
+
+            if (word == kSegClassStart || word == kSegClassRepeat)
+            {
+                if (m_pClassName != 0)
+                {
+                    m_bInClass = SegmentNameEquals(pPayload, payloadLen,
+                                                   m_pClassName);
+                }
+                continue;
+            }
+            if (word == kSegGuid)
+            {
+                continue;
+            }
+            if (m_bInClass == TRUE)
+            {
+                m_Current.m_CommandId = word;
+                m_Current.m_pCommandData = pPayload;
+                m_Current.m_DataSize = payloadLen;
+                return;
+            }
+        }
+        m_bFinished = TRUE;
+        m_Current.m_CommandId = 0;
+        m_Current.m_pCommandData = 0;
+        m_Current.m_DataSize = 0;
+    }
+
     CAttributeHandler* CAttributeHandler::sm_pInstance = 0;
 
     // ========================================================================
@@ -30,14 +124,15 @@ namespace RWS
     // CAttributeHandler Constructor (attribute packet)
     // Binary: sub_411DA0 — iterates packet commands for the "CAttributeHandler" class
     // and performs entity resolution via FindInstance.
-    // Since the iterator is currently a stub, the loop stays empty; full parsing
-    // will be completed with the CAttributeCommandIterator restoration (Phase 5).
+    // Entity resolution (CAttributeHandler id0 = instance link) is not ported
+    // yet; the loop only walks the class's commands.
     // ========================================================================
     CAttributeHandler::CAttributeHandler(const CAttributePacket& packet)
     {
-        for (CAttributeCommandIterator it(packet); !it.IsFinished(); ++it)
+        for (CAttributeCommandIterator it(packet, "CAttributeHandler");
+             !it.IsFinished(); ++it)
         {
-            // Entity resolution — empty for now because the iterator is a stub
+            // TODO: FindInstance-based entity resolution (sub_411DA0)
         }
     }
 

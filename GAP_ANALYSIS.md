@@ -10,7 +10,7 @@ checked is marked as such. The binary-vs-source class comparison lives in
 | Area | State | Evidence |
 |---|---|---|
 | Win32 build, NULL + D3D9 (VS 18) | ✅ 0 errors | local builds |
-| Tests | ✅ 34/34 with game data, 16/16 without (18 disabled) | `ctest` |
+| Tests | ✅ 36/36 with game data, 17/17 without (19 disabled) | `ctest` |
 | CI | 🟡 workflow added, not yet run on GitHub | `.github/workflows/build.yml` |
 | Physics world | ✅ created from the level's `CPhysicsWorldBehaviour`, Bullet steps every active frame | cannonball trajectory trace |
 | Towers | ✅ placed from `CTowerCatapult` records (CSystemCommands matrix); mission towers = those with an `id3` death event | VIKING01: 20 towers, 6 mission |
@@ -27,15 +27,24 @@ checked is marked as such. The binary-vs-source class comparison lives in
 2. **Player ship takes no damage.** HP bar is static; the level cannot be lost.
 3. **Tower stats are port values.** 150 HP, 100 damage per hit. The record's
    `id1` (40 on VIKING, 135 on BEAVER) is probably hit points — unverified.
-4. **Classes registered with a NULL factory** (`RWS_REGISTER_CLASS(X)`), so the
-   spawner silently skips them: `CFlotsam`, `CAmmoCrate`, `CTrigger`,
-   `CFishGreen`, `CDebris`, `CLifebuoy`, `CSoldier`. No ammo or fish pickups.
-5. **Classes absent from the port:** `CMine` (header only), `CCannon`,
-   `CEnemyHealthBar`, `CWaypoint` (source exists, not registered),
-   `CHugoActor`, `CParticleFountain`, `CAnimatedEnvironment`.
-6. **Attribute parsing.** `CAttributeCommandIterator` never yields a command,
-   so spawned objects (e.g. `CShipEnemy`) keep default state; enemy ships do
-   not sail.
+4. **Attribute packets work, but most consumers are not driven.** Each
+   0x0704 record is passed to its class as a `CAttributePacket`;
+   `CAttributeCommandIterator(packet, RWS_CLASS_INDEX(C))` returns that
+   class's commands (tested on a real VIKING01 tower record). Remaining:
+   - `iMsgRunningTick` is never sent by `main.cpp`, so framework objects
+     (fish, flotsam, enemy ships …) are created but never update.
+   - `CSystemCommands::ExtractClump` still returns 0: resource GUIDs
+     (CSystemCommands command 0) are not mapped to 0x0716 asset records, so
+     spawned objects have no model.
+   - Command ids in most ported `HandleAttributes` switches are guesses and
+     must be checked against the data before relying on them.
+5. **Spawning:** one entity per record (the record's first class).
+   `CAmmoCrate`, `CFishGreen`, `CDebris`, `CLifebuoy` are now built from
+   their packets (`RWS_REGISTER_PACKET_CLASS`). Still absent from the port:
+   `CMine` (header only), `CHugoActor`, `CParticleFountain`,
+   `CAnimatedEnvironment`, `CSoldierAi`, `CWaypoint` (source exists, not
+   registered). About 108 of 497 VIKING01 records are skipped.
+6. **`CShipEnemy`** is created but inert (see 4).
 7. **IDUNA / NORDIC missions** have no tower records; they still use two
    placeholder towers derived from the world bounds.
 8. **No-op behaviours:** `CEventTrigger`, particle classes, `CCameraShaker`,
@@ -52,5 +61,5 @@ checked is marked as such. The binary-vs-source class comparison lives in
   recognises class-name segments by flag. Before this, long class names were
   dropped (no physics world existed) and string/matrix properties ended the
   record.
-- Apply classes under `code/Apply*.cpp` compile but do nothing useful until
-  item 6 is fixed.
+- Apply classes under `code/Apply*.cpp` are not on the spawn path; the
+  loader's apply adaptors and the packet are what reach spawned objects.

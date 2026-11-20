@@ -5,8 +5,8 @@ The original 2004 32-bit Windows game (`CannonCruise.exe`) is being rewritten
 in C++14 based on Ghidra and IDA analyses (`CC.asm`, `CC_ida.asm`).
 
 **Status (2026-11-20):** Active development. Windows Win32 builds (VS 18,
-NULL and D3D9) compile cleanly; ctest is 34/34 with the original game data and
-16/16 (18 asset tests disabled) without it. One mission is playable end to end
+NULL and D3D9) compile cleanly; ctest is 36/36 with the original game data and
+17/17 (19 asset tests disabled) without it. One mission is playable end to end
 on VIKING01: towers are placed from the level data, cannonballs fly under
 Bullet physics, destroying the six mission towers shows the LEVELCOMPLETE
 summary. Many level objects (mines, ammo crates, enemy ships' behaviour,
@@ -92,7 +92,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Tests
 
-Tests live under `tests/` and run with CMake/ctest. 18 of the 34 tests read
+Tests live under `tests/` and run with CMake/ctest. 19 of the 36 tests read
 the original game files; point `CANNONCRUISE_DATA_ROOT` at the folder that
 contains `Streams/` (default: the repository root). Without the data those
 tests are reported as "Not Run (Disabled)" and the rest must pass — this is
@@ -106,7 +106,7 @@ cmake --build build --config Release --parallel 8
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Expected: 34/34 with data, 16/16 without. CI
+Expected: 36/36 with data, 17/17 without. CI
 ([.github/workflows/build.yml](.github/workflows/build.yml)) builds NULL and
 D3D9 and runs ctest on NULL.
 

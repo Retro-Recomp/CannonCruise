@@ -11,7 +11,7 @@
 
 namespace RWS {
 // Register CLifebuoy with RenderWare Studio reflection system
-RWS_REGISTER_CLASS(CLifebuoy);
+RWS_REGISTER_PACKET_CLASS(CLifebuoy);
 
 // ---------------------------------------------------------------------------
 // Constructor – initializes score bonus value and registers event ID.

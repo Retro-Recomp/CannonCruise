@@ -22,6 +22,10 @@
 #include "RwStudioStream.h"
 #include "rwcore.h"
 
+namespace RWS {
+class CAttributePacket;
+}
+
 /**
  * @struct BehaviourClassEntry
  * @brief Factory + apply record of a registered behaviour class.
@@ -64,19 +68,22 @@ public:
     static void *Create(const char *pClassName);
 
     /**
-     * @brief Creates+applies all behaviours in an OBJECTRECORD.
+     * @brief Creates the record's entity and applies its properties.
      *
-     * For each behaviour: Create(className); if NULL skip (binary:
-     * factory missing -> properties skipped). Otherwise records apply call
-     * in ppInstances[].
+     * A 0x0704 record is one entity whose class is behaviours[0]; it is
+     * created from pPacket when the class has a packet factory
+     * (RWS_REGISTER_PACKET_CLASS), else with its plain factory. Unknown class
+     * -> skipped (binary: properties skipped).
      *
      * @param pObject      Parsed object (RwStudioFileGetObject()).
-     * @param ppInstances  Created object pointers (output).
+     * @param ppInstances  Created object pointer (output, [0]).
      * @param maxInstances ppInstances capacity.
-     * @return Number of behaviours applied (-1: pObject NULL).
+     * @param pPacket      Raw record body (RwStudioFileGetObjectRaw()), optional.
+     * @return 1 if the entity was created, 0 if skipped, -1 if pObject NULL.
      */
     static RwInt32 ProcessObject(const RwStudioObject *pObject,
-                                 void **ppInstances, RwInt32 maxInstances);
+                                 void **ppInstances, RwInt32 maxInstances,
+                                 const RWS::CAttributePacket *pPacket = 0);
 
 private:
     static const BehaviourClassEntry *sm_pEntries;

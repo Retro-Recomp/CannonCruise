@@ -125,4 +125,12 @@ const RwChar *RwStudioFileGetClassName(const RwStudioFile *pFile,
 // buffer; overwritten by the next NextAsset). NULL for other types.
 const RwStudioObject *RwStudioFileGetObject(const RwStudioFile *pFile);
 
+/**
+ * @brief Raw body of the last 0x0704 object record (its attribute packet).
+ * @param ppData Receives a pointer valid until the next NextAsset/Close.
+ * @return Byte count (0 when the last chunk was not an object record).
+ */
+RwUInt32 RwStudioFileGetObjectRaw(const RwStudioFile *pFile,
+                                  const RwUInt8 **ppData);
+
 #endif // RWSTUDIOSTREAM_H

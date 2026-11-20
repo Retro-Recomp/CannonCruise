@@ -385,18 +385,18 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         }
         ++stats.objectRecords;
         CollectTower(pObj);
-        void *pInstances[64];
+        const RwUInt8 *pRaw = 0;
+        const RwUInt32 rawSize = RwStudioFileGetObjectRaw(pFile, &pRaw);
+        const RWS::CAttributePacket packet(pRaw, rawSize);
+        void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
-            pObj, pInstances,
-            (RwInt32)(sizeof(pInstances) / sizeof(pInstances[0])));
-        const RwUInt32 createdCount = (applied > 0) ? (RwUInt32)applied : 0;
+            pObj, pInstances, 1, rawSize > 0 ? &packet : 0);
         if (applied > 0) {
-            stats.instancesCreated += createdCount;
+            stats.instancesCreated += (RwUInt32)applied;
             totalApplied += applied;
-        }
-        // unknown classes: factory miss (binary: property skip)
-        if (pObj->behaviourCount > createdCount) {
-            stats.instancesSkipped += pObj->behaviourCount - createdCount;
+        } else if (pObj->behaviourCount > 0) {
+            // unknown class: factory miss (binary: property skip)
+            ++stats.instancesSkipped;
         }
     }
     RwStudioFileClose(pFile);
