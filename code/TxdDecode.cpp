@@ -197,6 +197,12 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
     static const RwUInt8 kDims[12] = {0x01, 0x00, 0x00, 0x00,
                                       0x10, 0x00, 0x00, 0x00,
                                       0xFF, 0xFF, 0x03, 0x18};
+    // Layout per texture (platform-independent dictionary): its IMAGE
+    // records come first (one per mip level, largest first), then the
+    // TEXTURE record carrying the name. So a name owns the first image
+    // after the previous texture's name record. (Taking the image *after*
+    // the name gave every texture the next texture's pixels.)
+    RwUInt32 prevNameEnd = 0;
     for (RwUInt32 o = 0; o + 16 < len; ++o) {
         if (std::memcmp(pData + o, kSig, 8) != 0) {
             continue;
@@ -213,9 +219,11 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
         if (!ValidLevelName(np, nlen)) {
             continue;
         }
-        // Dimensions record: first valid dims signature in the 30KB window.
-        RwUInt32 base = o + 16 + nlen;
-        for (RwUInt32 q = base; q + 28 < len && q < base + 30000; ++q) {
+        // Dimensions record: first valid dims signature between the previous
+        // name record and this one (= the largest mip level).
+        const RwUInt32 base = prevNameEnd;
+        prevNameEnd = o + 16 + nlen;
+        for (RwUInt32 q = base; q + 28 < len && q < o; ++q) {
             if (std::memcmp(pData + q, kDims, 12) != 0) {
                 continue;
             }

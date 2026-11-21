@@ -10,7 +10,7 @@ checked is marked as such. The binary-vs-source class comparison lives in
 | Area | State | Evidence |
 |---|---|---|
 | Win32 build, NULL + D3D9 (VS 18) | ✅ 0 errors | local builds |
-| Tests | ✅ 36/36 with game data, 17/17 without (19 disabled) | `ctest` |
+| Tests | ✅ 38/38 with game data, 17/17 without (21 disabled) | `ctest` |
 | CI | 🟡 workflow added, not yet run on GitHub | `.github/workflows/build.yml` |
 | Physics world | ✅ created from the level's `CPhysicsWorldBehaviour`, Bullet steps every active frame | cannonball trajectory trace |
 | Towers | ✅ placed from `CTowerCatapult` records (CSystemCommands matrix); mission towers = those with an `id3` death event | VIKING01: 20 towers, 6 mission |
