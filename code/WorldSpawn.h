@@ -75,6 +75,17 @@ struct WorldSpawnPlayerShip {
 /// Player ship of the last WorldSpawn_FromFile() call.
 const WorldSpawnPlayerShip *WorldSpawn_GetPlayerShip(void);
 
+/// Enemy ship placement from a CShipEnemy record.
+struct WorldSpawnEnemyShip {
+    RwReal matrix[16];       ///< start transform (RwMatrix)
+    const void *pModel;      ///< const RwsResource*: hull model (e.g. Viking_Destroyer.dff)
+};
+
+#define WORLDSPAWN_MAX_ENEMY_SHIPS 64
+
+/// Enemy ships of the last WorldSpawn_FromFile() call; returns the count.
+RwUInt32 WorldSpawn_GetEnemyShips(const WorldSpawnEnemyShip **ppShips);
+
 #define WORLDSPAWN_MAX_TOWERS 64
 
 /**

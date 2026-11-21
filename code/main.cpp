@@ -474,6 +474,8 @@ int main(int argc, char **argv) {
     std::vector<const void *> s_towerDamaged; // RwsResource* "_Damaged"
     std::vector<std::vector<RwReal> > s_towerMatrices; // record transforms
     RpClump *s_pShipClump = nullptr;       // Hugo_Ship model (NULL: placeholder)
+    std::vector<RpClump *> s_enemyClumps;  // CShipEnemy models (static for now)
+    std::vector<std::vector<RwReal> > s_enemyMatrices; // record transforms
     // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
     void *s_pShipAnimator = nullptr;
     RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
@@ -1517,6 +1519,32 @@ int main(int argc, char **argv) {
                                                 ? missionTowerCount
                                                 : (RwInt32)dataTowerCount);
                 }
+                // Enemy ships (CShipEnemy records): their own model at the
+                // record's transform. They are drawn after the ocean like the
+                // player ship and ride the waves; AI/sailing is not ported yet.
+                {
+                    const WorldSpawnEnemyShip *pEnemies = nullptr;
+                    const RwUInt32 enemyCount = WorldSpawn_GetEnemyShips(&pEnemies);
+                    RwUInt32 shown = 0;
+                    for (RwUInt32 ei = 0; ei < enemyCount; ++ei) {
+                        const RwsResource *pRes =
+                            static_cast<const RwsResource *>(pEnemies[ei].pModel);
+                        if (pRes == nullptr) {
+                            continue;
+                        }
+                        RpClump *pEnemy = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                        if (pEnemy == nullptr) {
+                            continue;
+                        }
+                        RpClumpPortSetMatrix(pEnemy, pEnemies[ei].matrix);
+                        s_enemyClumps.push_back(pEnemy);
+                        s_enemyMatrices.push_back(std::vector<RwReal>(
+                            pEnemies[ei].matrix, pEnemies[ei].matrix + 16));
+                        ++shown;
+                    }
+                    std::printf("CannonCruise: %u/%u enemy ships with models\n",
+                                (unsigned)shown, (unsigned)enemyCount);
+                }
                 // Fallback for levels without tower records (IDUNA/NORDIC
                 // missions are not tower-based): keep the two placeholder
                 // towers derived from the world bounds so the level stays
@@ -2086,6 +2114,17 @@ if (bSimActive == TRUE) {
                     pOcean->Update(1.0f / 60.0f);
                 }
                 pOcean->Render(); // between Begin/End
+            }
+            // Enemy ships: bob on the wave at their position, drawn after the
+            // ocean (same reason as the player ship).
+            for (size_t ei = 0; ei < s_enemyClumps.size(); ++ei) {
+                RwReal m[16];
+                std::memcpy(m, &s_enemyMatrices[ei][0], sizeof(m));
+                if (pOcean != nullptr) {
+                    m[13] = pOcean->CalculateWaterHeight(m[12], m[14]) + 0.8f;
+                }
+                RpClumpPortSetMatrix(s_enemyClumps[ei], m);
+                RenderPlatform_RenderClump(s_enemyClumps[ei]);
             }
             // Keep the hull above the water mesh in the depth buffer.
             if (s_pShipClump != nullptr) {

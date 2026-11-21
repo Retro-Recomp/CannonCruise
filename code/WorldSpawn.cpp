@@ -337,6 +337,24 @@ const RwsResource *FindModel(const RWS::CAttributePacket &packet,
 }
 
 WorldSpawnPlayerShip s_playerShip;
+WorldSpawnEnemyShip s_enemyShips[WORLDSPAWN_MAX_ENEMY_SHIPS];
+RwUInt32 s_enemyShipCount = 0;
+
+void CollectEnemyShip(const RwStudioObject *pObj,
+                      const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CShipEnemy") != 0 ||
+        s_enemyShipCount >= WORLDSPAWN_MAX_ENEMY_SHIPS) {
+        return;
+    }
+    WorldSpawnEnemyShip ship;
+    std::memset(&ship, 0, sizeof(ship));
+    if (RWS::CSystemCommands::ExtractMatrix(packet, ship.matrix) != TRUE) {
+        return;
+    }
+    ship.pModel = FindModel(packet, 0, TRUE);
+    s_enemyShips[s_enemyShipCount++] = ship;
+}
 
 void CollectPlayerShip(const RwStudioObject *pObj,
                        const RWS::CAttributePacket &packet) {
@@ -419,6 +437,13 @@ void CollectTower(const RwStudioObject *pObj,
 
 } // namespace
 
+RwUInt32 WorldSpawn_GetEnemyShips(const WorldSpawnEnemyShip **ppShips) {
+    if (ppShips) {
+        *ppShips = s_enemyShips;
+    }
+    return s_enemyShipCount;
+}
+
 const WorldSpawnPlayerShip *WorldSpawn_GetPlayerShip(void) {
     return &s_playerShip;
 }
@@ -494,6 +519,7 @@ RwUInt32 WorldSpawn_RegisterResources(const RwChar *pPath) {
 RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_towerCount = 0;
     std::memset(&s_playerShip, 0, sizeof(s_playerShip));
+    s_enemyShipCount = 0;
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
@@ -522,6 +548,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         const RWS::CAttributePacket packet(pRaw, rawSize);
         CollectTower(pObj, packet);
         CollectPlayerShip(pObj, packet);
+        CollectEnemyShip(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances, 1, rawSize > 0 ? &packet : 0);
