@@ -88,7 +88,12 @@ void COcean::Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
     if (numTilesX < 1) numTilesX = 1;
     if (numTilesZ < 1) numTilesZ = 1;
     if (tileSize <= 0.0f) tileSize = 100.0f;
-    const RwInt32 kSubdivisions = 8; // 9×9 grid/tile — under Im3D
+    // 40 x 40 quads per tile (~11.8 m at tileSize 472): the waves have 78 m /
+    // 125 m wavelengths, and the former 8 subdivisions (59 m) left the drawn
+    // surface metres away from the analytic wave the ship rides on, so crests
+    // covered the hull. 40*40*6 = 9600 indices stays under librw D3D9 im3d's
+    // 10000-index limit per draw.
+    const RwInt32 kSubdivisions = 40;
 
     for (RwInt32 z = 0; z < numTilesZ; ++z) {
         for (RwInt32 x = 0; x < numTilesX; ++x) {

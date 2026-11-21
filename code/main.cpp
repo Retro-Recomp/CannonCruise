@@ -1415,8 +1415,9 @@ int main(int argc, char **argv) {
                     const RwsResource *pRes =
                         static_cast<const RwsResource *>(pDataShip->pModel);
                     s_pShipClump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
-                    if (s_pShipClump != nullptr &&
-                        RenderPlatform_AddClump(s_pShipClump) == TRUE) {
+                    // Not added to the world: drawn explicitly after the
+                    // ocean each frame (RenderPlatform_RenderClump).
+                    if (s_pShipClump != nullptr) {
                         std::printf("CannonCruise: player ship model %s "
                                     "(%d atomics)\n", pRes->name,
                                     (int)RpClumpPortCountAtomics(s_pShipClump));
@@ -1940,12 +1941,14 @@ if (bSimActive == TRUE) {
                 if (RwPlatformKeyDown('S')) {
                     throttle -= 0.5f;
                 }
+                // rudder +1 turns the ship to starboard (screen right) in
+                // PlayerShip_Update, so A (port) is -1 and D (starboard) +1.
                 RwReal rudder = 0.0f;
                 if (RwPlatformKeyDown('A')) {
-                    rudder += 1.0f;
+                    rudder -= 1.0f;
                 }
                 if (RwPlatformKeyDown('D')) {
-                    rudder -= 1.0f;
+                    rudder += 1.0f;
                 }
                 int mdx = 0, mdy = 0;
                 if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
@@ -1961,8 +1964,12 @@ if (bSimActive == TRUE) {
                         rudder = dRudder;
                     }
                 }
-                PlayerShip_Update(kDt, (RwReal)frame * kDt, throttle,
-                                  rudder);
+                // Ride the same wave phase the ocean is drawn with this frame
+                // (the ocean adds kDt to its time later in the frame).
+                const RwReal waveT = (pOcean != nullptr)
+                                         ? pOcean->GetWaveTime() + kDt
+                                         : (RwReal)frame * kDt;
+                PlayerShip_Update(kDt, waveT, throttle, rudder);
                 PlayerShipState shipState;
                 if (PlayerShip_GetState(&shipState) == TRUE) {
                     const RwReal ang =
@@ -2073,7 +2080,10 @@ if (bSimActive == TRUE) {
             }
             if (pOcean != nullptr) {
                 if (bSimActive == TRUE) {
-                    pOcean->Update((RwReal)frame * (1.0f / 60.0f));
+                    // COcean::Update takes a delta and accumulates it; passing
+                    // the absolute time made the water run ahead of the ship's
+                    // bob, so wave crests covered the hull.
+                    pOcean->Update(1.0f / 60.0f);
                 }
                 pOcean->Render(); // between Begin/End
             }
@@ -2106,6 +2116,9 @@ if (bSimActive == TRUE) {
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, 0.2f);
                         RpClumpPortAnimatorUpdate(s_pShipAnimator);
                     }
+                    // After the ocean: the water mesh drawn later used to paint
+                    // over the low hull on some wave phases.
+                    RenderPlatform_RenderClump(s_pShipClump);
                 }
             } else {
                 PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)

@@ -439,6 +439,16 @@ RwBool RenderPlatform_AddClump(void *pClump) {
     return TRUE;
 }
 
+RwBool RenderPlatform_RenderClump(void *pClump) {
+    if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
+        return FALSE;
+    }
+    rw::SetRenderState(rw::ZTESTENABLE, 1);
+    rw::SetRenderState(rw::ZWRITEENABLE, 1);
+    static_cast<rw::Clump *>(pClump)->render();
+    return TRUE;
+}
+
 RwBool RenderPlatform_RemoveClump(void *pClump) {
     if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
         return FALSE;
