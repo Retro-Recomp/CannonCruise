@@ -336,6 +336,61 @@ const RwsResource *FindModel(const RWS::CAttributePacket &packet,
     return 0;
 }
 
+// Printable string payload of attribute `id` in the `className` block.
+RwBool CopyAttributeString(const RWS::CAttributePacket &packet,
+                           const char *className, RwUInt32 id,
+                           RwChar *pOut, RwUInt32 outSize) {
+    pOut[0] = '\0';
+    for (RWS::CAttributeCommandIterator it(packet, className);
+         !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != id || it->GetDataSize() <= 1) {
+            continue;
+        }
+        const RwUInt8 *pStr = static_cast<const RwUInt8 *>(it->GetCommandData());
+        RwUInt32 i = 0;
+        for (; i + 1 < outSize && i < it->GetDataSize(); ++i) {
+            if (pStr[i] < 0x20 || pStr[i] >= 0x7F) {
+                break;
+            }
+            pOut[i] = (RwChar)pStr[i];
+        }
+        pOut[i] = '\0';
+        return i > 0 ? TRUE : FALSE;
+    }
+    return FALSE;
+}
+
+// HAnim clips referenced by the record: node ID from the "_tagNNN" part of
+// the asset name ("Wing_Left_tag100.anm" -> node 100).
+void CollectClips(const RWS::CAttributePacket &packet,
+                  WorldSpawnPlayerShip::Clip *pClips, RwUInt32 maxClips,
+                  RwUInt32 *pCount) {
+    *pCount = 0;
+    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands");
+         !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 0 || it->GetDataSize() != 16 ||
+            *pCount >= maxClips) {
+            continue;
+        }
+        const RwsResource *pRes = RwsResources_Find(
+            static_cast<const RwUInt8 *>(it->GetCommandData()));
+        if (!pRes || pRes->embeddedType != rwsRESOURCE_HANIM) {
+            continue;
+        }
+        const char *pTag = std::strstr(pRes->name, "_tag");
+        if (!pTag) {
+            continue;
+        }
+        const int nodeId = std::atoi(pTag + 4);
+        if (nodeId <= 0) {
+            continue;
+        }
+        pClips[*pCount].pAnim = pRes;
+        pClips[*pCount].nodeId = nodeId;
+        ++*pCount;
+    }
+}
+
 WorldSpawnPlayerShip s_playerShip;
 WorldSpawnEnemyShip s_enemyShips[WORLDSPAWN_MAX_ENEMY_SHIPS];
 RwUInt32 s_enemyShipCount = 0;
@@ -353,7 +408,54 @@ void CollectEnemyShip(const RwStudioObject *pObj,
         return;
     }
     ship.pModel = FindModel(packet, 0, TRUE);
+    CopyAttributeString(packet, "CShipEnemy", 8, ship.route, sizeof(ship.route));
+    CollectClips(packet, ship.clips, WORLDSPAWN_MAX_ENEMY_CLIPS, &ship.clipCount);
     s_enemyShips[s_enemyShipCount++] = ship;
+}
+
+// CWaypoint records: id0 = name, CSystemCommands matrix = position. Enemy
+// routes (CShipEnemy id8) name one of these.
+struct WaypointEntry {
+    RwChar name[64];
+    RwReal pos[3];
+};
+WaypointEntry s_waypoints[256];
+RwUInt32 s_waypointCount = 0;
+
+void CollectWaypoint(const RwStudioObject *pObj,
+                     const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CWaypoint") != 0 ||
+        s_waypointCount >= sizeof(s_waypoints) / sizeof(s_waypoints[0])) {
+        return;
+    }
+    WaypointEntry wp;
+    std::memset(&wp, 0, sizeof(wp));
+    RwReal m[16];
+    if (RWS::CSystemCommands::ExtractMatrix(packet, m) != TRUE ||
+        CopyAttributeString(packet, "CWaypoint", 0, wp.name, sizeof(wp.name)) != TRUE) {
+        return;
+    }
+    wp.pos[0] = m[12];
+    wp.pos[1] = m[13];
+    wp.pos[2] = m[14];
+    s_waypoints[s_waypointCount++] = wp;
+}
+
+void ResolveEnemyRoutes() {
+    for (RwUInt32 i = 0; i < s_enemyShipCount; ++i) {
+        WorldSpawnEnemyShip &ship = s_enemyShips[i];
+        if (ship.route[0] == '\0') {
+            continue;
+        }
+        for (RwUInt32 w = 0; w < s_waypointCount; ++w) {
+            if (std::strcmp(s_waypoints[w].name, ship.route) == 0) {
+                ship.hasWaypoint = TRUE;
+                std::memcpy(ship.waypoint, s_waypoints[w].pos, sizeof(ship.waypoint));
+                break;
+            }
+        }
+    }
 }
 
 void CollectPlayerShip(const RwStudioObject *pObj,
@@ -368,30 +470,7 @@ void CollectPlayerShip(const RwStudioObject *pObj,
         return;
     }
     s_playerShip.pModel = FindModel(packet, 0, TRUE);
-    // Animation clips: node ID from the "_tagNNN" part of the asset name.
-    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands");
-         !it.IsFinished(); ++it) {
-        if (it->GetCommandId() != 0 || it->GetDataSize() != 16 ||
-            s_playerShip.clipCount >= 16) {
-            continue;
-        }
-        const RwsResource *pRes = RwsResources_Find(
-            static_cast<const RwUInt8 *>(it->GetCommandData()));
-        if (!pRes || pRes->embeddedType != rwsRESOURCE_HANIM) {
-            continue;
-        }
-        const char *pTag = std::strstr(pRes->name, "_tag");
-        if (!pTag) {
-            continue;
-        }
-        const int nodeId = std::atoi(pTag + 4);
-        if (nodeId <= 0) {
-            continue;
-        }
-        s_playerShip.clips[s_playerShip.clipCount].pAnim = pRes;
-        s_playerShip.clips[s_playerShip.clipCount].nodeId = nodeId;
-        ++s_playerShip.clipCount;
-    }
+    CollectClips(packet, s_playerShip.clips, 16, &s_playerShip.clipCount);
     s_playerShip.valid = TRUE;
 }
 
@@ -520,6 +599,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_towerCount = 0;
     std::memset(&s_playerShip, 0, sizeof(s_playerShip));
     s_enemyShipCount = 0;
+    s_waypointCount = 0;
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
@@ -549,6 +629,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         CollectTower(pObj, packet);
         CollectPlayerShip(pObj, packet);
         CollectEnemyShip(pObj, packet);
+        CollectWaypoint(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances, 1, rawSize > 0 ? &packet : 0);
@@ -561,6 +642,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         }
     }
     RwStudioFileClose(pFile);
+    ResolveEnemyRoutes();
 
     if (pStats) {
         *pStats = stats;

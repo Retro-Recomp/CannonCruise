@@ -75,10 +75,18 @@ struct WorldSpawnPlayerShip {
 /// Player ship of the last WorldSpawn_FromFile() call.
 const WorldSpawnPlayerShip *WorldSpawn_GetPlayerShip(void);
 
+#define WORLDSPAWN_MAX_ENEMY_CLIPS 8
+
 /// Enemy ship placement from a CShipEnemy record.
 struct WorldSpawnEnemyShip {
     RwReal matrix[16];       ///< start transform (RwMatrix)
     const void *pModel;      ///< const RwsResource*: hull model (e.g. Viking_Destroyer.dff)
+    RwChar route[64];        ///< CShipEnemy id8: CWaypoint name it sails to ("" = none)
+    RwBool hasWaypoint;      ///< route resolved to a CWaypoint record
+    RwReal waypoint[3];      ///< that waypoint's position (CSystemCommands matrix)
+    /// HAnim clips (Viking_Destroyer: paddles 100/200, rudder 300, catapult 400/500).
+    WorldSpawnPlayerShip::Clip clips[WORLDSPAWN_MAX_ENEMY_CLIPS];
+    RwUInt32 clipCount;
 };
 
 #define WORLDSPAWN_MAX_ENEMY_SHIPS 64

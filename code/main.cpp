@@ -474,8 +474,24 @@ int main(int argc, char **argv) {
     std::vector<const void *> s_towerDamaged; // RwsResource* "_Damaged"
     std::vector<std::vector<RwReal> > s_towerMatrices; // record transforms
     RpClump *s_pShipClump = nullptr;       // Hugo_Ship model (NULL: placeholder)
-    std::vector<RpClump *> s_enemyClumps;  // CShipEnemy models (static for now)
-    std::vector<std::vector<RwReal> > s_enemyMatrices; // record transforms
+    // CShipEnemy ships: sail between their start point and their CWaypoint
+    // (ping-pong), take cannonball hits and sink.
+    struct EnemyShipRuntime {
+        RpClump *clump;
+        void *animator;          // paddle/rudder clips (NULL: none)
+        RwInt32 clipPaddleL, clipPaddleR, clipRudder;
+        RwReal scale;            // record matrix scale
+        RwReal x, y, z, yaw;     // current pose (y = last wave height)
+        RwReal homeX, homeZ;     // start point
+        RwBool hasWaypoint;
+        RwReal wpX, wpZ;
+        RwBool toWaypoint;       // current leg
+        RwReal hp;
+        RwReal sinkTime;         // > 0 while sinking
+        RwBool gone;             // sunk below the surface: no longer drawn
+    };
+    std::vector<EnemyShipRuntime> s_enemies;
+    RwInt32 s_enemiesSunk = 0;
     // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
     void *s_pShipAnimator = nullptr;
     RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
@@ -1525,7 +1541,7 @@ int main(int argc, char **argv) {
                 {
                     const WorldSpawnEnemyShip *pEnemies = nullptr;
                     const RwUInt32 enemyCount = WorldSpawn_GetEnemyShips(&pEnemies);
-                    RwUInt32 shown = 0;
+                    RwUInt32 shown = 0, routed = 0;
                     for (RwUInt32 ei = 0; ei < enemyCount; ++ei) {
                         const RwsResource *pRes =
                             static_cast<const RwsResource *>(pEnemies[ei].pModel);
@@ -1536,14 +1552,45 @@ int main(int argc, char **argv) {
                         if (pEnemy == nullptr) {
                             continue;
                         }
-                        RpClumpPortSetMatrix(pEnemy, pEnemies[ei].matrix);
-                        s_enemyClumps.push_back(pEnemy);
-                        s_enemyMatrices.push_back(std::vector<RwReal>(
-                            pEnemies[ei].matrix, pEnemies[ei].matrix + 16));
+                        const WorldSpawnEnemyShip &es = pEnemies[ei];
+                        RpClumpPortSetMatrix(pEnemy, es.matrix);
+                        EnemyShipRuntime er;
+                        std::memset(&er, 0, sizeof(er));
+                        er.clump = pEnemy;
+                        er.clipPaddleL = er.clipPaddleR = er.clipRudder = -1;
+                        er.scale = std::sqrt(es.matrix[0] * es.matrix[0] +
+                                             es.matrix[1] * es.matrix[1] +
+                                             es.matrix[2] * es.matrix[2]);
+                        if (er.scale <= 0.0f) er.scale = 1.0f;
+                        er.x = er.homeX = es.matrix[12];
+                        er.y = es.matrix[13];
+                        er.z = er.homeZ = es.matrix[14];
+                        // Forward = matrix "at" row (same convention as the player).
+                        er.yaw = std::atan2(es.matrix[8], es.matrix[10]);
+                        er.hasWaypoint = es.hasWaypoint;
+                        er.wpX = es.waypoint[0];
+                        er.wpZ = es.waypoint[2];
+                        er.toWaypoint = TRUE;
+                        er.hp = 150.0f; // two 100-damage hits, like the towers
+                        if (es.clipCount > 0) {
+                            er.animator = RpClumpPortAnimatorCreate(pEnemy);
+                        }
+                        for (RwUInt32 ci = 0; er.animator != nullptr && ci < es.clipCount; ++ci) {
+                            const RwsResource *pAnim =
+                                static_cast<const RwsResource *>(es.clips[ci].pAnim);
+                            const RwInt32 idx = RpClumpPortAnimatorAddClip(
+                                er.animator, pAnim->pData, pAnim->size, es.clips[ci].nodeId);
+                            if (std::strstr(pAnim->name, "Paddle_Left")) er.clipPaddleL = idx;
+                            else if (std::strstr(pAnim->name, "Paddle_Right")) er.clipPaddleR = idx;
+                            else if (std::strstr(pAnim->name, "Rudder")) er.clipRudder = idx;
+                        }
+                        s_enemies.push_back(er);
+                        if (es.hasWaypoint == TRUE) ++routed;
                         ++shown;
                     }
-                    std::printf("CannonCruise: %u/%u enemy ships with models\n",
-                                (unsigned)shown, (unsigned)enemyCount);
+                    std::printf("CannonCruise: %u/%u enemy ships with models, "
+                                "%u on waypoint routes\n",
+                                (unsigned)shown, (unsigned)enemyCount, (unsigned)routed);
                 }
                 // Fallback for levels without tower records (IDUNA/NORDIC
                 // missions are not tower-based): keep the two placeholder
@@ -1764,9 +1811,36 @@ int main(int argc, char **argv) {
                     RwReal aimDist = 0.0f;
                     // CANNONCRUISE_AUTOAIM=1 (test only): aim at the nearest
                     // alive mission tower instead of the bow direction.
-                    static const RwBool s_autoAim =
-                        std::getenv("CANNONCRUISE_AUTOAIM") != nullptr ? TRUE : FALSE;
-                    if (s_autoAim == TRUE) {
+                    // =ENEMY aims at the nearest afloat enemy ship (with lead).
+                    static const char *s_autoAimEnv = std::getenv("CANNONCRUISE_AUTOAIM");
+                    static const RwBool s_autoAim = s_autoAimEnv != nullptr ? TRUE : FALSE;
+                    static const RwBool s_autoAimEnemy =
+                        (s_autoAimEnv != nullptr && std::strcmp(s_autoAimEnv, "ENEMY") == 0)
+                            ? TRUE : FALSE;
+                    RwReal aimDh = -0.5f; // target centre height - muzzle height
+                    if (s_autoAimEnemy == TRUE) {
+                        RwReal bestD2 = -1.0f;
+                        for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                            const EnemyShipRuntime &e = s_enemies[ei];
+                            if (e.gone == TRUE || e.sinkTime > 0.0f) continue;
+                            RwReal tx = e.x, tz = e.z;
+                            RwReal ddx = tx - ss.pos.x, ddz = tz - ss.pos.z;
+                            if (e.hasWaypoint == TRUE) {
+                                const RwReal lead = std::sqrt(ddx * ddx + ddz * ddz) / 55.0f * 5.0f;
+                                tx += std::sin(e.yaw) * lead;
+                                tz += std::cos(e.yaw) * lead;
+                                ddx = tx - ss.pos.x;
+                                ddz = tz - ss.pos.z;
+                            }
+                            const RwReal d2 = ddx * ddx + ddz * ddz;
+                            if (bestD2 < 0.0f || d2 < bestD2) {
+                                bestD2 = d2;
+                                aimYaw = std::atan2(ddx, ddz);
+                                aimDist = std::sqrt(d2);
+                                aimDh = (e.y + 1.5f) - (ss.pos.y + 2.5f);
+                            }
+                        }
+                    } else if (s_autoAim == TRUE) {
                         RwReal bestD2 = -1.0f;
                         for (size_t ti = 0; ti < s_towers.size(); ++ti) {
                             const RwBool bMission = (ti < s_towerIsMission.size())
@@ -1790,7 +1864,7 @@ int main(int argc, char **argv) {
                     RwReal aimTan = 0.06f;
                     if (s_autoAim == TRUE && aimDist > 0.0f) {
                         const RwReal kG = 9.8f, kV = 55.0f;
-                        aimTan = kG * aimDist / (2.0f * kV * kV) - 0.5f / aimDist;
+                        aimTan = kG * aimDist / (2.0f * kV * kV) + aimDh / aimDist;
                         if (aimTan < 0.0f) aimTan = 0.0f;
                     }
                     RwV3d fwd = {std::sin(aimYaw), aimTan, std::cos(aimYaw)};
@@ -1928,6 +2002,43 @@ if (bSimActive == TRUE) {
         }
     }
 }
+            // Enemy ships: a cannonball inside the hull's rough capsule hits;
+            // the second hit sinks the ship (+score).
+            if (bSimActive == TRUE) {
+                for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                    EnemyShipRuntime &e = s_enemies[ei];
+                    if (e.gone == TRUE || e.sinkTime > 0.0f) {
+                        continue;
+                    }
+                    const RwReal kHitRadius = 4.5f * e.scale;
+                    for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
+                        CCannonball *pB = s_cannonballs[bi];
+                        void *pBody = pB->GetRigidBody();
+                        if (pBody == nullptr || !pB->IsAlive()) continue;
+                        RwV3d bp;
+                        PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                        const RwReal dx = bp.x - e.x, dz = bp.z - e.z;
+                        const RwReal dy = bp.y - (e.y + 1.5f);
+                        if (dx * dx + dz * dz > kHitRadius * kHitRadius ||
+                            std::fabs(dy) > 3.5f) {
+                            continue;
+                        }
+                        e.hp -= 100.0f;
+                        ++s_shotsHit;
+                        std::printf("CannonCruise: HIT enemy ship #%zu at (%.1f,%.1f) hp=%.0f\n",
+                                    ei, e.x, e.z, e.hp);
+                        if (e.hp <= 0.0f) {
+                            e.sinkTime = 1.0f / 60.0f;
+                            ++s_enemiesSunk;
+                            RWS::HUD_AddScore(250);
+                            std::printf("CannonCruise: enemy ship #%zu SUNK (%d sunk)\n",
+                                        ei, (int)s_enemiesSunk);
+                        }
+                        pB->OnHit(nullptr, 0);
+                        break;
+                    }
+                }
+            }
             // Sprint 1 -- remove dead cannonballs from the list
             if (bSimActive == TRUE) {
                 for (auto it = s_cannonballs.begin();
@@ -2117,14 +2228,71 @@ if (bSimActive == TRUE) {
             }
             // Enemy ships: bob on the wave at their position, drawn after the
             // ocean (same reason as the player ship).
-            for (size_t ei = 0; ei < s_enemyClumps.size(); ++ei) {
-                RwReal m[16];
-                std::memcpy(m, &s_enemyMatrices[ei][0], sizeof(m));
-                if (pOcean != nullptr) {
-                    m[13] = pOcean->CalculateWaterHeight(m[12], m[14]) + 0.8f;
+            for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                EnemyShipRuntime &e = s_enemies[ei];
+                if (e.gone == TRUE) {
+                    continue;
                 }
-                RpClumpPortSetMatrix(s_enemyClumps[ei], m);
-                RenderPlatform_RenderClump(s_enemyClumps[ei]);
+                const RwReal kEnemyDt = 1.0f / 60.0f;
+                RwReal steer = 0.0f;
+                if (bSimActive == TRUE && e.sinkTime <= 0.0f && e.hasWaypoint == TRUE) {
+                    // Sail the current leg; turn round near its end point.
+                    const RwReal tx = e.toWaypoint == TRUE ? e.wpX : e.homeX;
+                    const RwReal tz = e.toWaypoint == TRUE ? e.wpZ : e.homeZ;
+                    const RwReal dx = tx - e.x, dz = tz - e.z;
+                    if (dx * dx + dz * dz < 8.0f * 8.0f) {
+                        e.toWaypoint = e.toWaypoint == TRUE ? FALSE : TRUE;
+                    }
+                    RwReal dyaw = std::atan2(dx, dz) - e.yaw;
+                    while (dyaw > 3.14159265f) dyaw -= 6.2831853f;
+                    while (dyaw < -3.14159265f) dyaw += 6.2831853f;
+                    const RwReal kTurn = 0.5f * kEnemyDt; // rad per frame
+                    steer = dyaw > kTurn ? 1.0f : (dyaw < -kTurn ? -1.0f : dyaw / kTurn);
+                    e.yaw += steer * kTurn;
+                    // Slow down while turning hard.
+                    const RwReal kSpeed = 5.0f * (1.0f - 0.6f * std::fabs(steer));
+                    e.x += std::sin(e.yaw) * kSpeed * kEnemyDt;
+                    e.z += std::cos(e.yaw) * kSpeed * kEnemyDt;
+                }
+                e.y = (pOcean != nullptr) ? pOcean->CalculateWaterHeight(e.x, e.z) + 0.8f
+                                          : 0.8f;
+                RwReal roll = 0.0f;
+                if (e.sinkTime > 0.0f) {
+                    if (bSimActive == TRUE) e.sinkTime += kEnemyDt;
+                    e.y -= e.sinkTime * e.sinkTime * 0.8f;
+                    roll = (e.sinkTime < 1.2f ? e.sinkTime : 1.2f) * 0.5f;
+                    if (e.sinkTime > 5.0f) {
+                        e.gone = TRUE;
+                        continue;
+                    }
+                }
+                // Rotation: yaw about Y, then roll about the bow axis (sinking).
+                const RwReal sy = std::sin(e.yaw), cy = std::cos(e.yaw);
+                const RwReal sr = std::sin(roll), cr = std::cos(roll);
+                const RwReal s = e.scale;
+                // right = (cy,0,-sy), up = (0,1,0), at = (sy,0,cy); roll about at.
+                const RwReal rx = cy * cr, ry = sr, rz = -sy * cr;
+                const RwReal ux = -cy * sr, uy = cr, uz = sy * sr;
+                const RwReal m[16] = {rx * s, ry * s, rz * s, 0.0f,
+                                      ux * s, uy * s, uz * s, 0.0f,
+                                      sy * s, 0.0f, cy * s, 0.0f,
+                                      e.x, e.y, e.z, 1.0f};
+                RpClumpPortSetMatrix(e.clump, m);
+                if (e.animator != nullptr) {
+                    // Paddles row while sailing (pose ranges loop at 0.4 s
+                    // like Hugo_Ship's clips); the rudder follows the steer.
+                    static RwReal s_paddleT = 0.0f;
+                    if (ei == 0 && bSimActive == TRUE) {
+                        s_paddleT += kEnemyDt;
+                    }
+                    const RwBool bRowing = (e.hasWaypoint == TRUE && e.sinkTime <= 0.0f);
+                    const RwReal paddleT = bRowing ? std::fmod(s_paddleT * 0.5f, 0.4f) : 0.0f;
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipPaddleL, paddleT);
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipPaddleR, paddleT);
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipRudder, 0.2f + steer * 0.18f);
+                    RpClumpPortAnimatorUpdate(e.animator);
+                }
+                RenderPlatform_RenderClump(e.clump);
             }
             // Keep the hull above the water mesh in the depth buffer.
             if (s_pShipClump != nullptr) {
