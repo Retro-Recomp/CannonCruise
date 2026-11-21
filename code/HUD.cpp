@@ -30,10 +30,14 @@ static RwInt32 s_ammo = 175;           // remaining cannonballs (original game f
 static RwInt32 s_fish = 0;             // collected fish
 static RwInt32 s_score = 0;            // cumulative score
 static RwInt32 s_towersDestroyed = 0;  // towers shot down
-static const RwInt32 kTowersTotal = 2; // Viking-1 has 2 towers
+static RwInt32 s_towersTotal = 0;      // towers required for the mission
 static RwReal s_shipYaw = 0.0f;        // for the compass needle
-static TowerBlip s_blips[2] = {{0.0f, 1.0f, TRUE}, {0.0f, 1.0f, TRUE}};
+static const RwInt32 kMaxBlips = 64;   // = WORLDSPAWN_MAX_TOWERS
+static TowerBlip s_blips[kMaxBlips];
+static RwInt32 s_blipCount = 0;        // highest blip index set + 1
 static RwInt32 s_noAmmoFlash = 0;      // "NO AMMO" flash counter (frames)
+static RwBool s_goalActive = FALSE;    // mission goal marker (green blip)
+static RwReal s_goalX = 0.0f, s_goalZ = 0.0f;
 
 static RwInt32 AddNonNegativeSaturated(RwInt32 value, RwInt32 amount) {
     const RwInt32 maxValue = (std::numeric_limits<RwInt32>::max)();
@@ -58,10 +62,18 @@ void HUD_Initialize(void) {
     s_fish = 0;
     s_score = 0;
     s_towersDestroyed = 0;
+    s_goalActive = FALSE;
     s_shipYaw = 0.0f;
-    s_blips[0] = {0.0f, 1.0f, TRUE};
-    s_blips[1] = {0.0f, 1.0f, TRUE};
+    s_towersTotal = 0;
+    for (RwInt32 i = 0; i < kMaxBlips; ++i) {
+        s_blips[i] = {0.0f, 1.0f, FALSE};
+    }
+    s_blipCount = 0;
     s_noAmmoFlash = 0;
+}
+
+void HUD_SetTowersTotal(RwInt32 total) {
+    s_towersTotal = total < 0 ? 0 : total;
 }
 
 void HUD_UseAmmo(RwInt32 amount) {
@@ -90,12 +102,11 @@ void HUD_SetHealth(RwReal ratio) {
 
 RwReal HUD_GetHealth(void) { return s_health; }
 
-void HUD_RegisterTowerDestroyed(void) {
-    if (s_towersDestroyed >= kTowersTotal) {
-        return;
-    }
-    ++s_towersDestroyed;
+void HUD_RegisterTowerDestroyed(RwBool bMissionTower) {
     s_score = AddScoreDelta(s_score, 500);
+    if (bMissionTower == TRUE && s_towersDestroyed < s_towersTotal) {
+        ++s_towersDestroyed;
+    }
 }
 
 void HUD_AddScore(RwInt32 amount) {
@@ -106,6 +117,8 @@ RwInt32 HUD_GetScore(void) { return s_score; }
 
 RwInt32 HUD_GetTowersDestroyed(void) { return s_towersDestroyed; }
 
+RwInt32 HUD_GetTowersTotal(void) { return s_towersTotal; }
+
 void HUD_SetShipHeading(RwReal yaw) {
     if (std::isfinite(yaw)) {
         s_shipYaw = std::remainder(yaw, 6.2831853071795864769f);
@@ -114,13 +127,23 @@ void HUD_SetShipHeading(RwReal yaw) {
 
 void HUD_SetTowerBlip(RwInt32 index, RwReal bearingX, RwReal bearingZ,
                       RwBool alive) {
-    if (index < 0 || index >= 2 || !std::isfinite(bearingX) ||
+    if (index < 0 || index >= kMaxBlips || !std::isfinite(bearingX) ||
         !std::isfinite(bearingZ)) {
         return;
+    }
+    if (index >= s_blipCount) {
+        s_blipCount = index + 1;
     }
     s_blips[index].x = bearingX;
     s_blips[index].z = bearingZ;
     s_blips[index].alive = alive == TRUE ? TRUE : FALSE;
+}
+
+void HUD_SetGoalBlip(RwBool active, RwReal bearingX, RwReal bearingZ) {
+    s_goalActive = (active == TRUE && std::isfinite(bearingX) && std::isfinite(bearingZ))
+                       ? TRUE : FALSE;
+    s_goalX = bearingX;
+    s_goalZ = bearingZ;
 }
 
 void HUD_FlashNoAmmo(void) { s_noAmmoFlash = 45; } // ~0.75 sec @60fps
@@ -352,7 +375,7 @@ void HUD_Render(void) {
                            0xFF202830u);
     }
     // Tower blips (world direction, north-up): red dots
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < s_blipCount; ++i) {
         if (!s_blips[i].alive) {
             continue;
         }
@@ -368,6 +391,18 @@ void HUD_Render(void) {
         DrawHudOverlayQuad(layout, bx - 4.0f, by - 4.0f, 8.0f, 8.0f,
                            0xFFFF3030u);
     }
+    // Mission goal: green marker on the rim (centre when the ship is on it).
+    if (s_goalActive == TRUE) {
+        const RwReal len = std::hypot(s_goalX, s_goalZ);
+        const RwReal bRad = compSize * 0.38f;
+        RwReal gx = compCX, gy = compCY;
+        if (len >= 1.0f) {
+            gx = compCX + s_goalX / len * bRad;
+            gy = compCY + s_goalZ / len * bRad;
+        }
+        DrawHudOverlayQuad(layout, gx - 7.0f, gy - 7.0f, 14.0f, 14.0f, 0xFF103010u);
+        DrawHudOverlayQuad(layout, gx - 5.0f, gy - 5.0f, 10.0f, 10.0f, 0xFF30F040u);
+    }
     // Needle: rotates to face the ship's bow
     DrawNeedle(layout.MapX(compCX), layout.MapY(compCY), s_shipYaw,
                layout.MapSize(compSize * 0.30f), 0xFFF0F0F0u);
@@ -376,11 +411,13 @@ void HUD_Render(void) {
                        0xFFFFFFFFu);
 
     // TOWERS indicator (below the compass, gold)
-    char towerText[32];
-    std::snprintf(towerText, sizeof(towerText), "TOWERS %d/%d",
-                  s_towersDestroyed, kTowersTotal);
-    DrawAnchoredText(towerText, compCX, compY + compSize + 4.0f, 2,
-                     0xFFFFD040u, layout);
+    if (s_towersTotal > 0) { // levels without a tower mission hide it
+        char towerText[32];
+        std::snprintf(towerText, sizeof(towerText), "TOWERS %d/%d",
+                      s_towersDestroyed, s_towersTotal);
+        DrawAnchoredText(towerText, compCX, compY + compSize + 4.0f, 2,
+                         0xFFFFD040u, layout);
+    }
 
     RenderPlatform_EndOverlay2D();
 }

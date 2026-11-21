@@ -13,7 +13,7 @@
 namespace RWS
 {
     // Register CDebris with RenderWare Studio reflection system
-    RWS_REGISTER_CLASS(CDebris);
+    RWS_REGISTER_PACKET_CLASS(CDebris);
 
     // ---------------------------------------------------------------------------
     // Constructor – initializes default splinter count and particle template.

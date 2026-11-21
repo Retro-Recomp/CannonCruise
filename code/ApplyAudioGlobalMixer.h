@@ -8,6 +8,7 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 #include "framework/core/attributehandler/cattributehandler.h"
 
 namespace RWS
@@ -36,6 +37,8 @@ public:
      * @param packet Attribute packet with audio mixer settings.
      */
     ApplyAudioGlobalMixer(const CAttributePacket& packet);
+
+    virtual ~ApplyAudioGlobalMixer();
 
     /**
      * @brief Applies audio global mixer events.

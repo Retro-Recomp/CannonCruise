@@ -39,6 +39,7 @@ namespace RWS
     {
         ClassCreationFunc m_pCreationFunc; ///< Object creation function
         RwUInt32          m_Size;          ///< Class size (bytes)
+        ClassPacketCreationFunc m_pPacketCreationFunc; ///< Creation from an attribute packet (optional)
     };
 
     /**
@@ -85,6 +86,13 @@ namespace RWS
          * @return void* — Pointer to the created object (must be cast to the type).
          */
         static void* Create(const char* pClassName);
+        /// Creates from the object's attribute packet when the class has a
+        /// packet factory; otherwise falls back to Create(pClassName).
+        static void* Create(const char* pClassName, const CAttributePacket& packet);
+        /// Adds/replaces the packet factory of a class (registers it if new).
+        static void RegisterPacketFactory(const char* pClassName,
+                                          ClassPacketCreationFunc pCreateFunc,
+                                          RwUInt32 size = 0);
 
         /**
          * @brief Checks whether the given class name is registered with the factory.
@@ -151,6 +159,36 @@ namespace RWS
      */
     inline void* NullCreationFunc() { return 0; }
 
+    /// Static registration of a class's packet factory (className::MakeNewClass,
+    /// see RWS_MAKENEWCLASS).
+    class CAutoRegisterPacketClass
+    {
+    public:
+        CAutoRegisterPacketClass(const char* pClassName,
+                                 ClassPacketCreationFunc pCreateFunc,
+                                 RwUInt32 size)
+        {
+            CClassFactory::RegisterPacketFactory(pClassName, pCreateFunc, size);
+        }
+    };
+
+    /// RWS creation sequence: construct from the packet, then let the object
+    /// (a CAttributeHandler) consume the same packet.
+    template <class T>
+    void* MakeNewAndApply(const CAttributePacket& packet)
+    {
+        T* pObject = new T(packet);
+        pObject->HandleAttributes(packet);
+        return pObject;
+    }
+
+    /// Registers className so the spawner builds it from its attribute packet
+    /// (constructor + HandleAttributes). className must derive from
+    /// CAttributeHandler and have a (const CAttributePacket&) constructor.
+    #define RWS_REGISTER_PACKET_CLASS(className)                               \
+        static RWS::CAutoRegisterPacketClass s_autoRegisterPacket_##className( \
+            #className, &RWS::MakeNewAndApply<className>, sizeof(className))
+
     /**
      * @def RWS_REGISTER_CLASS(className[, factory[, size]])
      * @brief Macro that registers the class with CClassFactory via static initialization.
@@ -198,9 +236,9 @@ namespace RWS
 
     /**
      * @def RWS_CLASS_INDEX(className)
-     * @brief Returns the class's index in the attribute packet (always 0 in CannonCruise).
+     * @brief Selects the class block in the attribute packet (by class name).
      */
-    #define RWS_CLASS_INDEX(className) 0
+    #define RWS_CLASS_INDEX(className) #className
 }
 
 #endif // RWS_CCLASSFACTORY_H

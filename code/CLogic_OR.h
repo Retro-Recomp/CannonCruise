@@ -39,6 +39,9 @@ public:
      */
     CLogic_OR(int numConditions = 2);
 
+    /// Packet constructor required by RWS_MAKENEWCLASS (attributes not parsed yet).
+    explicit CLogic_OR(const CAttributePacket&) : CLogic_OR(2) {}
+
     /**
      * @brief Destructor — clears condition registrations.
      */

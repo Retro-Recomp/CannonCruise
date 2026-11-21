@@ -218,7 +218,7 @@ void CPhysicsWorldBehaviour::HandleEvents(const RWS::CMsg& msg)
 {
     // Only advance physics on the physics update message ID.
     // Unrelated messages (e.g. render, input, AI) must not advance the world.
-    if (m_pPhysicsWorld && msg.Id == iMsgPhysicsUpdate)
+    if (m_pPhysicsWorld && msg.Id == RWS::iMsgPhysicsUpdate)
     {
         m_pPhysicsWorld->Update(1.0f / 60.0f);
     }

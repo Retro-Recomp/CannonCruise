@@ -1,0 +1,36 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows Win32 (${{ matrix.platform }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Quoted: a bare NULL is YAML null and became an empty value.
+        platform: ['NULL', 'D3D9']
+    steps:
+      - uses: actions/checkout@v4
+
+      # Game data (Streams/, Sound/ ...) is not in the repository, so the
+      # asset tests are disabled automatically; the rest must pass.
+      - name: Configure
+        run: >
+          cmake -S code -B build -A Win32
+          -DCANNONCRUISE_RW_PLATFORM=${{ matrix.platform }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # Hosted runners have no GPU, so D3D9 is build-only.
+      - name: Test
+        if: matrix.platform == 'NULL'
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 300

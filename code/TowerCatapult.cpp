@@ -75,13 +75,14 @@ void CTowerCatapult::HandleEvents(const RWS::CMsg &msg) {}
 // Tower the collision body so cannnonball's flight + bullet step can hit it.
 // ---------------------------------------------------------------------------
 void CTowerCatapult::SetWorldPosition(const RwV3d &pos) {
-  // Tower dimensions — 16×36×16 m (flag watchtower)
-  const RwReal halfExtents[3] = {8.0f, 18.0f, 8.0f};
+  // Box sized to the Viking_firetower model (see GetHalfExtents)
+  const RwV3d he = GetHalfExtents();
+  const RwReal halfExtents[3] = {he.x, he.y, he.z};
   if (m_pShape == nullptr) {
     m_pShape = PhysicsShape_CreateBox(halfExtents);
   }
   if (m_pRigidBody == nullptr && m_pShape != nullptr) {
-    const RwReal p[3] = {pos.x, pos.y + 18.0f, pos.z}; // place at the base-height center
+    const RwReal p[3] = {pos.x, pos.y + GetCenterOffsetY(), pos.z};
     m_pRigidBody = PhysicsBody_CreateWithShape(m_pShape, 0.0f, p, nullptr);
     if (m_pRigidBody != nullptr) {
       PhysicsBody_SetKinematic(m_pRigidBody, TRUE);

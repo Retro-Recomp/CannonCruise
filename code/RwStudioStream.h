@@ -46,10 +46,16 @@
 //     flags 0x00000000 = string value (e.g. "Audio_MenuMusic")
 //   property: [u32 size][u32 id][size-8 bytes value]
 //     size 12 = u32/float/inline-string; size 20 = 3 float (vec3)
+//     size 72 = RwMatrix (CSystemCommands id1: entity transform)
+//     other sizes = padded strings (e.g. CTowerCatapult id3 "MissionTower1Dead")
+//   Segments and properties share the [len][word][len-8 bytes] layout; the
+//   second word tells them apart (segment flags vs property id).
+#define rwstudioMAX_PROPVALUE 64
+
 struct RwStudioProperty {
     RwUInt32 id;
-    RwUInt32 size;   // total record (8 + value bytes)
-    RwUInt8 value[16];
+    RwUInt32 size;   // total record (8 + value bytes); value truncated to 64
+    RwUInt8 value[rwstudioMAX_PROPVALUE];
 };
 
 struct RwStudioBehaviour {
@@ -118,5 +124,13 @@ const RwChar *RwStudioFileGetClassName(const RwStudioFile *pFile,
 // Valid object schema after NextAsset returns 0x0704 (file-internal
 // buffer; overwritten by the next NextAsset). NULL for other types.
 const RwStudioObject *RwStudioFileGetObject(const RwStudioFile *pFile);
+
+/**
+ * @brief Raw body of the last 0x0704 object record (its attribute packet).
+ * @param ppData Receives a pointer valid until the next NextAsset/Close.
+ * @return Byte count (0 when the last chunk was not an object record).
+ */
+RwUInt32 RwStudioFileGetObjectRaw(const RwStudioFile *pFile,
+                                  const RwUInt8 **ppData);
 
 #endif // RWSTUDIOSTREAM_H

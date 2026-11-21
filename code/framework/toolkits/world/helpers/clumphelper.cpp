@@ -5,6 +5,8 @@
 // ============================================================================
 
 #include "clumphelper.h"
+#include "RwsResources.h"
+#include "attributehandler/csystemcommands.h"
 #include <cassert>
 
 namespace RWS
@@ -64,6 +66,29 @@ namespace RWS
         if (pClump)
         {
             RpClumpDestroy(pClump);
+        }
+    }
+
+    RpClump* ClumpHelper::CreateClumpFromResource(const void* pResourceData)
+    {
+        const RwsResource* pRes = static_cast<const RwsResource*>(pResourceData);
+        if (!pRes || pRes->embeddedType != rwsRESOURCE_CLUMP)
+        {
+            return 0;
+        }
+        return RpClumpStreamReadMemory(pRes->pData, pRes->size);
+    }
+
+    void ClumpHelper::HandleAttributes(RpClump* pClump, const CAttributePacket& packet)
+    {
+        if (!pClump)
+        {
+            return;
+        }
+        RwReal m[16];
+        if (CSystemCommands::ExtractMatrix(packet, m) == TRUE)
+        {
+            RpClumpPortSetMatrix(pClump, m);
         }
     }
 }

@@ -1,2 +1,0 @@
-Test project C:/Users/mnkhprre/Documents/GitHub/CannonCruise/build
-No tests were found!!!

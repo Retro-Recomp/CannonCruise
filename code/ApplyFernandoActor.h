@@ -7,6 +7,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -34,6 +36,8 @@ public:
      */
     ApplyFernandoActor(const CAttributePacket& packet);
 
+    virtual ~ApplyFernandoActor();
+
     /**
      * @brief Applies Fernando actor events.
      * @param msg Event message container.
@@ -50,7 +54,7 @@ public:
 private:
     RwBool m_bActive;         ///< Whether actor is active
     RwV3d m_vWorldPos;        ///< Actor world position
-    RwString m_sSkinName;     ///< Actor skin name
+    char m_sSkinName[256];     ///< Actor skin name
 };
 
 } // namespace RWS

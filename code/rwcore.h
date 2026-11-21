@@ -453,6 +453,9 @@ RwBool    RwPlatformKeyDown(int key);
 // 4.6r menu state machine: confirm/cancel (GLFW).
 #define RW_KEY_ESCAPE 256
 #define RW_KEY_ENTER  257
+// Debug save/load (GLFW_KEY_F5 / GLFW_KEY_F6).
+#define RW_KEY_F5     294
+#define RW_KEY_F6     295
 // 4.6q mouse look: cursor capture (GLFW_CURSOR_DISABLED) + frame delta.
 // GL3: real; NULL: FALSE.
 RwBool    RwPlatformSetMouseCapture(RwBool capture);
@@ -502,6 +505,8 @@ RwBool           RwTexDictionaryDestroy(RwTexDictionary *dict);
 RwTexDictionary* RwTexDictionarySetCurrent(RwTexDictionary *dict);
 RwTexDictionary* RwTexDictionaryGetCurrent(void);
 RwTexDictionary* RwTexDictionaryStreamRead(RwStream *stream);
+// Port: image-based dictionary (Localiza\Win\win_<lang>.txd font atlas).
+RwTexDictionary* RwTexDictionaryReadImageFile(const char *path);
 RwBool           RwStreamFindChunk(RwStream *stream, RwUInt32 type, RwUInt32 *lengthOut, RwUInt32 *versionOut);
 
 typedef void* (*RwPluginObjectConstructor)(void *object, RwInt32 offsetInObject, RwInt32 sizeInObject);

@@ -8,6 +8,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -35,6 +37,8 @@ public:
      */
     ApplyAudioStream(const CAttributePacket& packet);
 
+    virtual ~ApplyAudioStream();
+
     /**
      * @brief Applies audio stream events.
      * @param msg Event message container.
@@ -52,7 +56,7 @@ private:
     RwBool m_bLoop;                ///< Whether stream should loop
     RwReal m_fVolume;              ///< Stream volume (0.0 to 1.0)
     RwReal m_fPlaybackRate;      ///< Playback rate (1.0 = normal speed)
-    RwString m_sSourceFile;        ///< Source audio file path
+    char m_sSourceFile[256];        ///< Source audio file path
     RwUInt32 m_dwBufferSize;     ///< Audio buffer size in bytes
 };
 

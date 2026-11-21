@@ -64,6 +64,9 @@ public:
      */
     void Update(RwReal deltaTime);
 
+    /// Accumulated wave time (seconds) the tiles are currently drawn with.
+    RwReal GetWaveTime() const { return m_fWaveTime; }
+
     /**
      * @brief Renders all visible ocean surface tiles using Direct3D / RenderWare Im3D.
      */

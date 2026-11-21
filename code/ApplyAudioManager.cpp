@@ -25,7 +25,6 @@ ApplyAudioManager::ApplyAudioManager(const CAttributePacket& packet)
     // 4. Read speaker configuration from packet
     // 5. Read DSP enable flag from packet
 
-    memset(this, 0, sizeof(*this));
 
     // Read audio manager attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyAudioManager));

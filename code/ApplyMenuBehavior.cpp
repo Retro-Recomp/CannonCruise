@@ -14,7 +14,7 @@ ApplyMenuBehavior::ApplyMenuBehavior(const CAttributePacket& packet)
     : m_bPaused(FALSE),
       m_nSelectedIndex(0)
 {
-    memset(this, 0, sizeof(*this));
+    m_sMenuName[0] = '\0';
 
     // Read menu behavior attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyMenuBehavior));

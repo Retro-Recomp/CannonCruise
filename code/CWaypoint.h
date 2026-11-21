@@ -9,7 +9,8 @@
 
 #include "framework/core/eventhandler/ceventhandler.h"
 #include "framework/core/attributehandler/cattributehandler.h"
-#include "RwsUtils.h" // for RWS_MAKENEWCLASS, RWS_DECLARE_CLASS
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -42,6 +43,9 @@ public:
      * @param pos World position.
      */
     CWaypoint(RwInt8 id, const RwV3d& pos);
+
+    /// Packet constructor required by RWS_MAKENEWCLASS (attributes not parsed yet).
+    explicit CWaypoint(const CAttributePacket&) : CWaypoint(0, RwV3d{ 0.0f, 0.0f, 0.0f }) {}
 
     /**
      * @brief Destructor — clears event registrations and frees blocks.

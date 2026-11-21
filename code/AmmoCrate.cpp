@@ -12,7 +12,7 @@
 namespace RWS
 {
     // Register CAmmoCrate with RenderWare Studio reflection system
-    RWS_REGISTER_CLASS(CAmmoCrate);
+    RWS_REGISTER_PACKET_CLASS(CAmmoCrate);
 
     // ---------------------------------------------------------------------------
     // Constructor – initializes projectile ammunition bundle parameters.

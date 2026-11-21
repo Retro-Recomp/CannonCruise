@@ -8,7 +8,7 @@
 
 namespace RWS {
 RWS_REGISTER_CLASS(CFish);
-RWS_REGISTER_CLASS(CFishGreen);
+RWS_REGISTER_PACKET_CLASS(CFishGreen);
 
 RwUInt32 CFish::ms_nFishAddedToWorlds = 0;
 

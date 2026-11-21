@@ -278,9 +278,10 @@ void CMenuBehavior::Render()
     ShowText_DrawBitmapText("Enter", 158.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
     ShowText_DrawBitmapText("SELECT", 244.0f, 640.0f, 2, 0x4A, 0x28, 0x10,
                             255);
-    RenderPlatform_DrawOverlayQuad(560.0f, 636.0f, 58.0f, 30.0f, kKeyBox);
-    ShowText_DrawBitmapText("Esc", 568.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
-    ShowText_DrawBitmapText("BACK", 626.0f, 640.0f, 2, 0x4A, 0x28, 0x10, 255);
+    // Esc box covers the parchment tear at x~626 so "BACK" stays legible.
+    RenderPlatform_DrawOverlayQuad(580.0f, 636.0f, 58.0f, 30.0f, kKeyBox);
+    ShowText_DrawBitmapText("Esc", 588.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
+    ShowText_DrawBitmapText("BACK", 646.0f, 640.0f, 2, 0x4A, 0x28, 0x10, 255);
 
     RenderPlatform_EndOverlay2D();
 }

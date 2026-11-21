@@ -106,6 +106,13 @@ void RenderPlatform_SetCameraPose(const RwReal position[3],
  */
 RwBool RenderPlatform_AddClump(void *pClump);
 
+/// Draws a clump that is not in the world right now (between Begin/EndFrame),
+/// e.g. the player ship after the ocean so the water cannot paint over it.
+RwBool RenderPlatform_RenderClump(void *pClump);
+
+/// Removes a clump added with RenderPlatform_AddClump (does not destroy it).
+RwBool RenderPlatform_RemoveClump(void *pClump);
+
 /**
  * @brief World render -- called BETWEEN BeginFrame and EndFrame
  * (world->render(); NULL platform no-op).

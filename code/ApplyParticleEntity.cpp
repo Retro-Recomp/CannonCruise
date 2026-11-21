@@ -9,7 +9,8 @@
 
 #include "ApplyParticleEntity.h"
 #include "framework/core/eventhandler/ceventhandler.h"
-#include "RwsUtils.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -25,7 +26,6 @@ ApplyParticleEntity::ApplyParticleEntity(const CAttributePacket& packet)
     // 3. Read duration from packet attributes
     // 4. Initialize particle position to origin
 
-    memset(this, 0, sizeof(*this));
     m_bActive = TRUE;
 
     // Read particle type from attribute packet

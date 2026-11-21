@@ -29,11 +29,11 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
     RenderPlatform_BeginOverlay2D();
 
     // Background — night black on top (#040914), dark navy sea below the
-    // horizon (#0C1E3A). DrawOverlayQuad BGRA byte order: not 0xAABBGGRR, R=b0 G=b1 B=b2.
+    // horizon (#0C1E3A). DrawOverlayQuad takes 0xAARRGGBB.
     RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, (RwReal)W, horizonY,
-                                   0xFF140904);
+                                   0xFF040914);
     RenderPlatform_DrawOverlayQuad(0.0f, horizonY, (RwReal)W,
-                                   (RwReal)H - horizonY, 0xFF3A1E0C);
+                                   (RwReal)H - horizonY, 0xFF0C1E3A);
 
     // Parchment strip — floating sign above the sea.
     const RwReal stripW = W * 0.72f;
@@ -45,7 +45,7 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
                                         "Load_NT_001");
     } else {
         RenderPlatform_DrawOverlayQuad(stripX, stripY, stripW, stripH,
-                                       0xFF5C94B8); // parchment fallback (BGRA)
+                                       0xFFB8945C); // parchment fallback
     }
 
     // Hugo — on the sea in front of the parchment (behind the waves), drifts
@@ -103,6 +103,13 @@ void DrawLoadingScene(int frame, int frameBudget, int W, int H) {
 RwBool LoadingScreen_Play(int frames, int screenW, int screenH) {
     if (frames <= 0) {
         return TRUE;
+    }
+    // Draw in the real render-target size (the caller's 640x480 only covered
+    // the top-left part of the 1280x720 frame).
+    RwInt32 rtW = 0, rtH = 0;
+    if (RenderPlatform_GetScreenSize(&rtW, &rtH) == TRUE) {
+        screenW = rtW;
+        screenH = rtH;
     }
     // Sound — original: loading loop (Loading.wav).
     CAudioManager *pAudio = CAudioManager::GetSingletonPtr();

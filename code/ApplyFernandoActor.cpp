@@ -13,7 +13,7 @@ namespace RWS
 ApplyFernandoActor::ApplyFernandoActor(const CAttributePacket& packet)
     : m_bActive(TRUE)
 {
-    memset(this, 0, sizeof(*this));
+    m_sSkinName[0] = '\0';
 
     // Read Fernando actor attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyFernandoActor));
@@ -32,9 +32,9 @@ ApplyFernandoActor::ApplyFernandoActor(const CAttributePacket& packet)
             m_vWorldPos.x = *reinterpret_cast<const RwReal*>(
                 it->GetCommandData());
             m_vWorldPos.y = *reinterpret_cast<const RwReal*>(
-                it->GetCommandData() + sizeof(RwReal));
+                static_cast<const RwUInt8*>(it->GetCommandData()) + sizeof(RwReal));
             m_vWorldPos.z = *reinterpret_cast<const RwReal*>(
-                it->GetCommandData() + 2 * sizeof(RwReal));
+                static_cast<const RwUInt8*>(it->GetCommandData()) + 2 * sizeof(RwReal));
             break;
         case 2:
             // Skin name

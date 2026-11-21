@@ -217,7 +217,28 @@ void RenderPlatform_EndFrame(void) {
                     if (SUCCEEDED(pDev->GetBackBuffer(0, 0,
                                                       D3DBACKBUFFER_TYPE_MONO,
                                                       &pBack))) {
-                        pDev->StretchRect(pRT, nullptr, pBack, nullptr,
+                        // Keep the scene's aspect ratio when the window was
+                        // resized: letterbox into the backbuffer.
+                        D3DSURFACE_DESC bd;
+                        RECT dst = {0, 0, 0, 0};
+                        RECT *pDst = nullptr;
+                        if (SUCCEEDED(pBack->GetDesc(&bd)) && s_width > 0 && s_height > 0) {
+                            const LONG bw = (LONG)bd.Width, bh = (LONG)bd.Height;
+                            LONG w = bw, h = (LONG)((double)bw * s_height / s_width);
+                            if (h > bh) {
+                                h = bh;
+                                w = (LONG)((double)bh * s_width / s_height);
+                            }
+                            dst.left = (bw - w) / 2;
+                            dst.top = (bh - h) / 2;
+                            dst.right = dst.left + w;
+                            dst.bottom = dst.top + h;
+                            if (w != bw || h != bh) {
+                                pDev->ColorFill(pBack, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+                            }
+                            pDst = &dst;
+                        }
+                        pDev->StretchRect(pRT, nullptr, pBack, pDst,
                                           D3DTEXF_LINEAR);
                         pBack->Release();
                     }
@@ -436,6 +457,24 @@ RwBool RenderPlatform_AddClump(void *pClump) {
         return FALSE;
     }
     s_pWorld->addClump(static_cast<rw::Clump *>(pClump));
+    return TRUE;
+}
+
+RwBool RenderPlatform_RenderClump(void *pClump) {
+    if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
+        return FALSE;
+    }
+    rw::SetRenderState(rw::ZTESTENABLE, 1);
+    rw::SetRenderState(rw::ZWRITEENABLE, 1);
+    static_cast<rw::Clump *>(pClump)->render();
+    return TRUE;
+}
+
+RwBool RenderPlatform_RemoveClump(void *pClump) {
+    if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
+        return FALSE;
+    }
+    s_pWorld->removeClump(static_cast<rw::Clump *>(pClump));
     return TRUE;
 }
 
@@ -781,10 +820,27 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
                                 t->height == 0) {
                                 continue;
                             }
+                            const RwUInt8 *pRgba = t->pPixels;
+                            RwInt32 rgbaPitch = (RwInt32)t->pitch;
+                            std::vector<RwUInt8> expanded;
+                            if (t->depth == 8 && t->pPalette != nullptr) {
+                                // Palettized: expand the indices to RGBA.
+                                expanded.resize((size_t)t->width * t->height * 4);
+                                for (RwUInt32 y = 0; y < t->height; ++y) {
+                                    for (RwUInt32 x = 0; x < t->width; ++x) {
+                                        const RwUInt8 idx = t->pPixels[y * t->pitch + x];
+                                        std::memcpy(&expanded[((size_t)y * t->width + x) * 4],
+                                                    t->pPalette + idx * 4, 4);
+                                    }
+                                }
+                                pRgba = &expanded[0];
+                                rgbaPitch = (RwInt32)t->width * 4;
+                            } else if (t->depth != 32) {
+                                continue;
+                            }
                             rw::Texture *tex = CreateTextureFromRGBA(
                                 t->name, (RwInt32)t->width,
-                                (RwInt32)t->height, t->pPixels,
-                                (RwInt32)t->pitch);
+                                (RwInt32)t->height, pRgba, rgbaPitch);
                             if (tex == nullptr) {
                                 continue;
                             }

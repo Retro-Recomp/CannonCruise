@@ -17,13 +17,13 @@ ApplyProgressIndicator::ApplyProgressIndicator(const CAttributePacket& packet)
       m_progressMode(0),
       m_bVisible(TRUE)
 {
+    m_sStatusText[0] = '\0';
     // Binary constructor (FUN_00443C40) does:
     // 1. Zero-out the object
     // 2. Read progress percentage from packet attributes
     // 3. Read progress mode and visibility from packet
     // 5. Initialize status text to empty
 
-    memset(this, 0, sizeof(*this));
     m_bVisible = TRUE;
 
     // Read progress indicator attributes from packet

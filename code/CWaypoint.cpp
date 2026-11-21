@@ -11,7 +11,8 @@
 #include "CWaypoint.h"
 #include "framework/core/eventhandler/ceventhandler.h"
 #include "framework/core/attributehandler/cattributehandler.h"
-#include "RwsUtils.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {

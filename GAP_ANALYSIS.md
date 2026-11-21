@@ -1,170 +1,67 @@
-# CannonCruise — GAP Analysis
+# CannonCruise — Gap Analysis (2026-11-20)
 
-## Overview
-Gap analysis of remaining work to complete the CannonCruise game engine port. Tracks stub Apply methods, unregistered behaviors, and unclosed gaps between binary .RWS definitions and functional C++ implementations.
+What the port does today and what is still missing. Every "works" line below
+was checked by a build, a test or a headless run on 2026-11-20; anything not
+checked is marked as such. The binary-vs-source class comparison lives in
+[docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md).
 
-## Current Metrics
+## Verified state
 
-| Metric | Value | Total |
+| Area | State | Evidence |
 |---|---|---|
-| **Binary classes referenced** | 50 | 50 |
-| **Classes with .h/.cpp Apply implementations** | 40 | 50 |
-| **Classes with stub Apply only (WorldSpawn.cpp)** | 10 | 50 |
-| **Classes with full .h/.cpp + WorldSpawn registration** | 30 | 50 |
-| **ctest results** | 34/34 green | - |
-| **NULL build** | ✅ clean | - |
-| **D3D9 build** | ✅ clean | - |
+| Win32 build, NULL + D3D9 (VS 18) | ✅ 0 errors | local builds |
+| Tests | ✅ 36/36 with game data, 17/17 without (19 disabled) | `ctest` |
+| CI | 🟡 workflow added, not yet run on GitHub | `.github/workflows/build.yml` |
+| Physics world | ✅ created from the level's `CPhysicsWorldBehaviour`, Bullet steps every active frame | cannonball trajectory trace |
+| Towers | ✅ placed from `CTowerCatapult` records (CSystemCommands matrix); mission towers = those with an `id3` death event | VIKING01: 20 towers, 6 mission |
+| Cannon → tower damage | ✅ AABB check with 0.3 m contact slop after the Bullet step | `HIT` / `DESTROYED` log |
+| LEVELCOMPLETE | ✅ all mission towers down → summary panel (score, towers, accuracy) | headless run + D3D9 screenshot |
+| Levels load | ✅ all 15 playable levels + MAPMENU run without crashing | 12 s smoke run each |
 
-## Completed Apply Methods (30 of 50)
+## Open gaps (priority order)
 
-### Core Physics & Gameplay
-- `ApplyPhysicsWorld` — gravity, friction, restitution, solver iterations
-- `ApplyDifficultyLevels` — difficulty, enemy count, time limit, friendly fire
+1. **Return to map after LEVELCOMPLETE.** The summary only offers quit to
+   desktop. `main()` runs map → world → frame loop once; it has to loop over
+   those phases (with full world/physics teardown) before the player can
+   continue.
+2. **Player ship takes no damage.** HP bar is static; the level cannot be lost.
+3. **Tower stats are port values.** 150 HP, 100 damage per hit. The record's
+   `id1` (40 on VIKING, 135 on BEAVER) is probably hit points — unverified.
+4. **Attribute packets work, but most consumers are not driven.** Each
+   0x0704 record is passed to its class as a `CAttributePacket`;
+   `CAttributeCommandIterator(packet, RWS_CLASS_INDEX(C))` returns that
+   class's commands (tested on a real VIKING01 tower record). Remaining:
+   - `iMsgRunningTick` is never sent by `main.cpp`, so framework objects
+     (fish, flotsam, enemy ships …) are created but never update.
+   - Models are resolved but not drawn: `WorldSpawn_RegisterResources`
+     registers each level's embedded clumps by GUID (VIKING01: 64),
+     `CSystemCommands::ExtractClump` returns the object's first model and
+     `ClumpHelper` builds a librw clump placed at the record's matrix. These
+     clumps are not added to the RenderPlatform scene yet.
+   - Command ids in most ported `HandleAttributes` switches are guesses and
+     must be checked against the data before relying on them.
+5. **Spawning:** one entity per record (the record's first class).
+   `CAmmoCrate`, `CFishGreen`, `CDebris`, `CLifebuoy` are now built from
+   their packets (`RWS_REGISTER_PACKET_CLASS`). Still absent from the port:
+   `CMine` (header only), `CHugoActor`, `CParticleFountain`,
+   `CAnimatedEnvironment`, `CSoldierAi`, `CWaypoint` (source exists, not
+   registered). About 108 of 497 VIKING01 records are skipped.
+6. **`CShipEnemy`** is created but inert (see 4).
+7. **IDUNA / NORDIC missions** have no tower records; they still use two
+   placeholder towers derived from the world bounds.
+8. **No-op behaviours:** `CEventTrigger`, particle classes, `CCameraShaker`,
+   `CDirectorsCamera`, audio/difficulty classes in `WorldSpawn.cpp`.
+9. **Audio/language:** about 106 of 118 WAVs are never played; speech
+   language is hard-coded to `"Tyr"` (only `Speaks/Tyr/` exists on disk);
+   Turkish text (`Localiza/TR/lang_tyr.txt`) is not listed in `lang.def`.
+10. **Parity:** the original world-update wrapper passes ~1/30 s, the port
+    steps 1/60 s; unresolved.
 
-### Audio System
-- `ApplyAudioObject` — sound file, volume, pitch, loop
-- `ApplyAudioStream` — source file, volume, rate, loop, buffer size
-- `ApplyAudioManager` — master volume, reverb, speaker config, DSP
-- `ApplyAudioGlobalMixer` — master volume, reverb send, DSP level, speaker config *(new)*
+## Notes
 
-### Particle Systems
-- `ApplyParticleEntity` — particle type, duration, position
-- `ApplyParticleManager` — system type, enabled, max particles, rate
-
-### Input & UI
-- `ApplyWin32Keyboard` — key repeat delay, rate, modifier keys
-- `ApplyProgressIndicator` — progress percent, mode, text, visibility
-
-### Visual & Video
-- `ApplyFMVBehavior` — video file, start/end time, transition
-
-### Stub Classes (WorldSpawn only, no .h/.cpp)
-- `ApplyTowerCatapult` — in TowerCatapult.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyCollisionTrigger` — in Trigger.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyMenuBehavior` — in MenuBehavior.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyMissionIndicator` — in MissionIndicator.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyHealthDebris` — in HealthDebris.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyBirdSeaGull` — in Bird.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-- `ApplyFernandoActor` — in FernandoActor.cpp; Apply .h/.cpp removed from WorldSpawn to avoid RWS_MAKENEWCLASS/RWS_DECLARE_CLASS macro breakage; stub preserved in WorldSpawn.cpp
-
-## Remaining Gaps (11 stub Apply methods)
-
-### 1. ApplyAudioGlobalMixer ✅ **COMPLETE**
-- **Status**: .h/.cpp created, WorldSpawn registration updated
-- **Files**: `code/ApplyAudioGlobalMixer.h`, `code/ApplyAudioGlobalMixer.cpp`
-- **WorldSpawn**: Registration updated to use `ApplyAudioGlobalMixer` class
-- **Attributes**: master volume, reverb send, DSP level, speaker config, enable flags
-
-### 2. ApplyTowerCatapult
-- **Location**: `code/TowerCatapult.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp; real logic in TowerCatapult.cpp
-
-### 3. ApplyCollisionTrigger
-- **Location**: `code/Trigger.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp; collision-driven tower damage is P1
-
-### 4. ApplyMenuBehavior
-- **Location**: `code/MenuBehavior.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp
-
-### 5. ApplyMissionIndicator
-- **Location**: `code/MissionIndicator.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp
-
-### 5. ApplyHealthDebris
-- **Location**: `code/HealthDebris.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp
-
-### 7. ApplyBirdSeaGull
-- **Location**: `code/Bird.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp
-
-### 8. ApplyFernandoActor
-- **Location**: `code/FernandoActor.cpp`
-- **Status**: Stub Apply in WorldSpawn.cpp
-
-### 9. CEventTrigger Apply
-- **Status**: Wired in WorldSpawn.cpp + .h/.cpp created
-- **Function**: Routes input events to output events
-
-### 10. Collision-driven tower damage ✅ **COMPLETED**
-- **Status**: `CCannonball::OnHit()` now calls `CTowerCatapult::TakeDamage`; AABB check removed from `main.cpp`; Bullet contact-driven
-- **P1**: Route Bullet contacts through collision/filter path; remove hand-written AABB test
-
-### 11. Save/Load with checksum verification
-- **Status**: F5/Save F6-Load functional with checksum-verified persistence
-
-## P1: Collision-Driven Tower Damage — Parity Trace
-
-### sub_555EF0 Physics Tick Parity
-
-**Current Implementation:**
-- `main.cpp`: `CPhysicsWorld::Update(1/60)` called each simulation frame **only on `iMsgPhysicsUpdate (0x0002)` message**
-- `code/PhysicsWorld.cpp`: `CPhysicsWorldBehaviour::HandleEvents` now filters by `msg.Id == iMsgPhysicsUpdate` — unrelated messages (render, input, AI) do not advance the physics world
-- The 1/60 tick is the implemented cadence for the Bullet-driven physics step
-- Verified: ctest 34/34 green (NULL + D3D9 builds clean)
-
-**sub_555EF0 References (CC_ida.asm):**
-- physics update path: argument `0x3D088889` (~1/30s)
-- soldier tick path: argument `0x3C888889` (~1/60s)
-
-**Parity Assessment:**
-- The 1/60 tick is demonstrated equivalent for the Bullet-driven physics step
-- The separate 1/60 constant from the soldier tick path should NOT be conflated with the world-update wrapper's 1/30 argument
-- Full parity trace requires: basic block analysis of sub_555EF0, argument handling, and comparison against the implemented 1/60 tick behavior
-- Physics event filter now ensures world only steps on explicit physics update message, preventing unrelated message types from advancing the world
-
-**Gate Status:**
-- no unresolved 1/30-vs-1/60 claim; each parity claim has an ASM reference and a repeatable port-side test. Do not change the timestep based only on a constant from another event handler.
-
-**Action Items:**
-1. Trace sub_555EF0 basic blocks in CC_ida.asm
-2. Run port-side test confirming 1/60 tick stability
-3. Document finding (confirm/reject parity, document actual step cadence)
-
-## P1: Collision-Driven Tower Damage
-
-### Completed Verification Items
-1. **AABB broadphase check removed** from `main.cpp` — replaced with Bullet-driven contact detection
-2. **`CCannonball::OnHit()`** now routes to `CTowerCatapult::TakeDamage(25.0f)` via Bullet collisions
-3. **Former scripted AABB check** no longer exists in codebase
-
-### Verification Status
-- **playground_test OnHit verification**: ✅ Complete — AABB check removed, Bullet contacts replace it
-- **Bullet collision tower damage**: ✅ Complete — OnHit → TakeDamage flow verified
-- **sub_555EF0 parity trace**: 🟡 In Progress — 1/60 tick implemented and verified; ASM trace needed for full parity
-
-### Build Verification
-- **ctest: 34/34 green** (NULL + D3D9 builds clean)
-- Class coverage: 47/50 binary classes (94%)
-- Physics event filter: verified via code analysis; runtime test pending
-
-## GAP Analysis Summary
-
-### 11 Stub Apply Methods — All Now Implemented
-| Method | .h/.cpp | WorldSpawn |
-|---|---|---|
-| ApplyPhysicsWorld | ✅ | ✅ |
-| ApplyParticleEntity | ✅ | ✅ |
-| ApplyParticleManager | ✅ | ✅ |
-| ApplyWin32Keyboard | ✅ | ✅ |
-| ApplyAudioObject | ✅ | ✅ |
-| ApplyAudioStream | ✅ | ✅ |
-| ApplyProgressIndicator | ✅ | ✅ |
-| ApplyDifficultyLevels | ✅ | ✅ |
-| ApplyFMVBehavior | ✅ | ✅ |
-| ApplyAudioManager | ✅ | ✅ |
-| **ApplyAudioGlobalMixer** | **✅ NEW** | **✅ UPDATED** |
-
-### P1 Gate Status
-- **5 of 7 requirements fully complete**
-- **2 of 7 requirements partial** (known deviations documented)
-- **P1 largely satisfied** — core mechanic (Bullet → OnHit → TakeDamage) implemented;
-  remaining partial items relate to physics event filter verification and sub_555EF0 parity trace
-
-### Build Status
-- **ctest: 34/34 green** (NULL + D3D9 builds clean)
-- Class coverage: 47/50 binary classes (94%)
-
----
-*Last updated: 2026-11-19 — sub_555EF0 parity trace documentation added*
+- The RWS object-record parser now reads properties of any size and
+  recognises class-name segments by flag. Before this, long class names were
+  dropped (no physics world existed) and string/matrix properties ended the
+  record.
+- Apply classes under `code/Apply*.cpp` are not on the spawn path; the
+  loader's apply adaptors and the packet are what reach spawned objects.

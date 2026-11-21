@@ -34,8 +34,15 @@ void HUD_SetHealth(RwReal ratio);
 /** @brief Current player health ratio [0..1]. */
 RwReal HUD_GetHealth(void);
 
-/** @brief Registers a tower as destroyed (increments the counter, +500 score). */
-void HUD_RegisterTowerDestroyed(void);
+/** @brief Registers a tower as destroyed: +500 score; mission towers also
+ *         advance the "TOWERS n/total" counter. */
+void HUD_RegisterTowerDestroyed(RwBool bMissionTower = TRUE);
+
+/** @brief Sets how many towers the mission requires (shown as n/total). */
+void HUD_SetTowersTotal(RwInt32 total);
+
+/** @brief Number of towers the mission requires. */
+RwInt32 HUD_GetTowersTotal(void);
 
 /** @brief Applies a score delta, clamped to [0, INT32_MAX]. */
 void HUD_AddScore(RwInt32 amount);
@@ -49,10 +56,14 @@ RwInt32 HUD_GetTowersDestroyed(void);
 /** @brief Sets ship heading (yaw, game convention) for the compass needle. */
 void HUD_SetShipHeading(RwReal yaw);
 
-/** @brief Sets a compass blip (index 0..1): world-space bearing from ship
+/** @brief Sets a compass blip (index 0..63): world-space bearing from ship
  *         (forward = +Z of bearing vector), and whether it is still alive. */
 void HUD_SetTowerBlip(RwInt32 index, RwReal bearingX, RwReal bearingZ,
                       RwBool alive);
+
+/** @brief Mission goal marker on the compass (green; bearing from the ship).
+ *         active=FALSE hides it. */
+void HUD_SetGoalBlip(RwBool active, RwReal bearingX, RwReal bearingZ);
 
 /** @brief Triggers a brief "NO AMMO" flash on the dial. */
 void HUD_FlashNoAmmo(void);

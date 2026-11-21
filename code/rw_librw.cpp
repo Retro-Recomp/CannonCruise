@@ -39,7 +39,11 @@
 
 #include <rw.h>
 
+#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
 
 namespace
 {
@@ -115,6 +119,8 @@ namespace
         case 263: return VK_LEFT;
         case 264: return VK_DOWN;
         case 265: return VK_UP;
+        case 294: return VK_F5;
+        case 295: return VK_F6;
         default:  return key; // ASCII 'A'-'Z' / ' ' → VK equivalent
         }
     }
@@ -150,6 +156,20 @@ namespace
         RegisterClassA(&wc); // FALSE if the class is already registered — not a problem
 
         DWORD style = WS_OVERLAPPEDWINDOW;
+        // Shrink (keeping the aspect ratio) if the desktop work area is
+        // smaller than the requested client size.
+        RECT work;
+        if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &work, 0)) {
+            RECT frame = {0, 0, 0, 0};
+            AdjustWindowRect(&frame, style, FALSE);
+            const int maxW = (work.right - work.left) - (frame.right - frame.left);
+            const int maxH = (work.bottom - work.top) - (frame.bottom - frame.top);
+            if (maxW > 0 && maxH > 0 && (width > maxW || height > maxH)) {
+                const double s = (std::min)((double)maxW / width, (double)maxH / height);
+                width = (int)(width * s);
+                height = (int)(height * s);
+            }
+        }
         RECT rc = {0, 0, width, height};
         AdjustWindowRect(&rc, style, FALSE);
 
@@ -180,6 +200,12 @@ RwBool RwEngineInit(RwMemoryFunctions *memFuncs, RwUInt32 flags,
     // Geometry MESH plugin — builds meshHeader from the streamRead EXTENSION;
     // GL3 instance/render crashes without meshHeader (there was no instance in NULL).
     rw::registerMeshPlugin();
+    // HAnim: frame node IDs/hierarchies stored in models (e.g. Hugo_Ship's
+    // tag100 = left wing) and the keyframe interpolator for .anm files.
+    rw::registerHAnimPlugin();
+    // Skin: Hugo_Ship's wings (fan segments are bones) are skinned meshes;
+    // without the plugin the skin data is dropped and they stay in bind pose.
+    rw::registerSkinPlugin();
     return TRUE;
 }
 
@@ -204,7 +230,9 @@ RwBool RwEngineOpen(void) {
         return FALSE;
     }
     if (s_hwnd == nullptr) {
-        s_hwnd = CCD3DCreateWindow(640, 480, "CannonCruise");
+        // Same size as the 1280x720 scene raster (RenderPlatform_Initialize);
+        // a 640x480 window squashed the 16:9 frame (HUD and text distorted).
+        s_hwnd = CCD3DCreateWindow(1280, 720, "CannonCruise");
         if (s_hwnd == nullptr) {
             return FALSE;
         }
@@ -259,6 +287,12 @@ RwBool RwPlatformKeyDown(int key) {
                : FALSE;
 #elif defined(RW_D3D9)
     // GetAsyncKeyState — key state read independently of the message queue.
+    // GetAsyncKeyState reads the keyboard system-wide; ignore it unless our
+    // window is in front, otherwise typing in another application drives the
+    // game (e.g. Space/Enter confirming the main menu unseen).
+    if (s_hwnd == nullptr || ::GetForegroundWindow() != s_hwnd) {
+        return FALSE;
+    }
     return (GetAsyncKeyState(GLFWKeyToVK(key)) & 0x8000) ? TRUE : FALSE;
 #else
     (void)key;
@@ -506,6 +540,297 @@ RpClump *RpClumpStreamRead(RwStream *stream) {
     return reinterpret_cast<RpClump *>(rw::Clump::streamRead(&p->file));
 }
 
+// Clump from an in-memory chunk payload (after the 12-byte rwID_CLUMP
+// header), e.g. a model embedded in a Streams/*.RWS asset record.
+RpClump *RpClumpStreamReadMemory(const void *pData, RwUInt32 size) {
+    if (!pData || size == 0) {
+        return 0;
+    }
+    rw::StreamMemory mem;
+    mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
+    rw::Clump *pClump = rw::Clump::streamRead(&mem);
+    mem.close();
+    // The game's level models store texture coordinates as (v, u): e.g.
+    // Viking_Destroyer's oars index a column of their atlas that only makes
+    // sense transposed, and Hugo_Ship's hull showed the black side of its
+    // atlas. Swap them before the geometry is instanced.
+    static const RwBool s_noSwap =
+        std::getenv("CANNONCRUISE_NO_UVSWAP") != nullptr ? TRUE : FALSE;
+    if (pClump != nullptr && s_noSwap != TRUE) {
+        FORLIST(lnk, pClump->atomics) {
+            rw::Geometry *pGeo = rw::Atomic::fromClump(lnk)->geometry;
+            if (pGeo == nullptr || (pGeo->flags & rw::Geometry::NATIVE)) {
+                continue;
+            }
+            for (rw::int32 s = 0; s < pGeo->numTexCoordSets; ++s) {
+                rw::TexCoords *pTc = pGeo->texCoords[s];
+                for (rw::int32 i = 0; pTc != nullptr && i < pGeo->numVertices; ++i) {
+                    const rw::float32 t = pTc[i].u;
+                    pTc[i].u = pTc[i].v;
+                    pTc[i].v = t;
+                }
+            }
+        }
+    }
+    return reinterpret_cast<RpClump *>(pClump);
+}
+
+RwBool RpClumpDestroy(RpClump *clump) {
+    if (!clump) {
+        return FALSE;
+    }
+    reinterpret_cast<rw::Clump *>(clump)->destroy();
+    return TRUE;
+}
+
+// Port helpers working on the librw clump directly (the RwFrame shim in
+// rwstubs.cpp does not share librw's frame layout).
+RwBool RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]) {
+    if (!clump || !m) {
+        return FALSE;
+    }
+    rw::Frame *pFrame = reinterpret_cast<rw::Clump *>(clump)->getFrame();
+    if (!pFrame) {
+        return FALSE;
+    }
+    rw::Matrix mat;
+    mat.right = rw::makeV3d(m[0], m[1], m[2]);
+    mat.up = rw::makeV3d(m[4], m[5], m[6]);
+    mat.at = rw::makeV3d(m[8], m[9], m[10]);
+    mat.pos = rw::makeV3d(m[12], m[13], m[14]);
+    mat.optimize();
+    pFrame->transform(&mat, rw::COMBINEREPLACE);
+    return TRUE;
+}
+
+RwBool RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos) {
+    if (!clump || !pPos) {
+        return FALSE;
+    }
+    rw::Frame *pFrame = reinterpret_cast<rw::Clump *>(clump)->getFrame();
+    if (!pFrame) {
+        return FALSE;
+    }
+    const rw::Matrix *pLtm = pFrame->getLTM();
+    pPos->x = pLtm->pos.x;
+    pPos->y = pLtm->pos.y;
+    pPos->z = pLtm->pos.z;
+    return TRUE;
+}
+
+// Axis-aligned bounds of all atomics (morph target 0) relative to the
+// clump's root frame (i.e. the model's own space, before its placement).
+RwBool RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax) {
+    if (!clump || !pMin || !pMax) {
+        return FALSE;
+    }
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    rw::Frame *pRoot = pClump->getFrame();
+    rw::Matrix invRoot;
+    if (pRoot) {
+        rw::Matrix::invert(&invRoot, pRoot->getLTM());
+    } else {
+        invRoot.setIdentity();
+    }
+    RwBool any = FALSE;
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        rw::Geometry *pGeo = pAtomic->geometry;
+        if (!pGeo || pGeo->numMorphTargets < 1 || !pGeo->morphTargets[0].vertices) {
+            continue;
+        }
+        rw::Matrix toRoot;
+        rw::Frame *pFrame = pAtomic->getFrame();
+        if (pFrame) {
+            rw::Matrix::mult(&toRoot, pFrame->getLTM(), &invRoot);
+        } else {
+            toRoot.setIdentity();
+        }
+        const rw::V3d *pV = pGeo->morphTargets[0].vertices;
+        for (rw::int32 i = 0; i < pGeo->numVertices; ++i) {
+            rw::V3d p;
+            rw::V3d::transformPoints(&p, &pV[i], 1, &toRoot);
+            if (any == FALSE) {
+                pMin->x = pMax->x = p.x;
+                pMin->y = pMax->y = p.y;
+                pMin->z = pMax->z = p.z;
+                any = TRUE;
+            } else {
+                if (p.x < pMin->x) pMin->x = p.x;
+                if (p.y < pMin->y) pMin->y = p.y;
+                if (p.z < pMin->z) pMin->z = p.z;
+                if (p.x > pMax->x) pMax->x = p.x;
+                if (p.y > pMax->y) pMax->y = p.y;
+                if (p.z > pMax->z) pMax->z = p.z;
+            }
+        }
+    }
+    return any;
+}
+
+RwInt32 RpClumpPortCountAtomics(RpClump *clump) {
+    if (!clump) {
+        return 0;
+    }
+    return reinterpret_cast<rw::Clump *>(clump)->countAtomics();
+}
+
+// ---------------------------------------------------------------------------
+// Clump animator: plays HAnim clips (.anm) on sub-trees of a rigid model's
+// hierarchy. A clip covers the node with the given ID (the "_tagNNN" in its
+// file name) and the nodes that follow it in hierarchy order; its pose at a
+// time t is written to those nodes' frames as their local matrices.
+// CannonCruise drives most clips as poses (time = control value, e.g. the
+// rudder angle), not as looping playback.
+// ---------------------------------------------------------------------------
+namespace {
+
+struct PortClip {
+    rw::Animation *anim;
+    rw::AnimInterpolator *interp;
+    rw::int32 firstNode;
+    rw::int32 numNodes;
+};
+
+struct PortAnimator {
+    rw::Clump *clump;
+    rw::HAnimHierarchy *hier;
+    rw::Atomic *skinAtomic; // first skinned atomic (NULL: rigid model)
+    std::vector<PortClip> clips;
+};
+
+} // namespace
+
+void RpClumpPortAnimatorUpdate(void *animator);
+
+void *RpClumpPortAnimatorCreate(RpClump *clump) {
+    if (!clump) {
+        return 0;
+    }
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    rw::HAnimHierarchy *pHier = rw::HAnimHierarchy::get(pClump);
+    if (!pHier) {
+        return 0;
+    }
+    pHier->attach(); // node -> frame links
+    PortAnimator *pAnimator = new PortAnimator();
+    pAnimator->clump = pClump;
+    pAnimator->hier = pHier;
+    pAnimator->skinAtomic = 0;
+    // Skinned atomics (e.g. the fan wings) take their bone matrices from the
+    // hierarchy, so bind it (RpSkinAtomicSetHAnimHierarchy).
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        if (pAtomic->geometry && rw::Skin::get(pAtomic->geometry)) {
+            rw::Skin::setHierarchy(pAtomic, pHier);
+            if (!pAnimator->skinAtomic) {
+                pAnimator->skinAtomic = pAtomic;
+            }
+        }
+    }
+    RpClumpPortAnimatorUpdate(pAnimator);
+    return pAnimator;
+}
+
+// Recomputes the hierarchy's bone matrices from the node frames (their LTMs
+// in the skinned atomic's space, as LOCALSPACEMATRICES expects). Call after
+// the poses of a frame are set.
+void RpClumpPortAnimatorUpdate(void *animator) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || !pAnimator->skinAtomic || !pAnimator->hier->matrices) {
+        return;
+    }
+    rw::HAnimHierarchy *pHier = pAnimator->hier;
+    rw::Matrix invSpace;
+    rw::Frame *pSpace = pAnimator->skinAtomic->getFrame();
+    if (pSpace) {
+        rw::Matrix::invert(&invSpace, pSpace->getLTM());
+    } else {
+        invSpace.setIdentity();
+    }
+    for (rw::int32 i = 0; i < pHier->numNodes; ++i) {
+        rw::Frame *pFrame = pHier->nodeInfo[i].frame;
+        if (pFrame) {
+            rw::Matrix::mult(&pHier->matrices[i], pFrame->getLTM(), &invSpace);
+        }
+    }
+}
+
+RwInt32 RpClumpPortAnimatorAddClip(void *animator, const void *pData,
+                                   RwUInt32 size, RwInt32 nodeId) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || !pData || size == 0) {
+        return -1;
+    }
+    const rw::int32 first = pAnimator->hier->getIndex(nodeId);
+    if (first < 0) {
+        return -1;
+    }
+    rw::StreamMemory mem;
+    mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
+    rw::Animation *pAnim = rw::Animation::streamRead(&mem);
+    mem.close();
+    if (!pAnim || !pAnim->interpInfo) {
+        return -1;
+    }
+    const rw::int32 n = pAnim->getNumNodes();
+    if (n <= 0 || first + n > pAnimator->hier->numNodes) {
+        pAnim->destroy();
+        return -1;
+    }
+    rw::AnimInterpolator *pInterp = rw::AnimInterpolator::create(
+        n, pAnim->interpInfo->interpKeyFrameSize);
+    if (!pInterp) {
+        pAnim->destroy();
+        return -1;
+    }
+    PortClip clip = {pAnim, pInterp, first, n};
+    pAnimator->clips.push_back(clip);
+    return (RwInt32)pAnimator->clips.size() - 1;
+}
+
+RwReal RpClumpPortAnimatorClipDuration(void *animator, RwInt32 clip) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || clip < 0 || clip >= (RwInt32)pAnimator->clips.size()) {
+        return 0.0f;
+    }
+    return pAnimator->clips[(size_t)clip].anim->duration;
+}
+
+RwBool RpClumpPortAnimatorSetPose(void *animator, RwInt32 clip, RwReal t) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || clip < 0 || clip >= (RwInt32)pAnimator->clips.size()) {
+        return FALSE;
+    }
+    PortClip &c = pAnimator->clips[(size_t)clip];
+    c.interp->setCurrentAnim(c.anim); // rewinds to 0
+    if (t > 0.0f) {
+        c.interp->addTime(t);
+    }
+    for (rw::int32 i = 0; i < c.numNodes; ++i) {
+        rw::Frame *pFrame = pAnimator->hier->nodeInfo[c.firstNode + i].frame;
+        if (!pFrame) {
+            continue;
+        }
+        rw::Matrix local;
+        c.interp->applyCB(&local, c.interp->getInterpFrame(i));
+        pFrame->transform(&local, rw::COMBINEREPLACE);
+    }
+    return TRUE;
+}
+
+void RpClumpPortAnimatorDestroy(void *animator) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator) {
+        return;
+    }
+    for (size_t i = 0; i < pAnimator->clips.size(); ++i) {
+        pAnimator->clips[i].interp->destroy();
+        pAnimator->clips[i].anim->destroy();
+    }
+    delete pAnimator;
+}
+
 RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {
     if (!stream) {
         return 0;
@@ -529,4 +854,117 @@ RwTexDictionary *RwTexDictionaryStreamRead(RwStream *stream) {
     }
     return reinterpret_cast<RwTexDictionary *>(
         rw::TexDictionary::streamRead(&p->file));
+}
+
+// ---------------------------------------------------------------------------
+// Image texture dictionary (Localiza\Win\win_<lang>.txd, the font atlas).
+// Not a native txd, so rw::TexDictionary::streamRead fails on it:
+//   PITEXDICTIONARY (0x23) header, u32 0x00010001, u32 1,
+//   IMAGE (0x18) { STRUCT { width, height, depth, stride } pixels },
+//   TEXTURE (0x06) { STRUCT flags, STRING name ("brady48.png"), ... }.
+// Builds a dictionary holding one texture made from the image.
+// ---------------------------------------------------------------------------
+RwTexDictionary *RwTexDictionaryReadImageFile(const char *path) {
+    if (!path) {
+        return 0;
+    }
+    FILE *pFile = std::fopen(path, "rb");
+    if (!pFile) {
+        return 0;
+    }
+    std::vector<RwUInt8> buf;
+    std::fseek(pFile, 0, SEEK_END);
+    const long fileSize = std::ftell(pFile);
+    std::fseek(pFile, 0, SEEK_SET);
+    if (fileSize > 0) {
+        buf.resize((size_t)fileSize);
+        if (std::fread(&buf[0], 1, buf.size(), pFile) != buf.size()) {
+            buf.clear();
+        }
+    }
+    std::fclose(pFile);
+    const RwUInt32 n = (RwUInt32)buf.size();
+    RwUInt32 u[3];
+    if (n < 12) {
+        return 0;
+    }
+    std::memcpy(u, &buf[0], 4);
+    // 0x23 = rwID_PITEXDICTIONARY (platform-independent dictionary of
+    // images), not the native rw::ID_TEXDICTIONARY (0x16).
+    const RwUInt32 kPiTexDictionary = 0x23;
+    if (u[0] != kPiTexDictionary) {
+        return 0;
+    }
+    // Find IMAGE chunk and its STRUCT (4-byte aligned scan after the header).
+    RwUInt32 imgOff = 0;
+    for (RwUInt32 off = 12; off + 40 <= n; off += 4) {
+        std::memcpy(u, &buf[off], 12);
+        if (u[0] == rw::ID_IMAGE && u[1] <= n - off - 12) {
+            RwUInt32 s[2];
+            std::memcpy(s, &buf[off + 12], 8);
+            if (s[0] == rw::ID_STRUCT && s[1] == 16) {
+                imgOff = off;
+                break;
+            }
+        }
+    }
+    if (imgOff == 0) {
+        return 0;
+    }
+    RwInt32 info[4]; // width, height, depth, stride
+    std::memcpy(info, &buf[imgOff + 24], sizeof(info));
+    const RwInt32 w = info[0], h = info[1], depth = info[2], stride = info[3];
+    const RwUInt32 pixOff = imgOff + 40;
+    if (w <= 0 || h <= 0 || depth != 32 || stride < w * 4 ||
+        (unsigned long long)stride * (unsigned long long)h > (unsigned long long)(n - pixOff)) {
+        return 0;
+    }
+    // Texture name: first STRING chunk after the pixels.
+    char name[32] = "win_font";
+    for (RwUInt32 off = pixOff + (RwUInt32)(stride * h); off + 12 <= n;
+         off += 4) {
+        std::memcpy(u, &buf[off], 12);
+        if (u[0] == rw::ID_STRING && u[1] > 0 && u[1] <= n - off - 12) {
+            const char *pStr = reinterpret_cast<const char *>(&buf[off + 12]);
+            RwUInt32 i = 0;
+            for (; i + 1 < sizeof(name) && i < u[1] && pStr[i] != '\0'; ++i) {
+                name[i] = pStr[i];
+            }
+            name[i] = '\0';
+            char *pDot = std::strrchr(name, '.');
+            if (pDot) {
+                *pDot = '\0'; // "brady48.png" -> "brady48"
+            }
+            break;
+        }
+    }
+    rw::Image *pImg = rw::Image::create(w, h, 32);
+    if (!pImg) {
+        return 0;
+    }
+    pImg->allocate();
+    for (RwInt32 y = 0; y < h; ++y) {
+        std::memcpy(pImg->pixels + (size_t)y * (size_t)pImg->stride,
+                    &buf[pixOff + (RwUInt32)(y * stride)], (size_t)w * 4u);
+    }
+    // The NULL (headless) driver cannot pick a raster format; keep the
+    // texture by name without a raster there.
+    rw::Raster *pRaster = rw::Raster::createFromImage(pImg);
+    pImg->destroy();
+    rw::Texture *pTex = rw::Texture::create(pRaster);
+    if (!pTex) {
+        if (pRaster) {
+            pRaster->destroy();
+        }
+        return 0;
+    }
+    std::strncpy(pTex->name, name, sizeof(pTex->name) - 1);
+    pTex->name[sizeof(pTex->name) - 1] = '\0';
+    rw::TexDictionary *pDict = rw::TexDictionary::create();
+    if (!pDict) {
+        pTex->destroy();
+        return 0;
+    }
+    pDict->add(pTex);
+    return reinterpret_cast<RwTexDictionary *>(pDict);
 }

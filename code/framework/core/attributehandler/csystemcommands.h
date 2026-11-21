@@ -100,7 +100,20 @@ namespace RWS
          * @param packet Attribute packet to parse.
          * @return const void* — Clump data (stub in CannonCruise, always nullptr).
          */
-        static const void* ExtractClump(const class CAttributePacket& packet) { return 0; }
+        /**
+         * @brief First model (embedded clump resource) referenced by the
+         *        packet's CSystemCommands command 0 GUIDs.
+         * @return const RwsResource* (see RwsResources.h) or NULL when the
+         *         object has no model registered for the current level.
+         */
+        static const void* ExtractClump(const class CAttributePacket& packet);
+        /**
+         * @brief Entity transform (CSystemCommands command 1: RwMatrix,
+         *        right/up/at/pos as 4x4 floats).
+         * @return TRUE if the packet carries one.
+         */
+        static RwBool ExtractMatrix(const class CAttributePacket& packet,
+                                    RwReal outMatrix[16]);
 
         /**
          * @brief Extracts the RpClump pointer from the message.

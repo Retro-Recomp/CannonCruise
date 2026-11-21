@@ -16,7 +16,6 @@ ApplyCollisionTrigger::ApplyCollisionTrigger(const CAttributePacket& packet)
       m_fTriggerRadius(5.0f)
 {
     // Binary constructor initializes default collision trigger settings
-    memset(this, 0, sizeof(*this));
 
     // Read collision trigger attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyCollisionTrigger));

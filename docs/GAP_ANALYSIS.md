@@ -1,4 +1,4 @@
-# Gap Analysis — Binary (.asm) vs Ported Source (2026-11-19)
+# Gap Analysis — Binary (.asm) vs Ported Source (2026-11-19, feature table updated 2026-11-20)
 
 Comparison of the disassembled `CannonCruise.exe` (IDA `CC_ida.asm` +
 Ghidra `CC.asm`) against the ported C++ source in `code/`.
@@ -72,11 +72,11 @@ audio, `CParticleEmitter`/`CParticleBank` for particles) — the gap is the
 
 | Feature | Status |
 |---|---|
-| Save/Load (Slot0) | `CSaveGameManager` wired; F5/Save F6-Load controls added; data includes level-unlocked bitflags, high score, coins; checksum-verified |
-| LEVELCOMPLETE screen | wired (both towers destroyed → automatic `GAMESTATE_LEVELCOMPLETE` + `AfterGameMenuBehavior::ShowSummary`) |
+| Save/Load (Slot0) | debug only: F5 writes score + checksum (other fields constant); F6 prints the file without applying it |
+| LEVELCOMPLETE screen | wired 2026-11-20: all mission towers (from level data) destroyed → summary panel; no return to map yet |
 | Particles | `CParticleEmitter`/`CParticleBank`/`CParticleScript` exist; behavior stub |
 | Audio | `CAudioManager`/`CAudioStreamEntity`/`BinkPlayer` exist; behavior stubs |
-| Event triggers | `CTrigger` (real) exists; `CEventTrigger` behavior Apply wired |
+| Event triggers | `CTrigger` exists but registers a NULL factory; `CEventTrigger` is a no-op stub |
 | World features | mine/waypoint/thunder/animated-environment classes missing |
 | Logic | `CLogic_OR` missing (OR-combined trigger logic) |
 

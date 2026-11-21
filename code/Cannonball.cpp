@@ -139,46 +139,19 @@ void CCannonball::Update(RwReal deltaTime)
 void CCannonball::OnHit(void* pTarget, RwUInt32 hitType)
 {
     CAudioManager* pAudio = CAudioManager::GetSingletonPtr();
-
-    // --- Tower damage via collision (P1: collision-driven instead of scripted AABB) ---
-    if (pTarget != NULL)
+    if (pAudio)
     {
-        // Check if the hit target is a tower entity
-        // The binary routes Hit messages to tower TakeDamage through the
-        // collision filter; we simply forward the damage here.
-        CTowerCatapult *pTower = static_cast<CTowerCatapult *>(pTarget);
-        if (pTower != NULL)
+        if (hitType == 0)
         {
-            // Standard tower damage: 25 HP per direct hit
-            pTower->TakeDamage(25.0f);
-
-            // Audio cue for tower hit
-            if (pAudio)
-            {
-                if (hitType == 0) pAudio->PlaySound("Audio_CannonHit");
-                else if (hitType == 1) pAudio->PlaySound("Audio_WaterHit");
-                else pAudio->PlaySound("Audio_StaticHit");
-            }
+            pAudio->PlaySound("Audio_CannonHit");
+        }
+        else if (hitType == 1)
+        {
+            pAudio->PlaySound("Audio_WaterHit");
         }
         else
         {
-            // No tower hit — play the normal hit sound for other surfaces
-            if (pAudio)
-            {
-                if (hitType == 0) pAudio->PlaySound("Audio_CannonHit");
-                else if (hitType == 1) pAudio->PlaySound("Audio_WaterHit");
-                else pAudio->PlaySound("Audio_StaticHit");
-            }
-        }
-    }
-    else
-    {
-        // pTarget NULL: play default hit sound (should not normally occur)
-        if (pAudio)
-        {
-            if (hitType == 0) pAudio->PlaySound("Audio_CannonHit");
-            else if (hitType == 1) pAudio->PlaySound("Audio_WaterHit");
-            else pAudio->PlaySound("Audio_StaticHit");
+            pAudio->PlaySound("Audio_StaticHit");
         }
     }
 

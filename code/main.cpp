@@ -59,14 +59,17 @@ static void ClampCameraToMap(RwReal camPos[3]) {
 #include "StaticCollisionData.h"
 #include "WorldGeometry.h"
 #include "WorldSpawn.h"
+#include "RwsResources.h"
 #include "LocalizationManager.h"
 #include "BinkPlayer.h"  // binkw32 player - .bik playback (sub_45F350/45F270)
+#include "LevelScript.h"
 #include "LoadingScreen.h" // Phase 4.6ab � LOADING overlay (GLOBAL art)
 #include "rwcore.h"
 #include "AudioManager.h"
 #include "SpeakManager.h"
 #include "PlayerShip.h"   // Phase 4.6s -- placeholder ship + chase camera
 #include "HUD.h"         // Sprint 2 � minimal HUD overlay
+#include "SaveGameManager.h"
 
 #include <cmath>
 #include <cstdio>
@@ -324,6 +327,45 @@ static void RenderPauseOverlay(RwInt32 selection) {
     RenderPlatform_EndOverlay2D();
 }
 
+// LEVELCOMPLETE summary: dim backdrop + parchment panel with the mission
+// result. Same visual language as the pause overlay.
+static void RenderLevelCompleteOverlay(RwInt32 score, RwInt32 towersDown,
+                                       RwInt32 towersTotal, RwInt32 shots,
+                                       RwInt32 hits) {
+    const RwReal kScreenW = 1280.0f, kScreenH = 720.0f;
+    RenderPlatform_BeginOverlay2D();
+    RenderPlatform_DrawOverlayQuad(0.0f, 0.0f, kScreenW, kScreenH,
+                                   0x90000000u);
+    const RwReal pw = 480.0f, ph = 300.0f;
+    const RwReal px = (kScreenW - pw) * 0.5f;
+    const RwReal py = (kScreenH - ph) * 0.5f - 20.0f;
+    RenderPlatform_DrawOverlayQuad(px - 5, py - 5, pw + 10, ph + 10,
+                                   0xFF1A0F08u);
+    RenderPlatform_DrawOverlayQuad(px, py, pw, ph, 0xFFC7A05Eu);
+    const char *title = "LEVEL COMPLETE";
+    const RwReal titleW = (RwReal)std::strlen(title) * 6.0f * 3.0f;
+    ShowText_DrawBitmapText(title, px + (pw - titleW) * 0.5f, py + 22.0f, 3,
+                            0x4A, 0x28, 0x10, 0xFF);
+    const RwInt32 accuracy = shots > 0 ? (hits * 100) / shots : 0;
+    char line[64];
+    const RwReal lx = px + 70.0f;
+    std::snprintf(line, sizeof(line), "SCORE      %d", score);
+    ShowText_DrawBitmapText(line, lx, py + 100.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    std::snprintf(line, sizeof(line), "TOWERS     %d/%d", towersDown,
+                  towersTotal);
+    ShowText_DrawBitmapText(line, lx, py + 140.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    std::snprintf(line, sizeof(line), "ACCURACY   %d%% (%d/%d)", accuracy,
+                  hits, shots);
+    ShowText_DrawBitmapText(line, lx, py + 180.0f, 2, 0x4A, 0x28, 0x10, 0xFF);
+    ShowText_DrawBitmapText("ENTER - QUIT TO DESKTOP", px + 110.0f,
+                            py + ph - 32.0f, 1, 0x6A, 0x4A, 0x28, 0xFF);
+    RenderPlatform_EndOverlay2D();
+}
+
+// Shot statistics for the LEVELCOMPLETE summary.
+static RwInt32 s_shotsFired = 0;
+static RwInt32 s_shotsHit = 0;
+
 int main(int argc, char **argv) {
     // Diagnostics: stdout UNBUFFERED -- stdio buffer flushed only on exit;
     // otherwise last output was lost on crash (e.g. 0xC0000005); needed to
@@ -428,6 +470,50 @@ int main(int argc, char **argv) {
     COcean *pOcean = nullptr; // quit-cleanup notification (setup below)
     // Sprint 1 -- test towers for the player's cannon + cannonball records
     std::vector<CTowerCatapult *> s_towers;
+    std::vector<RwBool> s_towerIsMission; // parallel to s_towers
+    std::vector<RpClump *> s_towerClumps;  // visible model (NULL: none)
+    std::vector<const void *> s_towerDamaged; // RwsResource* "_Damaged"
+    std::vector<std::vector<RwReal> > s_towerMatrices; // record transforms
+    RpClump *s_pShipClump = nullptr;       // Hugo_Ship model (NULL: placeholder)
+    // CShipEnemy ships: sail between their start point and their CWaypoint
+    // (ping-pong), take cannonball hits and sink.
+    struct EnemyShipRuntime {
+        RpClump *clump;
+        void *animator;          // paddle/rudder clips (NULL: none)
+        RwInt32 clipPaddleL, clipPaddleR, clipRudder;
+        RwReal scale;            // record matrix scale
+        RwReal x, y, z, yaw;     // current pose (y = last wave height)
+        RwReal homeX, homeZ;     // start point
+        RwBool hasWaypoint;
+        RwReal wpX, wpZ;
+        RwBool toWaypoint;       // current leg
+        RwReal hp;
+        RwReal sinkTime;         // > 0 while sinking
+        RwBool gone;             // sunk below the surface: no longer drawn
+        RwChar spawnEvent[64];   // hidden until this script event ("" = at start)
+        RwChar deathEvent[64];   // script event sent when sunk
+    };
+    std::vector<EnemyShipRuntime> s_enemies;
+    // An enemy takes part once its spawn event (if any) has been sent.
+    auto enemyPresent = [](const EnemyShipRuntime &e) -> RwBool {
+        return (e.gone != TRUE &&
+                (e.spawnEvent[0] == 0 || LevelScript_WasSent(e.spawnEvent) == TRUE))
+                   ? TRUE : FALSE;
+    };
+    // CFishGreen collectibles (tutorial fishing; +health, fish counter).
+    struct FishRuntime {
+        RpClump *clump;
+        RwReal x, z;
+        RwChar spawnEvent[64];
+        RwChar pickupEvent[64];
+        RwBool collected;
+    };
+    std::vector<FishRuntime> s_fishes;
+    RwInt32 s_enemiesSunk = 0;
+    // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
+    void *s_pShipAnimator = nullptr;
+    RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
+            s_shipClipWheel = -1, s_shipClipGun = -1;
     std::vector<CCannonball *> s_cannonballs;
 
     // 4.6r -- MAINMENU menu phase (entry chain: GLOBAL load -> FMV
@@ -573,7 +659,10 @@ int main(int argc, char **argv) {
                             0.0f, 0.0f, (RwReal)kScreenW, (RwReal)kScreenH,
                             "FMV");
                         RenderPlatform_EndOverlay2D();
-                        if (pShotPath != nullptr && fmvShown == 0) {
+                        // Frame 30 (~1 s): the first frames can still show
+                        // stale render-target memory before the video texture
+                        // is drawn.
+                        if (pShotPath != nullptr && fmvShown == 30) {
                             RenderPlatform_RequestScreenshot(pShotPath);
                         }
                         RenderPlatform_EndFrame();
@@ -1166,8 +1255,9 @@ int main(int argc, char **argv) {
     RwReal camYaw = 0.0f;   // rad -- mouse/arrow key pitch/yaw
     RwReal camPitch = 0.0f;
     RwReal camSpan = 400.0f; // world scale -- freecam speed base
-    const RwReal kFollowCameraDistance = 36.0f;
-    const RwReal kFollowCameraHeight = 18.0f;
+    // Sized for the real Hugo_Ship (about 4.6 m long, 5.8 m across the wings).
+    const RwReal kFollowCameraDistance = 10.0f;
+    const RwReal kFollowCameraHeight = 4.5f;
     if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
         const char *bgmTrack = "BeaverM";
         if (pWorldPath != nullptr) {
@@ -1328,6 +1418,20 @@ int main(int argc, char **argv) {
                 const RwReal span = (dx > dz) ? dx : dz;
                 RwV3d shipPos = {cx + span * 0.04f, 0.0f, cz + span * 0.42f};
                 RwReal shipYaw = std::atan2(cx - shipPos.x, cz - shipPos.z);
+                // Original start transform from the level's CShipPlayer
+                // record (CSystemCommands matrix): position + heading (at).
+                const WorldSpawnPlayerShip *pDataShip = WorldSpawn_GetPlayerShip();
+                if (pDataShip != nullptr && pDataShip->valid == TRUE) {
+                    shipPos.x = pDataShip->matrix[12];
+                    shipPos.y = 0.0f;
+                    shipPos.z = pDataShip->matrix[14];
+                    shipYaw = std::atan2(pDataShip->matrix[8],
+                                         pDataShip->matrix[10]);
+                    std::printf("CannonCruise: player start from level data "
+                                "(%.1f, %.1f) yaw=%.2f\n",
+                                (double)shipPos.x, (double)shipPos.z,
+                                (double)shipYaw);
+                }
                 const char *shipEnv = std::getenv("CANNONCRUISE_SHIP");
                 if (shipEnv != nullptr) {
                     float sx = 0.0f, sy = 0.0f, sz = 0.0f, syaw = 0.0f;
@@ -1340,6 +1444,44 @@ int main(int argc, char **argv) {
                     }
                 }
                 PlayerShip_Spawn(&shipPos, shipYaw);
+                // Real ship model (Hugo_Ship) from the level; the hand-built
+                // placeholder is only drawn when the level has none.
+                if (pDataShip != nullptr && pDataShip->pModel != nullptr &&
+                    s_pShipClump == nullptr) {
+                    const RwsResource *pRes =
+                        static_cast<const RwsResource *>(pDataShip->pModel);
+                    s_pShipClump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                    // Not added to the world: drawn explicitly after the
+                    // ocean each frame (RenderPlatform_RenderClump).
+                    if (s_pShipClump != nullptr) {
+                        std::printf("CannonCruise: player ship model %s "
+                                    "(%d atomics)\n", pRes->name,
+                                    (int)RpClumpPortCountAtomics(s_pShipClump));
+                        s_pShipAnimator = RpClumpPortAnimatorCreate(s_pShipClump);
+                        for (RwUInt32 ci = 0;
+                             s_pShipAnimator != nullptr && ci < pDataShip->clipCount; ++ci) {
+                            const RwsResource *pAnim = static_cast<const RwsResource *>(
+                                pDataShip->clips[ci].pAnim);
+                            const RwInt32 node = pDataShip->clips[ci].nodeId;
+                            const RwInt32 idx = RpClumpPortAnimatorAddClip(
+                                s_pShipAnimator, pAnim->pData, pAnim->size, node);
+                            // Node tags of Hugo_Ship: 100/200 wings, 300 wheel,
+                            // 400 rudder, 500 gun base (+600 barrel).
+                            if (node == 100) s_shipClipWingL = idx;
+                            else if (node == 200) s_shipClipWingR = idx;
+                            else if (node == 300) s_shipClipWheel = idx;
+                            else if (node == 400) s_shipClipRudder = idx;
+                            else if (node == 500) s_shipClipGun = idx;
+                            std::printf("  clip %s -> node %d: %s\n", pAnim->name,
+                                        (int)node, idx >= 0 ? "ok" : "FAILED");
+                        }
+                        RwV3d bmin, bmax;
+                        if (RpClumpPortGetLocalBounds(s_pShipClump, &bmin, &bmax) == TRUE) {
+                            std::printf("  ship bounds x[%.2f..%.2f] y[%.2f..%.2f] z[%.2f..%.2f]\n",
+                                        bmin.x, bmax.x, bmin.y, bmax.y, bmin.z, bmax.z);
+                        }
+                    }
+                }
                 PlayerShipState spawnedShip;
                 if (PlayerShip_GetState(&spawnedShip) == TRUE) {
                     shipPos = spawnedShip.pos;
@@ -1354,10 +1496,10 @@ int main(int argc, char **argv) {
                     camPos[2] =
                         shipPos.z + std::cos(ang) * kFollowCameraDistance;
                     camLook[0] =
-                        shipPos.x + std::sin(shipYaw) * 6.0f;
+                        shipPos.x + std::sin(shipYaw) * 2.0f;
                     camLook[1] = shipPos.y + 1.5f;
                     camLook[2] =
-                        shipPos.z + std::cos(shipYaw) * 6.0f;
+                        shipPos.z + std::cos(shipYaw) * 2.0f;
                     ClampCameraToMap(camPos);
                     RenderPlatform_SetCameraPose(camPos, camLook);
                 }
@@ -1365,11 +1507,146 @@ int main(int argc, char **argv) {
                             "(%.1f, %.1f, %.1f) yaw=%.2f\n",
                             (double)shipPos.x, (double)shipPos.y,
                             (double)shipPos.z, (double)shipYaw);
-                // Sprint 1 -- spawn towers exercising the Bullet functionality:
-                // tests getting hit by a rising "catapult tower" candidate.
-                // Toward the Vatican bay side: at the blue island entrance two
-                // castle towers are located.
+                // Towers: placed from the level's CTowerCatapult records
+                // (CSystemCommands matrix). Towers carrying a mission death
+                // event (id3 "MissionTowerNDead") are the mission targets; if a
+                // level has towers but none carry an event, all of them count.
+                const WorldSpawnTower *pDataTowers = nullptr;
+                const RwUInt32 dataTowerCount = WorldSpawn_GetTowers(&pDataTowers);
+                RwInt32 missionTowerCount = 0;
+                for (RwUInt32 ti = 0; ti < dataTowerCount; ++ti) {
+                    if (pDataTowers[ti].missionEvent[0] != '\0') {
+                        ++missionTowerCount;
+                    }
+                }
+                for (RwUInt32 ti = 0; ti < dataTowerCount; ++ti) {
+                    const WorldSpawnTower &dt = pDataTowers[ti];
+                    CTowerCatapult *pT = new CTowerCatapult();
+                    pT->SetWorldPosition(dt.pos);
+                    s_towers.push_back(pT);
+                    // Visible tower model at the record's transform.
+                    RpClump *pTowerClump = nullptr;
+                    if (dt.pModel != nullptr) {
+                        const RwsResource *pRes =
+                            static_cast<const RwsResource *>(dt.pModel);
+                        pTowerClump = RpClumpStreamReadMemory(pRes->pData,
+                                                              pRes->size);
+                        if (pTowerClump != nullptr) {
+                            RpClumpPortSetMatrix(pTowerClump, dt.matrix);
+                            RenderPlatform_AddClump(pTowerClump);
+                        }
+                    }
+                    s_towerClumps.push_back(pTowerClump);
+                    s_towerDamaged.push_back(dt.pDamaged);
+                    s_towerMatrices.push_back(std::vector<RwReal>(dt.matrix, dt.matrix + 16));
+                    const RwBool bMission =
+                        (missionTowerCount == 0 || dt.missionEvent[0] != '\0')
+                            ? TRUE : FALSE;
+                    s_towerIsMission.push_back(bMission);
+                    std::printf("CannonCruise: tower #%u at (%.1f,%.1f,%.1f)%s %s\n",
+                                ti, dt.pos.x, dt.pos.y, dt.pos.z,
+                                bMission == TRUE ? " [mission]" : "",
+                                dt.missionEvent);
+                }
+                if (dataTowerCount > 0) {
+                    RWS::HUD_SetTowersTotal(missionTowerCount > 0
+                                                ? missionTowerCount
+                                                : (RwInt32)dataTowerCount);
+                }
+                // Enemy ships (CShipEnemy records): their own model at the
+                // record's transform. They are drawn after the ocean like the
+                // player ship and ride the waves; AI/sailing is not ported yet.
                 {
+                    const WorldSpawnEnemyShip *pEnemies = nullptr;
+                    const RwUInt32 enemyCount = WorldSpawn_GetEnemyShips(&pEnemies);
+                    RwUInt32 shown = 0, routed = 0;
+                    for (RwUInt32 ei = 0; ei < enemyCount; ++ei) {
+                        const RwsResource *pRes =
+                            static_cast<const RwsResource *>(pEnemies[ei].pModel);
+                        if (pRes == nullptr) {
+                            continue;
+                        }
+                        RpClump *pEnemy = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                        if (pEnemy == nullptr) {
+                            continue;
+                        }
+                        const WorldSpawnEnemyShip &es = pEnemies[ei];
+                        RpClumpPortSetMatrix(pEnemy, es.matrix);
+                        EnemyShipRuntime er;
+                        std::memset(&er, 0, sizeof(er));
+                        er.clump = pEnemy;
+                        er.clipPaddleL = er.clipPaddleR = er.clipRudder = -1;
+                        er.scale = std::sqrt(es.matrix[0] * es.matrix[0] +
+                                             es.matrix[1] * es.matrix[1] +
+                                             es.matrix[2] * es.matrix[2]);
+                        if (er.scale <= 0.0f) er.scale = 1.0f;
+                        er.x = er.homeX = es.matrix[12];
+                        er.y = es.matrix[13];
+                        er.z = er.homeZ = es.matrix[14];
+                        // Forward = matrix "at" row (same convention as the player).
+                        er.yaw = std::atan2(es.matrix[8], es.matrix[10]);
+                        er.hasWaypoint = es.hasWaypoint;
+                        er.wpX = es.waypoint[0];
+                        er.wpZ = es.waypoint[2];
+                        er.toWaypoint = TRUE;
+                        er.hp = 150.0f; // two 100-damage hits, like the towers
+                        std::snprintf(er.spawnEvent, sizeof(er.spawnEvent), "%s", es.spawnEvent);
+                        std::snprintf(er.deathEvent, sizeof(er.deathEvent), "%s", es.deathEvent);
+                        LevelScript_RegisterProducer(es.deathEvent);
+                        if (es.clipCount > 0) {
+                            er.animator = RpClumpPortAnimatorCreate(pEnemy);
+                        }
+                        for (RwUInt32 ci = 0; er.animator != nullptr && ci < es.clipCount; ++ci) {
+                            const RwsResource *pAnim =
+                                static_cast<const RwsResource *>(es.clips[ci].pAnim);
+                            const RwInt32 idx = RpClumpPortAnimatorAddClip(
+                                er.animator, pAnim->pData, pAnim->size, es.clips[ci].nodeId);
+                            if (std::strstr(pAnim->name, "Paddle_Left")) er.clipPaddleL = idx;
+                            else if (std::strstr(pAnim->name, "Paddle_Right")) er.clipPaddleR = idx;
+                            else if (std::strstr(pAnim->name, "Rudder")) er.clipRudder = idx;
+                        }
+                        s_enemies.push_back(er);
+                        if (es.hasWaypoint == TRUE) ++routed;
+                        ++shown;
+                    }
+                    std::printf("CannonCruise: %u/%u enemy ships with models, "
+                                "%u on waypoint routes\n",
+                                (unsigned)shown, (unsigned)enemyCount, (unsigned)routed);
+                }
+                // Fish (CFishGreen): appear on their spawn event, collected
+                // by sailing into them or shooting next to them.
+                {
+                    const WorldSpawnFish *pFish = nullptr;
+                    const RwUInt32 fishCount = WorldSpawn_GetFish(&pFish);
+                    for (RwUInt32 fi = 0; fi < fishCount; ++fi) {
+                        FishRuntime fr;
+                        std::memset(&fr, 0, sizeof(fr));
+                        const RwsResource *pRes = static_cast<const RwsResource *>(pFish[fi].pModel);
+                        if (pRes != nullptr) {
+                            fr.clump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                        }
+                        fr.x = pFish[fi].pos[0];
+                        fr.z = pFish[fi].pos[2];
+                        std::snprintf(fr.spawnEvent, sizeof(fr.spawnEvent), "%s", pFish[fi].spawnEvent);
+                        std::snprintf(fr.pickupEvent, sizeof(fr.pickupEvent), "%s", pFish[fi].pickupEvent);
+                        LevelScript_RegisterProducer(fr.pickupEvent);
+                        s_fishes.push_back(fr);
+                    }
+                    std::printf("CannonCruise: %u fish, %u level script records%s\n",
+                                (unsigned)fishCount, (unsigned)LevelScript_RecordCount(),
+                                LevelScript_HasLevelExit() == TRUE ? " (level exit)" : "");
+                    LevelScript_DumpTriggers();
+                    LevelScript_Start();
+                }
+                // Fallback for levels without tower records (IDUNA/NORDIC
+                // missions are not tower-based): keep the two placeholder
+                // towers derived from the world bounds so the level stays
+                // playable until those mission types are ported.
+                // Levels whose script has its own exit (NORDIC tutorial and
+                // destroyer missions) need no placeholder towers.
+                if (dataTowerCount == 0 && LevelScript_HasLevelExit() == TRUE) {
+                    RWS::HUD_SetTowersTotal(0);
+                } else if (dataTowerCount == 0) {
                     WorldGeometryBounds bb2;
                     if (WorldGeometry_GetLastBounds(&bb2) == TRUE) {
                         const RwReal tcx = (bb2.min[0] + bb2.max[0]) * 0.5f;
@@ -1385,7 +1662,15 @@ int main(int argc, char **argv) {
                         pT2->SetWorldPosition(t2);
                         s_towers.push_back(pT1);
                         s_towers.push_back(pT2);
-                        std::printf("CannonCruise: spawned 2 towers at "
+                        s_towerIsMission.push_back(TRUE);
+                        s_towerIsMission.push_back(TRUE);
+                        for (int k = 0; k < 2; ++k) {
+                            s_towerClumps.push_back(nullptr);
+                            s_towerDamaged.push_back(nullptr);
+                            s_towerMatrices.push_back(std::vector<RwReal>());
+                        }
+                        RWS::HUD_SetTowersTotal(2);
+                        std::printf("CannonCruise: no tower records; spawned 2 placeholder towers at "
                                     "(%.1f,%.1f,%.1f) and (%.1f,%.1f,%.1f)\n",
                                     t1.x, t1.y, t1.z, t2.x, t2.y, t2.z);
                     }
@@ -1451,13 +1736,21 @@ int main(int argc, char **argv) {
             }
             s_escPrev = escDown;
             // Save/Load debug controls (F5=Save, F6=Load)
+            static RwBool s_f5Prev = FALSE;
+            static RwBool s_f6Prev = FALSE;
+            const RwBool f5Down = RwPlatformKeyDown(RW_KEY_F5) ? TRUE : FALSE;
+            const RwBool f6Down = RwPlatformKeyDown(RW_KEY_F6) ? TRUE : FALSE;
+            const RwBool f5Pressed = (f5Down == TRUE && s_f5Prev == FALSE) ? TRUE : FALSE;
+            const RwBool f6Pressed = (f6Down == TRUE && s_f6Prev == FALSE) ? TRUE : FALSE;
+            s_f5Prev = f5Down;
+            s_f6Prev = f6Down;
             // F5 = Save  (writes .\\CannonCruise.sav)
-            if (f5Down == TRUE && s_escPrev == FALSE) {
+            if (f5Pressed == TRUE) {
                 FILE* pFile = fopen(".\\CannonCruise.sav", "wb");
                 if (pFile) {
                     // Write SSaveData: LevelUnlocked, HighScore, Coins, Checksum
                     RwUInt32 levelUnlocked = 1;       // bit 0 = VIKING01 unlocked, etc.
-                    RwUInt32 highScore = HUD_GetScore();
+                    RwUInt32 highScore = static_cast<RwUInt32>(RWS::HUD_GetScore());
                     RwUInt32 coins = 0;              // TODO: track coins
                     RwUInt32 checksum = levelUnlocked ^ highScore ^ coins ^ 0x53415645u;
                     SSaveGameData saveData = { levelUnlocked, highScore, coins, checksum };
@@ -1469,7 +1762,7 @@ int main(int argc, char **argv) {
                 }
             }
             // F6 = Load
-            if (f6Down == TRUE && s_escPrev == FALSE) {
+            if (f6Pressed == TRUE) {
                 FILE* pFile = fopen(".\\CannonCruise.sav", "rb");
                 if (pFile) {
                     SSaveGameData saveData;
@@ -1524,8 +1817,22 @@ int main(int argc, char **argv) {
                 s_downPrev = down;
                 s_enterPrev = enter;
             }
+            if (s_gameState == GAMESTATE_LEVELCOMPLETE) {
+                // Starts TRUE so a key still held when the level ends (e.g.
+                // the fire key) does not dismiss the summary immediately.
+                static RwBool s_lcPrev = TRUE;
+                const RwBool confirm = RwPlatformKeyDown(RW_KEY_ENTER) ||
+                                       RwPlatformKeyDown(' ');
+                if (confirm == TRUE && s_lcPrev == FALSE) {
+                    std::printf("LevelComplete: QUIT TO DESKTOP selected\n");
+                    bQuitApp = TRUE;
+                }
+                s_lcPrev = confirm;
+            }
+            // World is frozen while paused and on the summary screen.
             const RwBool bSimActive =
-                (s_gameState == GAMESTATE_PAUSE) ? FALSE : TRUE;
+                (s_gameState == GAMESTATE_PAUSE ||
+                 s_gameState == GAMESTATE_LEVELCOMPLETE) ? FALSE : TRUE;
             // The port advances Bullet by a fixed 1/60 s per active frame.
             // This does not enforce 60 FPS or establish original cadence parity.
             {
@@ -1539,20 +1846,89 @@ int main(int argc, char **argv) {
             }
             // Sprint 1 -- player fires cannon with ' '; ship sails with arrows;
             // cannonball is simulated with Bullet. A tower hit takes damage.
-            if (bSimActive == TRUE && RwPlatformKeyDown(' ')) {
+            // CANNONCRUISE_AUTOFIRE=N fires every N frames (headless hit tests).
+            static const char *s_autoFireEnv = std::getenv("CANNONCRUISE_AUTOFIRE");
+            const int autoFireEvery = s_autoFireEnv ? std::atoi(s_autoFireEnv) : 0;
+            const RwBool bAutoFire =
+                (autoFireEvery > 0 && frame % autoFireEvery == 0) ? TRUE : FALSE;
+            if (bSimActive == TRUE && (RwPlatformKeyDown(' ') || bAutoFire == TRUE)) {
                 if (RWS::HUD_GetAmmo() <= 0) {
                     RWS::HUD_FlashNoAmmo();
                 } else {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
-                    RwV3d fwd = {std::sin(ss.yaw), 0.25f, std::cos(ss.yaw)};
+                    RwReal aimYaw = ss.yaw;
+                    RwReal aimDist = 0.0f;
+                    // CANNONCRUISE_AUTOAIM=1 (test only): aim at the nearest
+                    // alive mission tower instead of the bow direction.
+                    // =ENEMY aims at the nearest afloat enemy ship (with lead).
+                    static const char *s_autoAimEnv = std::getenv("CANNONCRUISE_AUTOAIM");
+                    static const RwBool s_autoAim = s_autoAimEnv != nullptr ? TRUE : FALSE;
+                    static const RwBool s_autoAimEnemy =
+                        (s_autoAimEnv != nullptr && std::strcmp(s_autoAimEnv, "ENEMY") == 0)
+                            ? TRUE : FALSE;
+                    RwReal aimDh = -0.5f; // target centre height - muzzle height
+                    if (s_autoAimEnemy == TRUE) {
+                        RwReal bestD2 = -1.0f;
+                        for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                            const EnemyShipRuntime &e = s_enemies[ei];
+                            if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) continue;
+                            RwReal tx = e.x, tz = e.z;
+                            RwReal ddx = tx - ss.pos.x, ddz = tz - ss.pos.z;
+                            if (e.hasWaypoint == TRUE) {
+                                const RwReal lead = std::sqrt(ddx * ddx + ddz * ddz) / 55.0f * 5.0f;
+                                tx += std::sin(e.yaw) * lead;
+                                tz += std::cos(e.yaw) * lead;
+                                ddx = tx - ss.pos.x;
+                                ddz = tz - ss.pos.z;
+                            }
+                            const RwReal d2 = ddx * ddx + ddz * ddz;
+                            if (bestD2 < 0.0f || d2 < bestD2) {
+                                bestD2 = d2;
+                                aimYaw = std::atan2(ddx, ddz);
+                                aimDist = std::sqrt(d2);
+                                aimDh = (e.y + 1.5f) - (ss.pos.y + 2.5f);
+                            }
+                        }
+                    } else if (s_autoAim == TRUE) {
+                        RwReal bestD2 = -1.0f;
+                        for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                            const RwBool bMission = (ti < s_towerIsMission.size())
+                                                        ? s_towerIsMission[ti] : TRUE;
+                            if (bMission != TRUE || s_towers[ti]->IsDestroyed()) {
+                                continue;
+                            }
+                            const RwV3d &tp = s_towers[ti]->GetWorldPosition();
+                            const RwReal ddx = tp.x - ss.pos.x, ddz = tp.z - ss.pos.z;
+                            const RwReal d2 = ddx * ddx + ddz * ddz;
+                            if (bestD2 < 0.0f || d2 < bestD2) {
+                                bestD2 = d2;
+                                aimYaw = std::atan2(ddx, ddz);
+                                aimDist = std::sqrt(d2);
+                            }
+                        }
+                    }
+                    // Elevation as tan(angle): flat shot (~3.4 deg) so the ball
+                    // stays at tower height (towers are ~8 m tall) out to
+                    // ~55 m; autoaim solves for the target distance.
+                    RwReal aimTan = 0.06f;
+                    if (s_autoAim == TRUE && aimDist > 0.0f) {
+                        const RwReal kG = 9.8f, kV = 55.0f;
+                        aimTan = kG * aimDist / (2.0f * kV * kV) + aimDh / aimDist;
+                        if (aimTan < 0.0f) aimTan = 0.0f;
+                    }
+                    RwV3d fwd = {std::sin(aimYaw), aimTan, std::cos(aimYaw)};
                     RwReal len = std::sqrt(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
                     if (len > 0.0f) {
                         fwd.x /= len; fwd.y /= len; fwd.z /= len;
                     }
-                    RwV3d firePos = {ss.pos.x + fwd.x * 6.0f,
+                    // Spawn ahead of the bow: the kinematic hull reaches
+                    // 4.6 * kShipScale(0.5) = 2.3 m from the centre; a ball spawned
+                    // inside it gets trapped and rides along with the ship.
+                    const RwReal kMuzzleOffset = 4.0f;
+                    RwV3d firePos = {ss.pos.x + fwd.x * kMuzzleOffset,
                                      ss.pos.y + 2.5f,
-                                     ss.pos.z + fwd.z * 6.0f};
+                                     ss.pos.z + fwd.z * kMuzzleOffset};
                     SCannonballSpawnData spawnData;
                     std::memset(&spawnData, 0, sizeof(spawnData));
                     spawnData.m_Pos = firePos;
@@ -1564,6 +1940,7 @@ int main(int argc, char **argv) {
                         pBall->Spawn(spawnData);
                         s_cannonballs.push_back(pBall);
                         RWS::HUD_UseAmmo(1);
+                        ++s_shotsFired;
                         std::printf("CannonCruise: fired cannonball from "
                                     "(%.1f,%.1f,%.1f) vel=(%.1f,%.1f,%.1f)%s\n",
                                     firePos.x, firePos.y, firePos.z,
@@ -1575,16 +1952,144 @@ int main(int argc, char **argv) {
                 audioMgr.PlaySound("Audio_CannonFire");
                 } // ammo > 0
             }
-// When both towers are destroyed, transition to LEVELCOMPLETE.
-// Tower damage is now handled automatically by Bullet contact detection:
-//   - Cannonball/tower collisions are reported via CCannonball::OnHit()
-//   - OnHit forwards to CTowerCatapult::TakeDamage()
-//   - A tower at 0 HP triggers DestroyTower() + HUD registration
-// The original hand-written AABB broadphase check has been removed;
-// bullet-driven contacts replace it.
+// Real collision-driven tower damage via Bullet contact detection.
+// When a cannonball collides with a tower, the physics world reports a contact;
+// we verify overlap and apply damage through the established TakeDamage/OnHit path.
+// This replaces the original hand-written AABB broadphase check with world-guided hits.
 
 // When both towers are destroyed, transition to LEVELCOMPLETE.
 if (bSimActive == TRUE) {
+    const RwReal ballRadius = 0.8f;
+    const RwReal towerHalf = CTowerCatapult::GetHalfExtents().y;
+    const RwReal towerHalfSpace = CTowerCatapult::GetHalfExtents().x;
+    const RwReal towerCenterY = CTowerCatapult::GetCenterOffsetY();
+    // Bullet keeps the ball outside the tower's box (it bounces off the
+    // surface), so treat resting contact within this slop as a hit.
+    const RwReal kContactSlop = 0.3f;
+    for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+        CTowerCatapult *pT = s_towers[ti];
+        if (pT->IsDestroyed()) continue;
+        const RwV3d &tp = pT->GetWorldPosition();
+        for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
+            CCannonball *pB = s_cannonballs[bi];
+            void *pBody = pB->GetRigidBody();
+            if (pBody == nullptr) continue;
+            RwV3d bp;
+            PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+            const RwReal dx = bp.x - tp.x;
+            const RwReal dy = bp.y - (tp.y + towerCenterY);
+            const RwReal dz = bp.z - tp.z;
+            const RwReal ax = std::fabs(dx) - (towerHalfSpace + ballRadius);
+            const RwReal ay = std::fabs(dy) - (towerHalf + ballRadius);
+            const RwReal az = std::fabs(dz) - (towerHalfSpace + ballRadius);
+            if (ax < kContactSlop && ay < kContactSlop && az < kContactSlop) {
+                // Damage already applied via Bullet contact -- skip duplicate.
+                bool alreadyDamaged = FALSE;
+                for (size_t di = 0; di < s_cannonballs.size(); ++di) {
+                    if (di == bi) continue;
+                    void *otherBody = s_cannonballs[di]->GetRigidBody();
+                    if (otherBody == nullptr) continue;
+                    RwV3d otherbp;
+                    PhysicsBody_GetPosition(otherBody, &otherbp.x, &otherbp.y, &otherbp.z);
+                    const RwReal oax = std::fabs(otherbp.x - tp.x) - (towerHalfSpace + ballRadius);
+                    const RwReal oay = std::fabs(otherbp.y - (tp.y + towerCenterY)) - (towerHalf + ballRadius);
+                    const RwReal oaz = std::fabs(otherbp.z - tp.z) - (towerHalfSpace + ballRadius);
+                    if (oax < kContactSlop && oay < kContactSlop && oaz < kContactSlop) {
+                        alreadyDamaged = TRUE;
+                        break;
+                    }
+                }
+                if (!alreadyDamaged) {
+                    std::printf("CannonCruise: HIT tower #%zu at (%.1f,%.1f,%.1f) (ball=(%.1f,%.1f,%.1f)\n",
+                        ti, tp.x, tp.y, tp.z, bp.x, bp.y, bp.z);
+                    pT->TakeDamage(100.0f); // 100 damage -- 50 left of 150 HP
+                    ++s_shotsHit;
+                    if (pT->IsDestroyed()) {
+                        const RwBool bMission = (ti < s_towerIsMission.size())
+                                                    ? s_towerIsMission[ti] : TRUE;
+                        RWS::HUD_RegisterTowerDestroyed(bMission);
+                        // Swap to the damaged model (Viking_firetower_Damaged).
+                        if (ti < s_towerClumps.size() && s_towerClumps[ti] != nullptr) {
+                            RenderPlatform_RemoveClump(s_towerClumps[ti]);
+                            RpClumpDestroy(s_towerClumps[ti]);
+                            s_towerClumps[ti] = nullptr;
+                            const RwsResource *pDmg = static_cast<const RwsResource *>(
+                                s_towerDamaged[ti]);
+                            if (pDmg != nullptr && s_towerMatrices[ti].size() == 16) {
+                                RpClump *pDmgClump =
+                                    RpClumpStreamReadMemory(pDmg->pData, pDmg->size);
+                                if (pDmgClump != nullptr) {
+                                    RpClumpPortSetMatrix(pDmgClump, &s_towerMatrices[ti][0]);
+                                    RenderPlatform_AddClump(pDmgClump);
+                                    s_towerClumps[ti] = pDmgClump;
+                                }
+                            }
+                        }
+                        std::printf("CannonCruise: tower #%zu DESTROYED%s; score tick\n",
+                                    ti, bMission == TRUE ? " (mission)" : "");
+                    }
+                    // Cannonball is destroyed after dealing damage
+                    pB->OnHit(pT, 0);
+                }
+            }
+        }
+    }
+    // All mission towers down -> LEVELCOMPLETE (summary screen state).
+    if (s_gameState == GAMESTATE_GAMEPLAY && !s_towers.empty()) {
+        RwBool bAllDown = TRUE;
+        for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+            const RwBool bMission = (ti < s_towerIsMission.size())
+                                        ? s_towerIsMission[ti] : TRUE;
+            if (bMission == TRUE && !s_towers[ti]->IsDestroyed()) {
+                bAllDown = FALSE;
+                break;
+            }
+        }
+        if (bAllDown == TRUE) {
+            s_gameState = GAMESTATE_LEVELCOMPLETE;
+            std::printf("CannonCruise: all mission towers destroyed -> LEVELCOMPLETE (score=%d)\n",
+                        RWS::HUD_GetScore());
+        }
+    }
+}
+            // Enemy ships: a cannonball inside the hull's rough capsule hits;
+            // the second hit sinks the ship (+score).
+            if (bSimActive == TRUE) {
+                for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                    EnemyShipRuntime &e = s_enemies[ei];
+                    if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) {
+                        continue;
+                    }
+                    const RwReal kHitRadius = 4.5f * e.scale;
+                    for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
+                        CCannonball *pB = s_cannonballs[bi];
+                        void *pBody = pB->GetRigidBody();
+                        if (pBody == nullptr || !pB->IsAlive()) continue;
+                        RwV3d bp;
+                        PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                        const RwReal dx = bp.x - e.x, dz = bp.z - e.z;
+                        const RwReal dy = bp.y - (e.y + 1.5f);
+                        if (dx * dx + dz * dz > kHitRadius * kHitRadius ||
+                            std::fabs(dy) > 3.5f) {
+                            continue;
+                        }
+                        e.hp -= 100.0f;
+                        ++s_shotsHit;
+                        std::printf("CannonCruise: HIT enemy ship #%zu at (%.1f,%.1f) hp=%.0f\n",
+                                    ei, e.x, e.z, e.hp);
+                        if (e.hp <= 0.0f) {
+                            e.sinkTime = 1.0f / 60.0f;
+                            ++s_enemiesSunk;
+                            RWS::HUD_AddScore(250);
+                            LevelScript_Send(e.deathEvent);
+                            std::printf("CannonCruise: enemy ship #%zu SUNK (%d sunk)\n",
+                                        ei, (int)s_enemiesSunk);
+                        }
+                        pB->OnHit(nullptr, 0);
+                        break;
+                    }
+                }
+            }
             // Sprint 1 -- remove dead cannonballs from the list
             if (bSimActive == TRUE) {
                 for (auto it = s_cannonballs.begin();
@@ -1626,20 +2131,63 @@ if (bSimActive == TRUE) {
                 if (RwPlatformKeyDown('S')) {
                     throttle -= 0.5f;
                 }
+                // rudder +1 turns the ship to starboard (screen right) in
+                // PlayerShip_Update, so A (port) is -1 and D (starboard) +1.
                 RwReal rudder = 0.0f;
                 if (RwPlatformKeyDown('A')) {
-                    rudder += 1.0f;
+                    rudder -= 1.0f;
                 }
                 if (RwPlatformKeyDown('D')) {
-                    rudder -= 1.0f;
+                    rudder += 1.0f;
                 }
                 int mdx = 0, mdy = 0;
                 if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
                     followOrbit += (RwReal)mdx * 0.0035f;
                 }
                 followOrbit *= 0.94f; // clamp -- turns behind the ship
-                PlayerShip_Update(kDt, (RwReal)frame * kDt, throttle,
-                                  rudder);
+                // CANNONCRUISE_DRIVE=throttle,rudder (headless tests): fixed input.
+                static const char *s_driveEnv = std::getenv("CANNONCRUISE_DRIVE");
+                if (s_driveEnv != nullptr) {
+                    float dThrottle = 0.0f, dRudder = 0.0f;
+                    if (std::sscanf(s_driveEnv, "%f,%f", &dThrottle, &dRudder) >= 1) {
+                        throttle = dThrottle;
+                        rudder = dRudder;
+                    }
+                }
+                // CANNONCRUISE_AUTOPILOT=1 (tests): steer for the script's
+                // current goal marker.
+                static const RwBool s_autoPilot =
+                    std::getenv("CANNONCRUISE_AUTOPILOT") != nullptr ? TRUE : FALSE;
+                RwReal apX = 0.0f, apZ = 0.0f;
+                PlayerShipState apShip;
+                RwBool apHaveGoal = (s_autoPilot == TRUE && PlayerShip_GetState(&apShip) == TRUE)
+                                        ? LevelScript_GetGoal(&apX, &apZ) : FALSE;
+                // A visible fish is collected by sailing into it.
+                for (size_t fi = 0; s_autoPilot == TRUE && fi < s_fishes.size(); ++fi) {
+                    const FishRuntime &f = s_fishes[fi];
+                    if (f.collected != TRUE && f.spawnEvent[0] != 0 &&
+                        LevelScript_WasSent(f.spawnEvent) == TRUE) {
+                        apX = f.x;
+                        apZ = f.z;
+                        apHaveGoal = TRUE;
+                        break;
+                    }
+                }
+                if (apHaveGoal == TRUE) {
+                    RwReal dyaw = std::atan2(apX - apShip.pos.x, apZ - apShip.pos.z) - apShip.yaw;
+                    while (dyaw > 3.14159265f) dyaw -= 6.2831853f;
+                    while (dyaw < -3.14159265f) dyaw += 6.2831853f;
+                    rudder = -dyaw * 2.0f; // rudder +1 turns to starboard (yaw decreases)
+                    if (rudder > 1.0f) rudder = 1.0f;
+                    if (rudder < -1.0f) rudder = -1.0f;
+                    throttle = std::fabs(dyaw) > 1.2f ? 0.3f : 1.0f;
+                }
+                // Ride the same wave phase the ocean is drawn with this frame
+                // (the ocean adds kDt to its time later in the frame).
+                const RwReal waveT = (pOcean != nullptr)
+                                         ? pOcean->GetWaveTime() + kDt
+                                         : (RwReal)frame * kDt;
+                PlayerShip_Update(kDt, waveT, throttle, rudder);
                 PlayerShipState shipState;
                 if (PlayerShip_GetState(&shipState) == TRUE) {
                     const RwReal ang =
@@ -1653,9 +2201,9 @@ if (bSimActive == TRUE) {
                         shipState.pos.z + std::cos(ang) * kFollowCameraDistance;
                     ClampCameraToMap(camPos);
                     // aim at the deck, slightly ahead (over the bow)
-                    camLook[0] = shipState.pos.x + std::sin(shipState.yaw) * 6.0f;
+                    camLook[0] = shipState.pos.x + std::sin(shipState.yaw) * 2.0f;
                     camLook[1] = shipState.pos.y + 1.5f;
-                    camLook[2] = shipState.pos.z + std::cos(shipState.yaw) * 6.0f;
+                    camLook[2] = shipState.pos.z + std::cos(shipState.yaw) * 2.0f;
                     if (frame <= 3 && std::getenv("CANNONCRUISE_CAM_DEBUG") != nullptr) {
                         std::fprintf(stderr, "FOLLOWDBG frame=%d ship=(%.1f,%.1f,%.1f) cam=(%.1f,%.1f,%.1f)\n",
                                     frame, shipState.pos.x, shipState.pos.y, shipState.pos.z,
@@ -1750,12 +2298,187 @@ if (bSimActive == TRUE) {
             }
             if (pOcean != nullptr) {
                 if (bSimActive == TRUE) {
-                    pOcean->Update((RwReal)frame * (1.0f / 60.0f));
+                    // COcean::Update takes a delta and accumulates it; passing
+                    // the absolute time made the water run ahead of the ship's
+                    // bob, so wave crests covered the hull.
+                    pOcean->Update(1.0f / 60.0f);
                 }
                 pOcean->Render(); // between Begin/End
             }
+            // Enemy ships: bob on the wave at their position, drawn after the
+            // ocean (same reason as the player ship).
+            for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                EnemyShipRuntime &e = s_enemies[ei];
+                if (enemyPresent(e) != TRUE) {
+                    continue;
+                }
+                const RwReal kEnemyDt = 1.0f / 60.0f;
+                RwReal steer = 0.0f;
+                if (bSimActive == TRUE && e.sinkTime <= 0.0f && e.hasWaypoint == TRUE) {
+                    // Sail the current leg; turn round near its end point.
+                    const RwReal tx = e.toWaypoint == TRUE ? e.wpX : e.homeX;
+                    const RwReal tz = e.toWaypoint == TRUE ? e.wpZ : e.homeZ;
+                    const RwReal dx = tx - e.x, dz = tz - e.z;
+                    if (dx * dx + dz * dz < 8.0f * 8.0f) {
+                        e.toWaypoint = e.toWaypoint == TRUE ? FALSE : TRUE;
+                    }
+                    RwReal dyaw = std::atan2(dx, dz) - e.yaw;
+                    while (dyaw > 3.14159265f) dyaw -= 6.2831853f;
+                    while (dyaw < -3.14159265f) dyaw += 6.2831853f;
+                    const RwReal kTurn = 0.5f * kEnemyDt; // rad per frame
+                    steer = dyaw > kTurn ? 1.0f : (dyaw < -kTurn ? -1.0f : dyaw / kTurn);
+                    e.yaw += steer * kTurn;
+                    // Slow down while turning hard.
+                    const RwReal kSpeed = 5.0f * (1.0f - 0.6f * std::fabs(steer));
+                    e.x += std::sin(e.yaw) * kSpeed * kEnemyDt;
+                    e.z += std::cos(e.yaw) * kSpeed * kEnemyDt;
+                }
+                e.y = (pOcean != nullptr) ? pOcean->CalculateWaterHeight(e.x, e.z) + 0.8f
+                                          : 0.8f;
+                RwReal roll = 0.0f;
+                if (e.sinkTime > 0.0f) {
+                    if (bSimActive == TRUE) e.sinkTime += kEnemyDt;
+                    e.y -= e.sinkTime * e.sinkTime * 0.8f;
+                    roll = (e.sinkTime < 1.2f ? e.sinkTime : 1.2f) * 0.5f;
+                    if (e.sinkTime > 5.0f) {
+                        e.gone = TRUE;
+                        continue;
+                    }
+                }
+                // Rotation: yaw about Y, then roll about the bow axis (sinking).
+                const RwReal sy = std::sin(e.yaw), cy = std::cos(e.yaw);
+                const RwReal sr = std::sin(roll), cr = std::cos(roll);
+                const RwReal s = e.scale;
+                // right = (cy,0,-sy), up = (0,1,0), at = (sy,0,cy); roll about at.
+                const RwReal rx = cy * cr, ry = sr, rz = -sy * cr;
+                const RwReal ux = -cy * sr, uy = cr, uz = sy * sr;
+                const RwReal m[16] = {rx * s, ry * s, rz * s, 0.0f,
+                                      ux * s, uy * s, uz * s, 0.0f,
+                                      sy * s, 0.0f, cy * s, 0.0f,
+                                      e.x, e.y, e.z, 1.0f};
+                RpClumpPortSetMatrix(e.clump, m);
+                if (e.animator != nullptr) {
+                    // Paddles row while sailing (pose ranges loop at 0.4 s
+                    // like Hugo_Ship's clips); the rudder follows the steer.
+                    static RwReal s_paddleT = 0.0f;
+                    if (ei == 0 && bSimActive == TRUE) {
+                        s_paddleT += kEnemyDt;
+                    }
+                    const RwBool bRowing = (e.hasWaypoint == TRUE && e.sinkTime <= 0.0f);
+                    const RwReal paddleT = bRowing ? std::fmod(s_paddleT * 0.5f, 0.4f) : 0.0f;
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipPaddleL, paddleT);
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipPaddleR, paddleT);
+                    RpClumpPortAnimatorSetPose(e.animator, e.clipRudder, 0.2f + steer * 0.18f);
+                    RpClumpPortAnimatorUpdate(e.animator);
+                }
+                RenderPlatform_RenderClump(e.clump);
+            }
             // Keep the hull above the water mesh in the depth buffer.
-            PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)
+            if (s_pShipClump != nullptr) {
+                // Real model follows the simulated ship: forward = (sin yaw, 0, cos yaw).
+                PlayerShipState shipNow;
+                if (PlayerShip_GetState(&shipNow) == TRUE) {
+                    const RwReal sy = std::sin(shipNow.yaw), cy = std::cos(shipNow.yaw);
+                    const RwReal m[16] = {cy, 0.0f, -sy, 0.0f,
+                                          0.0f, 1.0f, 0.0f, 0.0f,
+                                          sy, 0.0f, cy, 0.0f,
+                                          shipNow.pos.x, shipNow.pos.y,
+                                          shipNow.pos.z, 1.0f};
+                    RpClumpPortSetMatrix(s_pShipClump, m);
+                    if (s_pShipAnimator != nullptr) {
+                        // Clips are 0.4 s pose ranges (0.4 wraps to 0, so stay
+                        // inside 0.02..0.38):
+                        //  wings  0 = spread (at rest) .. folded back (full speed)
+                        //  rudder/wheel 0.2 = centred, +-0.18 = full rudder
+                        //  gun    0.2 = pointing forward
+                        RwReal speedNorm = std::fabs(shipNow.speed) / 18.0f;
+                        if (speedNorm > 1.0f) speedNorm = 1.0f;
+                        const RwReal wingT = 0.02f + speedNorm * 0.36f;
+                        const RwReal rudderT = 0.2f + shipNow.rudder * 0.18f;
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingL, wingT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingR, wingT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipRudder, rudderT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWheel, rudderT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, 0.2f);
+                        RpClumpPortAnimatorUpdate(s_pShipAnimator);
+                    }
+                    // After the ocean: the water mesh drawn later used to paint
+                    // over the low hull on some wave phases.
+                    RenderPlatform_RenderClump(s_pShipClump);
+                }
+            } else {
+                PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)
+            }
+            // Level script (tutorial texts, goal markers, triggers) and fish.
+            {
+                PlayerShipState ss;
+                const RwBool bHaveShip = PlayerShip_GetState(&ss);
+                if (bSimActive == TRUE && bHaveShip == TRUE) {
+                    static RwBool s_nextPrev = FALSE;
+                    const RwBool nextDown = RwPlatformKeyDown(RW_KEY_ENTER);
+                    const RwBool nextEdge = (nextDown == TRUE && s_nextPrev != TRUE) ? TRUE : FALSE;
+                    s_nextPrev = nextDown;
+                    LevelScript_Update(1.0f / 60.0f, ss.pos.x, ss.pos.z, nextEdge);
+                    // Fish: sail into one, or land a cannonball next to it.
+                    for (size_t fi = 0; fi < s_fishes.size(); ++fi) {
+                        FishRuntime &f = s_fishes[fi];
+                        if (f.collected == TRUE ||
+                            (f.spawnEvent[0] != 0 && LevelScript_WasSent(f.spawnEvent) != TRUE)) {
+                            continue;
+                        }
+                        RwBool got = FALSE;
+                        const RwReal sdx = ss.pos.x - f.x, sdz = ss.pos.z - f.z;
+                        if (sdx * sdx + sdz * sdz < 6.0f * 6.0f) {
+                            got = TRUE;
+                        }
+                        for (size_t bi = 0; got != TRUE && bi < s_cannonballs.size(); ++bi) {
+                            void *pBody = s_cannonballs[bi]->GetRigidBody();
+                            if (pBody == nullptr || !s_cannonballs[bi]->IsAlive()) continue;
+                            RwV3d bp;
+                            PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                            const RwReal bdx = bp.x - f.x, bdz = bp.z - f.z;
+                            if (bdx * bdx + bdz * bdz < 4.0f * 4.0f && bp.y < 3.0f) {
+                                got = TRUE;
+                                s_cannonballs[bi]->OnHit(nullptr, 1);
+                            }
+                        }
+                        if (got == TRUE) {
+                            f.collected = TRUE;
+                            RWS::HUD_AddFish(1);
+                            const RwReal h = RWS::HUD_GetHealth() + 0.1f;
+                            RWS::HUD_SetHealth(h > 1.0f ? 1.0f : h);
+                            RWS::HUD_AddScore(50);
+                            LevelScript_Send(f.pickupEvent);
+                            std::printf("CannonCruise: fish #%zu collected\n", fi);
+                        }
+                    }
+                    char nextLevel[64];
+                    if (s_gameState == GAMESTATE_GAMEPLAY &&
+                        LevelScript_LevelExitReached(nextLevel, sizeof(nextLevel)) == TRUE) {
+                        s_gameState = GAMESTATE_LEVELCOMPLETE;
+                        std::printf("CannonCruise: level script exit (%s) -> LEVELCOMPLETE (score=%d)\n",
+                                    nextLevel, RWS::HUD_GetScore());
+                    }
+                }
+                RwReal gx = 0.0f, gz = 0.0f;
+                if (bHaveShip == TRUE && LevelScript_GetGoal(&gx, &gz) == TRUE) {
+                    RWS::HUD_SetGoalBlip(TRUE, gx - ss.pos.x, gz - ss.pos.z);
+                } else {
+                    RWS::HUD_SetGoalBlip(FALSE, 0.0f, 0.0f);
+                }
+            }
+            // Fish models bob on the water until collected.
+            for (size_t fi = 0; fi < s_fishes.size(); ++fi) {
+                FishRuntime &f = s_fishes[fi];
+                if (f.clump == nullptr || f.collected == TRUE ||
+                    (f.spawnEvent[0] != 0 && LevelScript_WasSent(f.spawnEvent) != TRUE)) {
+                    continue;
+                }
+                const RwReal fy = (pOcean != nullptr) ? pOcean->CalculateWaterHeight(f.x, f.z) : 0.0f;
+                const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, f.x, fy + 0.2f, f.z, 1};
+                RpClumpPortSetMatrix(f.clump, m);
+                RenderPlatform_RenderClump(f.clump);
+            }
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;
@@ -1770,6 +2493,7 @@ if (bSimActive == TRUE) {
                     }
                 }
                 RWS::HUD_Render();
+                LevelScript_Render();
             }
             // Pause overlay (frozen world, dim, two options)
             if (s_gameState == GAMESTATE_PAUSE) {
@@ -1784,10 +2508,15 @@ if (bSimActive == TRUE) {
                     bAfterInit = TRUE;
                 }
                 // Read current game metrics from HUD
-                RwUInt32 score = HUD_GetScore();
-                RwUInt32 accuracy = 0; // TODO: track shot accuracy
-                RwUInt32 rating = 0;   // TODO: compute star rating
+                RwUInt32 score = static_cast<RwUInt32>(RWS::HUD_GetScore());
+                const RwUInt32 accuracy = s_shotsFired > 0
+                    ? (RwUInt32)((s_shotsHit * 100) / s_shotsFired) : 0u;
+                RwUInt32 rating = 0;   // TODO: original star-rating rule unknown
                 afterGame.ShowSummary(score, accuracy, rating);
+                RenderLevelCompleteOverlay(RWS::HUD_GetScore(),
+                                           RWS::HUD_GetTowersDestroyed(),
+                                           RWS::HUD_GetTowersTotal(),
+                                           s_shotsFired, s_shotsHit);
             }
         }
         if (RenderPlatform_RenderTestQuad(0.0f, 0.0f, 0.25f, 0.25f,
@@ -1828,6 +2557,7 @@ if (bSimActive == TRUE) {
     speakMgr.StopSpeak();
     for (auto *t : s_towers) { delete t; }
     s_towers.clear();
+    s_towerIsMission.clear();
     for (auto *b : s_cannonballs) { delete b; }
     s_cannonballs.clear();
     PlayerShip_Shutdown(); // PhysicsWorld dtor assert'i i�in rigid body temizligi

@@ -487,11 +487,7 @@ RpAtomic* RpAtomicSetFrame(RpAtomic* atomic, RwFrame* frame)
 // ---------------------------------------------------------------------------
 // Clump (rpworld)
 // ---------------------------------------------------------------------------
-RwBool RpClumpDestroy(RpClump* clump)
-{
-    (void)clump;
-    return TRUE;
-}
+// RpClumpDestroy — REAL implementation in rw_librw.cpp (rw::Clump::destroy).
 
 RpClump* RpClumpClone(RpClump* clump)
 {

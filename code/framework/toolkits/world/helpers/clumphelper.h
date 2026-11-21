@@ -68,17 +68,20 @@ namespace RWS
         static void DestroyClump(RpClump* pClump) { Destroy(pClump); }
 
         /**
-         * @brief Creates a clump from raw resource data (stub).
-         * @return RpClump* — always nullptr in CannonCruise.
+         * @brief Creates a clump from a level resource.
+         * @param pResourceData const RwsResource* returned by
+         *        CSystemCommands::ExtractClump (embedded rwID_CLUMP payload).
+         * @return New RpClump (librw) or NULL.
          */
-        static RpClump* CreateClumpFromResource(const void* pResourceData) { return 0; }
+        static RpClump* CreateClumpFromResource(const void* pResourceData);
 
         /**
-         * @brief Applies an attribute packet to the clump (stub).
+         * @brief Applies the packet's CSystemCommands transform (command 1)
+         *        to the clump's frame.
          * @param pClump  Target clump.
          * @param packet  Attribute packet to apply.
          */
-        static void HandleAttributes(RpClump* pClump, const class CAttributePacket& packet) {}
+        static void HandleAttributes(RpClump* pClump, const class CAttributePacket& packet);
     };
 }
 

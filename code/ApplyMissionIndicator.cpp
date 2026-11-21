@@ -14,7 +14,7 @@ ApplyMissionIndicator::ApplyMissionIndicator(const CAttributePacket& packet)
     : m_bCompleted(FALSE),
       m_nScore(0)
 {
-    memset(this, 0, sizeof(*this));
+    m_sMissionName[0] = '\0';
 
     // Read mission indicator attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyMissionIndicator));

@@ -19,6 +19,8 @@
 
 #include "RwStudioStream.h"
 
+#include <vector>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -32,6 +34,7 @@ struct RwStudioFile {
     RwChar classNames[rwstudioMAX_CLASSES][48];
     RwBool hasObject;         // was the last NextAsset a 0x0704?
     RwStudioObject object;    // last object schema (Phase 4.6f)
+    std::vector<RwUInt8> objectRaw; // raw 0x0704 body (attribute packet)
 };
 
 namespace
@@ -270,6 +273,20 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
         // error silently leaves a half object behind.
         RwStudioObject &obj = pFile->object;
         std::memset(&obj, 0, sizeof(obj));
+        // Keep the raw body: it is the object's CAttributePacket.
+        {
+            const RwUInt32 bodyStart = RwStreamTell(pFile->pStream);
+            const RwUInt32 bodyLen = pFile->chunkEndPos > bodyStart
+                                         ? pFile->chunkEndPos - bodyStart
+                                         : 0;
+            pFile->objectRaw.resize(bodyLen);
+            if (bodyLen > 0 &&
+                RwStreamRead(pFile->pStream, &pFile->objectRaw[0], bodyLen) !=
+                    bodyLen) {
+                pFile->objectRaw.clear();
+            }
+            RwStreamSeekAbs(pFile->pStream, bodyStart);
+        }
         if (RwStreamRead(pFile->pStream, &obj.objectIndex, 4) != 4) {
             RwStreamSeekAbs(pFile->pStream, pFile->chunkEndPos);
             return TRUE;
@@ -285,12 +302,27 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
             if (RwStreamRead(pFile->pStream, &x, 4) != 4) {
                 break;
             }
-            if (x == 0x1C || x == 0x18) {
+            // Both segments and properties are [len][word][len-8 bytes].
+            // A length that does not fit the chunk means we lost alignment.
+            const RwUInt32 itemStart = RwStreamTell(pFile->pStream) - 4;
+            if (x < 8 || itemStart + x > pFile->chunkEndPos) {
+                break;
+            }
+            RwUInt32 word = 0;
+            if (RwStreamRead(pFile->pStream, &word, 4) != 4) {
+                break;
+            }
+            // Class-name segments grow with the name (0x20 for
+            // "CPhysicsWorldBehaviour"), so recognise them by flag, not length.
+            // flags=0 is ambiguous with property id 0; keep the historical
+            // rule (16/20-byte string/GUID segments) for that case.
+            const RwBool isSegment =
+                (word == 0x20000000 || word == 0x40000000 ||
+                 word == 0x80000000) ||
+                (word == 0x00000000 && (x == 0x1C || x == 0x18));
+            if (isSegment) {
                 // segment: [segLen][flags][content]
-                RwUInt32 flags = 0;
-                if (RwStreamRead(pFile->pStream, &flags, 4) != 4) {
-                    break;
-                }
+                const RwUInt32 flags = word;
                 if (flags == 0x20000000) {
                     if (obj.behaviourCount >= rwstudioMAX_BEHAVIOURS) {
                         break;
@@ -354,29 +386,33 @@ RwBool RwStudioFileNextAsset(RwStudioFile *pFile, RwStudioAsset *pAsset) {
                 } else {
                     break; // unknown segment — seek to chunk end
                 }
-            } else if (x == 12 || x == 20) {
-                // property: [size][id][size-8 value] — even if capacity is missing,
-                // consume the bytes (preserve alignment)
-                RwUInt32 propId = 0;
-                if (RwStreamRead(pFile->pStream, &propId, 4) != 4) {
-                    break;
-                }
-                RwUInt8 valueBuf[16];
-                RwUInt32 valueLen = x - 8;
+                // Padded-string reads may stop short of the segment end;
+                // realign on the declared length.
+                RwStreamSeekAbs(pFile->pStream, itemStart + x);
+            } else {
+                // property: [size][id][size-8 value]. Any size: 12/20 are
+                // scalars/vec3, 72 is a RwMatrix, others are padded strings.
+                // Values beyond rwstudioMAX_PROPVALUE are skipped (alignment
+                // kept via the absolute seek below).
+                const RwUInt32 propId = word;
+                const RwUInt32 valueLen = x - 8;
+                RwUInt8 valueBuf[rwstudioMAX_PROPVALUE];
                 std::memset(valueBuf, 0, sizeof(valueBuf));
-                if (RwStreamRead(pFile->pStream, valueBuf, valueLen) !=
-                    valueLen) {
+                const RwUInt32 keepLen = valueLen < sizeof(valueBuf)
+                                             ? valueLen
+                                             : (RwUInt32)sizeof(valueBuf);
+                if (RwStreamRead(pFile->pStream, valueBuf, keepLen) !=
+                    keepLen) {
                     break;
                 }
+                RwStreamSeekAbs(pFile->pStream, itemStart + x);
                 if (pCur && pCur->propCount < rwstudioMAX_PROPS) {
                     RwStudioProperty &prop = pCur->props[pCur->propCount];
                     prop.id = propId;
                     prop.size = x;
-                    std::memcpy(prop.value, valueBuf, valueLen);
+                    std::memcpy(prop.value, valueBuf, keepLen);
                     ++pCur->propCount;
                 }
-            } else {
-                break; // unexpected field — preserve alignment
             }
         }
         pFile->hasObject = TRUE;
@@ -435,4 +471,18 @@ const RwStudioObject *RwStudioFileGetObject(const RwStudioFile *pFile) {
         return 0;
     }
     return &pFile->object;
+}
+
+RwUInt32 RwStudioFileGetObjectRaw(const RwStudioFile *pFile,
+                                  const RwUInt8 **ppData) {
+    if (!pFile || !pFile->hasObject || pFile->objectRaw.empty()) {
+        if (ppData) {
+            *ppData = 0;
+        }
+        return 0;
+    }
+    if (ppData) {
+        *ppData = &pFile->objectRaw[0];
+    }
+    return (RwUInt32)pFile->objectRaw.size();
 }

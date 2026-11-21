@@ -24,7 +24,6 @@ ApplyDifficultyLevels::ApplyDifficultyLevels(const CAttributePacket& packet)
     // 3. Read enemy count, time limit, and friendly fire flag
     // 6. Store all settings for game difficulty configuration
 
-    memset(this, 0, sizeof(*this));
 
     // Read difficulty levels attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyDifficultyLevels));

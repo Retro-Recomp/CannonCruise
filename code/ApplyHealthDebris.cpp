@@ -15,7 +15,6 @@ ApplyHealthDebris::ApplyHealthDebris(const CAttributePacket& packet)
       m_fMass(1.0f),
       m_bActive(TRUE)
 {
-    memset(this, 0, sizeof(*this));
 
     // Read health debris attributes from packet
     CAttributeCommandIterator it(packet, RWS_CLASS_INDEX(ApplyHealthDebris));
@@ -34,9 +33,9 @@ ApplyHealthDebris::ApplyHealthDebris(const CAttributePacket& packet)
             m_vVelocity.x = *reinterpret_cast<const RwReal*>(
                 it->GetCommandData());
             m_vVelocity.y = *reinterpret_cast<const RwReal*>(
-                it->GetCommandData() + sizeof(RwReal));
+                static_cast<const RwUInt8*>(it->GetCommandData()) + sizeof(RwReal));
             m_vVelocity.z = *reinterpret_cast<const RwReal*>(
-                it->GetCommandData() + 2 * sizeof(RwReal));
+                static_cast<const RwUInt8*>(it->GetCommandData()) + 2 * sizeof(RwReal));
             break;
         case 2:
             // Debris mass

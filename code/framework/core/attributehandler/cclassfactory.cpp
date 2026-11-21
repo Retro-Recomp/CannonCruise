@@ -151,6 +151,50 @@ namespace RWS
     }
 
     // ========================================================================
+    // CClassFactory::Create (packet) — port extension: classes registered with
+    // RWS_REGISTER_PACKET_CLASS are built from the object's attribute packet
+    // (RWS_MAKENEWCLASS); the others use their plain creation function.
+    // ========================================================================
+    void* CClassFactory::Create(const char* pClassName, const CAttributePacket& packet)
+    {
+        if (!pClassName)
+        {
+            return 0;
+        }
+        CClassFactory* pFactory = Instance();
+        for (std::map<std::string, ClassData*>::iterator it = pFactory->m_RegisteredClasses.begin();
+             it != pFactory->m_RegisteredClasses.end(); ++it)
+        {
+            if (Stricmp(it->first.c_str(), pClassName) == 0)
+            {
+                ClassData* pData = it->second;
+                if (pData && pData->m_pPacketCreationFunc)
+                {
+                    return pData->m_pPacketCreationFunc(packet);
+                }
+                break;
+            }
+        }
+        return Create(pClassName);
+    }
+
+    void CClassFactory::RegisterPacketFactory(const char* pClassName,
+                                              ClassPacketCreationFunc pCreateFunc,
+                                              RwUInt32 size)
+    {
+        if (!pClassName)
+        {
+            return;
+        }
+        // Register (or find) the entry without touching an existing plain factory.
+        ClassData* pData = static_cast<ClassData*>(Register(pClassName, 0, size, size != 0 ? 1 : 0));
+        if (pData)
+        {
+            pData->m_pPacketCreationFunc = pCreateFunc;
+        }
+    }
+
+    // ========================================================================
     // CClassFactory::Register (FUN_00412f10, FUN_00413700, FUN_00413ab0)
     // ASM: 00413700 / 00413ab0 — Register the class with the factory
     // ========================================================================

@@ -7,6 +7,8 @@
 // ============================================================================
 
 #include "framework/core/eventhandler/ceventhandler.h"
+#include "framework/core/attributehandler/cattributehandler.h"
+#include "framework/core/attributehandler/cclassfactory.h"
 
 namespace RWS
 {
@@ -34,6 +36,8 @@ public:
      */
     ApplyMissionIndicator(const CAttributePacket& packet);
 
+    virtual ~ApplyMissionIndicator();
+
     /**
      * @brief Applies mission indicator events.
      * @param msg Event message container.
@@ -50,7 +54,7 @@ public:
 private:
     RwBool m_bCompleted;      ///< Whether mission is completed
     RwInt32 m_nScore;         ///< Mission score
-    RwString m_sMissionName;  ///< Mission name identifier
+    char m_sMissionName[256];  ///< Mission name identifier
 };
 
 } // namespace RWS

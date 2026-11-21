@@ -356,24 +356,26 @@ RwBool CLocalizationManager::SetLanguage(const char* pLangCode)
 
     char szTxdPath[260];
     snprintf(szTxdPath, sizeof(szTxdPath), "Localiza\\Win\\win_%s.txd", lowerCode.c_str());
-    RwStream* pTxdStream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, szTxdPath);
-    if (!pTxdStream)
+    // win_<lang>.txd holds the font atlas as a raw rwID_IMAGE, not a native
+    // texture, so it is read with RwTexDictionaryReadImageFile.
+    m_pFontTexDict = RwTexDictionaryReadImageFile(szTxdPath);
+    if (!m_pFontTexDict)
     {
         char szTxdFallback[260];
         snprintf(szTxdFallback, sizeof(szTxdFallback),
                  "C:\\Program Files (x86)\\CannonCruise\\Localiza\\Win\\win_%s.txd",
                  lowerCode.c_str());
-        pTxdStream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, szTxdFallback);
+        m_pFontTexDict = RwTexDictionaryReadImageFile(szTxdFallback);
     }
-    if (pTxdStream)
+    if (m_pFontTexDict)
     {
-        m_pFontTexDict = RwTexDictionaryStreamRead(pTxdStream);
-        RwStreamClose(pTxdStream, nullptr);
-        if (m_pFontTexDict)
-        {
-            std::printf("LocalizationManager: font texture dictionary loaded: win_%s.txd\n",
-                        lowerCode.c_str());
-        }
+        std::printf("LocalizationManager: font texture dictionary loaded: win_%s.txd\n",
+                    lowerCode.c_str());
+    }
+    else
+    {
+        std::printf("LocalizationManager: font texture dictionary not found: win_%s.txd\n",
+                    lowerCode.c_str());
     }
 
     return TRUE;
