@@ -39,6 +39,7 @@
 
 #include <rw.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -155,6 +156,20 @@ namespace
         RegisterClassA(&wc); // FALSE if the class is already registered — not a problem
 
         DWORD style = WS_OVERLAPPEDWINDOW;
+        // Shrink (keeping the aspect ratio) if the desktop work area is
+        // smaller than the requested client size.
+        RECT work;
+        if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &work, 0)) {
+            RECT frame = {0, 0, 0, 0};
+            AdjustWindowRect(&frame, style, FALSE);
+            const int maxW = (work.right - work.left) - (frame.right - frame.left);
+            const int maxH = (work.bottom - work.top) - (frame.bottom - frame.top);
+            if (maxW > 0 && maxH > 0 && (width > maxW || height > maxH)) {
+                const double s = (std::min)((double)maxW / width, (double)maxH / height);
+                width = (int)(width * s);
+                height = (int)(height * s);
+            }
+        }
         RECT rc = {0, 0, width, height};
         AdjustWindowRect(&rc, style, FALSE);
 
@@ -215,7 +230,9 @@ RwBool RwEngineOpen(void) {
         return FALSE;
     }
     if (s_hwnd == nullptr) {
-        s_hwnd = CCD3DCreateWindow(640, 480, "CannonCruise");
+        // Same size as the 1280x720 scene raster (RenderPlatform_Initialize);
+        // a 640x480 window squashed the 16:9 frame (HUD and text distorted).
+        s_hwnd = CCD3DCreateWindow(1280, 720, "CannonCruise");
         if (s_hwnd == nullptr) {
             return FALSE;
         }

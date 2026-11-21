@@ -217,7 +217,28 @@ void RenderPlatform_EndFrame(void) {
                     if (SUCCEEDED(pDev->GetBackBuffer(0, 0,
                                                       D3DBACKBUFFER_TYPE_MONO,
                                                       &pBack))) {
-                        pDev->StretchRect(pRT, nullptr, pBack, nullptr,
+                        // Keep the scene's aspect ratio when the window was
+                        // resized: letterbox into the backbuffer.
+                        D3DSURFACE_DESC bd;
+                        RECT dst = {0, 0, 0, 0};
+                        RECT *pDst = nullptr;
+                        if (SUCCEEDED(pBack->GetDesc(&bd)) && s_width > 0 && s_height > 0) {
+                            const LONG bw = (LONG)bd.Width, bh = (LONG)bd.Height;
+                            LONG w = bw, h = (LONG)((double)bw * s_height / s_width);
+                            if (h > bh) {
+                                h = bh;
+                                w = (LONG)((double)bh * s_width / s_height);
+                            }
+                            dst.left = (bw - w) / 2;
+                            dst.top = (bh - h) / 2;
+                            dst.right = dst.left + w;
+                            dst.bottom = dst.top + h;
+                            if (w != bw || h != bh) {
+                                pDev->ColorFill(pBack, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+                            }
+                            pDst = &dst;
+                        }
+                        pDev->StretchRect(pRT, nullptr, pBack, pDst,
                                           D3DTEXF_LINEAR);
                         pBack->Release();
                     }
