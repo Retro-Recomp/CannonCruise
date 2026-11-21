@@ -62,6 +62,7 @@ static void ClampCameraToMap(RwReal camPos[3]) {
 #include "RwsResources.h"
 #include "LocalizationManager.h"
 #include "BinkPlayer.h"  // binkw32 player - .bik playback (sub_45F350/45F270)
+#include "LevelScript.h"
 #include "LoadingScreen.h" // Phase 4.6ab � LOADING overlay (GLOBAL art)
 #include "rwcore.h"
 #include "AudioManager.h"
@@ -489,8 +490,25 @@ int main(int argc, char **argv) {
         RwReal hp;
         RwReal sinkTime;         // > 0 while sinking
         RwBool gone;             // sunk below the surface: no longer drawn
+        RwChar spawnEvent[64];   // hidden until this script event ("" = at start)
+        RwChar deathEvent[64];   // script event sent when sunk
     };
     std::vector<EnemyShipRuntime> s_enemies;
+    // An enemy takes part once its spawn event (if any) has been sent.
+    auto enemyPresent = [](const EnemyShipRuntime &e) -> RwBool {
+        return (e.gone != TRUE &&
+                (e.spawnEvent[0] == 0 || LevelScript_WasSent(e.spawnEvent) == TRUE))
+                   ? TRUE : FALSE;
+    };
+    // CFishGreen collectibles (tutorial fishing; +health, fish counter).
+    struct FishRuntime {
+        RpClump *clump;
+        RwReal x, z;
+        RwChar spawnEvent[64];
+        RwChar pickupEvent[64];
+        RwBool collected;
+    };
+    std::vector<FishRuntime> s_fishes;
     RwInt32 s_enemiesSunk = 0;
     // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
     void *s_pShipAnimator = nullptr;
@@ -1572,6 +1590,9 @@ int main(int argc, char **argv) {
                         er.wpZ = es.waypoint[2];
                         er.toWaypoint = TRUE;
                         er.hp = 150.0f; // two 100-damage hits, like the towers
+                        std::snprintf(er.spawnEvent, sizeof(er.spawnEvent), "%s", es.spawnEvent);
+                        std::snprintf(er.deathEvent, sizeof(er.deathEvent), "%s", es.deathEvent);
+                        LevelScript_RegisterProducer(es.deathEvent);
                         if (es.clipCount > 0) {
                             er.animator = RpClumpPortAnimatorCreate(pEnemy);
                         }
@@ -1592,11 +1613,40 @@ int main(int argc, char **argv) {
                                 "%u on waypoint routes\n",
                                 (unsigned)shown, (unsigned)enemyCount, (unsigned)routed);
                 }
+                // Fish (CFishGreen): appear on their spawn event, collected
+                // by sailing into them or shooting next to them.
+                {
+                    const WorldSpawnFish *pFish = nullptr;
+                    const RwUInt32 fishCount = WorldSpawn_GetFish(&pFish);
+                    for (RwUInt32 fi = 0; fi < fishCount; ++fi) {
+                        FishRuntime fr;
+                        std::memset(&fr, 0, sizeof(fr));
+                        const RwsResource *pRes = static_cast<const RwsResource *>(pFish[fi].pModel);
+                        if (pRes != nullptr) {
+                            fr.clump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                        }
+                        fr.x = pFish[fi].pos[0];
+                        fr.z = pFish[fi].pos[2];
+                        std::snprintf(fr.spawnEvent, sizeof(fr.spawnEvent), "%s", pFish[fi].spawnEvent);
+                        std::snprintf(fr.pickupEvent, sizeof(fr.pickupEvent), "%s", pFish[fi].pickupEvent);
+                        LevelScript_RegisterProducer(fr.pickupEvent);
+                        s_fishes.push_back(fr);
+                    }
+                    std::printf("CannonCruise: %u fish, %u level script records%s\n",
+                                (unsigned)fishCount, (unsigned)LevelScript_RecordCount(),
+                                LevelScript_HasLevelExit() == TRUE ? " (level exit)" : "");
+                    LevelScript_DumpTriggers();
+                    LevelScript_Start();
+                }
                 // Fallback for levels without tower records (IDUNA/NORDIC
                 // missions are not tower-based): keep the two placeholder
                 // towers derived from the world bounds so the level stays
                 // playable until those mission types are ported.
-                if (dataTowerCount == 0) {
+                // Levels whose script has its own exit (NORDIC tutorial and
+                // destroyer missions) need no placeholder towers.
+                if (dataTowerCount == 0 && LevelScript_HasLevelExit() == TRUE) {
+                    RWS::HUD_SetTowersTotal(0);
+                } else if (dataTowerCount == 0) {
                     WorldGeometryBounds bb2;
                     if (WorldGeometry_GetLastBounds(&bb2) == TRUE) {
                         const RwReal tcx = (bb2.min[0] + bb2.max[0]) * 0.5f;
@@ -1822,7 +1872,7 @@ int main(int argc, char **argv) {
                         RwReal bestD2 = -1.0f;
                         for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
                             const EnemyShipRuntime &e = s_enemies[ei];
-                            if (e.gone == TRUE || e.sinkTime > 0.0f) continue;
+                            if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) continue;
                             RwReal tx = e.x, tz = e.z;
                             RwReal ddx = tx - ss.pos.x, ddz = tz - ss.pos.z;
                             if (e.hasWaypoint == TRUE) {
@@ -2007,7 +2057,7 @@ if (bSimActive == TRUE) {
             if (bSimActive == TRUE) {
                 for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
                     EnemyShipRuntime &e = s_enemies[ei];
-                    if (e.gone == TRUE || e.sinkTime > 0.0f) {
+                    if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) {
                         continue;
                     }
                     const RwReal kHitRadius = 4.5f * e.scale;
@@ -2031,6 +2081,7 @@ if (bSimActive == TRUE) {
                             e.sinkTime = 1.0f / 60.0f;
                             ++s_enemiesSunk;
                             RWS::HUD_AddScore(250);
+                            LevelScript_Send(e.deathEvent);
                             std::printf("CannonCruise: enemy ship #%zu SUNK (%d sunk)\n",
                                         ei, (int)s_enemiesSunk);
                         }
@@ -2102,6 +2153,34 @@ if (bSimActive == TRUE) {
                         throttle = dThrottle;
                         rudder = dRudder;
                     }
+                }
+                // CANNONCRUISE_AUTOPILOT=1 (tests): steer for the script's
+                // current goal marker.
+                static const RwBool s_autoPilot =
+                    std::getenv("CANNONCRUISE_AUTOPILOT") != nullptr ? TRUE : FALSE;
+                RwReal apX = 0.0f, apZ = 0.0f;
+                PlayerShipState apShip;
+                RwBool apHaveGoal = (s_autoPilot == TRUE && PlayerShip_GetState(&apShip) == TRUE)
+                                        ? LevelScript_GetGoal(&apX, &apZ) : FALSE;
+                // A visible fish is collected by sailing into it.
+                for (size_t fi = 0; s_autoPilot == TRUE && fi < s_fishes.size(); ++fi) {
+                    const FishRuntime &f = s_fishes[fi];
+                    if (f.collected != TRUE && f.spawnEvent[0] != 0 &&
+                        LevelScript_WasSent(f.spawnEvent) == TRUE) {
+                        apX = f.x;
+                        apZ = f.z;
+                        apHaveGoal = TRUE;
+                        break;
+                    }
+                }
+                if (apHaveGoal == TRUE) {
+                    RwReal dyaw = std::atan2(apX - apShip.pos.x, apZ - apShip.pos.z) - apShip.yaw;
+                    while (dyaw > 3.14159265f) dyaw -= 6.2831853f;
+                    while (dyaw < -3.14159265f) dyaw += 6.2831853f;
+                    rudder = -dyaw * 2.0f; // rudder +1 turns to starboard (yaw decreases)
+                    if (rudder > 1.0f) rudder = 1.0f;
+                    if (rudder < -1.0f) rudder = -1.0f;
+                    throttle = std::fabs(dyaw) > 1.2f ? 0.3f : 1.0f;
                 }
                 // Ride the same wave phase the ocean is drawn with this frame
                 // (the ocean adds kDt to its time later in the frame).
@@ -2230,7 +2309,7 @@ if (bSimActive == TRUE) {
             // ocean (same reason as the player ship).
             for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
                 EnemyShipRuntime &e = s_enemies[ei];
-                if (e.gone == TRUE) {
+                if (enemyPresent(e) != TRUE) {
                     continue;
                 }
                 const RwReal kEnemyDt = 1.0f / 60.0f;
@@ -2330,6 +2409,76 @@ if (bSimActive == TRUE) {
             } else {
                 PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)
             }
+            // Level script (tutorial texts, goal markers, triggers) and fish.
+            {
+                PlayerShipState ss;
+                const RwBool bHaveShip = PlayerShip_GetState(&ss);
+                if (bSimActive == TRUE && bHaveShip == TRUE) {
+                    static RwBool s_nextPrev = FALSE;
+                    const RwBool nextDown = RwPlatformKeyDown(RW_KEY_ENTER);
+                    const RwBool nextEdge = (nextDown == TRUE && s_nextPrev != TRUE) ? TRUE : FALSE;
+                    s_nextPrev = nextDown;
+                    LevelScript_Update(1.0f / 60.0f, ss.pos.x, ss.pos.z, nextEdge);
+                    // Fish: sail into one, or land a cannonball next to it.
+                    for (size_t fi = 0; fi < s_fishes.size(); ++fi) {
+                        FishRuntime &f = s_fishes[fi];
+                        if (f.collected == TRUE ||
+                            (f.spawnEvent[0] != 0 && LevelScript_WasSent(f.spawnEvent) != TRUE)) {
+                            continue;
+                        }
+                        RwBool got = FALSE;
+                        const RwReal sdx = ss.pos.x - f.x, sdz = ss.pos.z - f.z;
+                        if (sdx * sdx + sdz * sdz < 6.0f * 6.0f) {
+                            got = TRUE;
+                        }
+                        for (size_t bi = 0; got != TRUE && bi < s_cannonballs.size(); ++bi) {
+                            void *pBody = s_cannonballs[bi]->GetRigidBody();
+                            if (pBody == nullptr || !s_cannonballs[bi]->IsAlive()) continue;
+                            RwV3d bp;
+                            PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                            const RwReal bdx = bp.x - f.x, bdz = bp.z - f.z;
+                            if (bdx * bdx + bdz * bdz < 4.0f * 4.0f && bp.y < 3.0f) {
+                                got = TRUE;
+                                s_cannonballs[bi]->OnHit(nullptr, 1);
+                            }
+                        }
+                        if (got == TRUE) {
+                            f.collected = TRUE;
+                            RWS::HUD_AddFish(1);
+                            const RwReal h = RWS::HUD_GetHealth() + 0.1f;
+                            RWS::HUD_SetHealth(h > 1.0f ? 1.0f : h);
+                            RWS::HUD_AddScore(50);
+                            LevelScript_Send(f.pickupEvent);
+                            std::printf("CannonCruise: fish #%zu collected\n", fi);
+                        }
+                    }
+                    char nextLevel[64];
+                    if (s_gameState == GAMESTATE_GAMEPLAY &&
+                        LevelScript_LevelExitReached(nextLevel, sizeof(nextLevel)) == TRUE) {
+                        s_gameState = GAMESTATE_LEVELCOMPLETE;
+                        std::printf("CannonCruise: level script exit (%s) -> LEVELCOMPLETE (score=%d)\n",
+                                    nextLevel, RWS::HUD_GetScore());
+                    }
+                }
+                RwReal gx = 0.0f, gz = 0.0f;
+                if (bHaveShip == TRUE && LevelScript_GetGoal(&gx, &gz) == TRUE) {
+                    RWS::HUD_SetGoalBlip(TRUE, gx - ss.pos.x, gz - ss.pos.z);
+                } else {
+                    RWS::HUD_SetGoalBlip(FALSE, 0.0f, 0.0f);
+                }
+            }
+            // Fish models bob on the water until collected.
+            for (size_t fi = 0; fi < s_fishes.size(); ++fi) {
+                FishRuntime &f = s_fishes[fi];
+                if (f.clump == nullptr || f.collected == TRUE ||
+                    (f.spawnEvent[0] != 0 && LevelScript_WasSent(f.spawnEvent) != TRUE)) {
+                    continue;
+                }
+                const RwReal fy = (pOcean != nullptr) ? pOcean->CalculateWaterHeight(f.x, f.z) : 0.0f;
+                const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, f.x, fy + 0.2f, f.z, 1};
+                RpClumpPortSetMatrix(f.clump, m);
+                RenderPlatform_RenderClump(f.clump);
+            }
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;
@@ -2344,6 +2493,7 @@ if (bSimActive == TRUE) {
                     }
                 }
                 RWS::HUD_Render();
+                LevelScript_Render();
             }
             // Pause overlay (frozen world, dim, two options)
             if (s_gameState == GAMESTATE_PAUSE) {

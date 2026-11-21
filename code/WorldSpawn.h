@@ -87,7 +87,22 @@ struct WorldSpawnEnemyShip {
     /// HAnim clips (Viking_Destroyer: paddles 100/200, rudder 300, catapult 400/500).
     WorldSpawnPlayerShip::Clip clips[WORLDSPAWN_MAX_ENEMY_CLIPS];
     RwUInt32 clipCount;
+    RwChar spawnEvent[64];   ///< CSpawnable id1: appears on this event ("" = at start)
+    RwChar deathEvent[64];   ///< CShipEnemy id17: sent when sunk ("" = none)
 };
+
+/// Collectible fish (CFishGreen record).
+struct WorldSpawnFish {
+    RwReal pos[3];
+    const void *pModel;      ///< const RwsResource* (may be NULL)
+    RwChar spawnEvent[64];   ///< CSpawnable id1 ("" = present at start)
+    RwChar pickupEvent[64];  ///< CFish id12: sent when collected
+};
+
+#define WORLDSPAWN_MAX_FISH 64
+
+/// Fish of the last WorldSpawn_FromFile() call; returns the count.
+RwUInt32 WorldSpawn_GetFish(const WorldSpawnFish **ppFish);
 
 #define WORLDSPAWN_MAX_ENEMY_SHIPS 64
 

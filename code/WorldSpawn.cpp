@@ -18,6 +18,7 @@
 #include "MissionIndicator.h"
 #include "TowerCatapult.h"
 #include "CollisionTrigger.h"
+#include "LevelScript.h"
 #include "framework/core/attributehandler/cattributehandler.h"
 #include "framework/core/attributehandler/csystemcommands.h"
 
@@ -410,7 +411,33 @@ void CollectEnemyShip(const RwStudioObject *pObj,
     ship.pModel = FindModel(packet, 0, TRUE);
     CopyAttributeString(packet, "CShipEnemy", 8, ship.route, sizeof(ship.route));
     CollectClips(packet, ship.clips, WORLDSPAWN_MAX_ENEMY_CLIPS, &ship.clipCount);
+    CopyAttributeString(packet, "CSpawnable", 1, ship.spawnEvent, sizeof(ship.spawnEvent));
+    CopyAttributeString(packet, "CShipEnemy", 17, ship.deathEvent, sizeof(ship.deathEvent));
     s_enemyShips[s_enemyShipCount++] = ship;
+}
+
+WorldSpawnFish s_fish[WORLDSPAWN_MAX_FISH];
+RwUInt32 s_fishCount = 0;
+
+void CollectFish(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CFishGreen") != 0 ||
+        s_fishCount >= WORLDSPAWN_MAX_FISH) {
+        return;
+    }
+    WorldSpawnFish fish;
+    std::memset(&fish, 0, sizeof(fish));
+    RwReal m[16];
+    if (RWS::CSystemCommands::ExtractMatrix(packet, m) != TRUE) {
+        return;
+    }
+    fish.pos[0] = m[12];
+    fish.pos[1] = m[13];
+    fish.pos[2] = m[14];
+    fish.pModel = FindModel(packet, 0, TRUE);
+    CopyAttributeString(packet, "CSpawnable", 1, fish.spawnEvent, sizeof(fish.spawnEvent));
+    CopyAttributeString(packet, "CFish", 12, fish.pickupEvent, sizeof(fish.pickupEvent));
+    s_fish[s_fishCount++] = fish;
 }
 
 // CWaypoint records: id0 = name, CSystemCommands matrix = position. Enemy
@@ -516,6 +543,13 @@ void CollectTower(const RwStudioObject *pObj,
 
 } // namespace
 
+RwUInt32 WorldSpawn_GetFish(const WorldSpawnFish **ppFish) {
+    if (ppFish) {
+        *ppFish = s_fish;
+    }
+    return s_fishCount;
+}
+
 RwUInt32 WorldSpawn_GetEnemyShips(const WorldSpawnEnemyShip **ppShips) {
     if (ppShips) {
         *ppShips = s_enemyShips;
@@ -600,6 +634,8 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     std::memset(&s_playerShip, 0, sizeof(s_playerShip));
     s_enemyShipCount = 0;
     s_waypointCount = 0;
+    s_fishCount = 0;
+    LevelScript_Reset();
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
     std::memset(&stats, 0, sizeof(stats));
@@ -630,6 +666,8 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         CollectPlayerShip(pObj, packet);
         CollectEnemyShip(pObj, packet);
         CollectWaypoint(pObj, packet);
+        CollectFish(pObj, packet);
+        LevelScript_CollectObject(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
             pObj, pInstances, 1, rawSize > 0 ? &packet : 0);

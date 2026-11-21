@@ -61,6 +61,10 @@ void HUD_SetShipHeading(RwReal yaw);
 void HUD_SetTowerBlip(RwInt32 index, RwReal bearingX, RwReal bearingZ,
                       RwBool alive);
 
+/** @brief Mission goal marker on the compass (green; bearing from the ship).
+ *         active=FALSE hides it. */
+void HUD_SetGoalBlip(RwBool active, RwReal bearingX, RwReal bearingZ);
+
 /** @brief Triggers a brief "NO AMMO" flash on the dial. */
 void HUD_FlashNoAmmo(void);
 
