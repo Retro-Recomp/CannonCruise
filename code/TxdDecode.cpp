@@ -151,35 +151,94 @@ RwBool RwTxdDecodeImage(const RwUInt8 *pPayload, RwUInt32 len,
     return pOut->count == pOut->textureCount;
 }
 
+
+// Level texture pack: a platform-independent texture dictionary
+// (rwID_PITEXDICTIONARY, 0x23) inside the level's first asset record:
+//   u16 textureCount, u16 deviceId, then per texture
+//   u32 mipCount, mipCount x rwID_IMAGE { STRUCT {w, h, depth, stride},
+//   pixels (stride*h), palette (depth 8: 256 RGBA) }, then rwID_TEXTURE
+//   { STRUCT filter, STRING name, STRING mask, EXTENSION }.
+// The images come before the texture's name; the base level is decoded.
 namespace {
 
-// Is the texture size a power of 2 (8..512)?
-bool IsPow2Size(RwUInt32 v) {
-    return v == 8 || v == 16 || v == 32 || v == 64 || v == 128 ||
-           v == 256 || v == 512;
+RwUInt32 PackU32(const RwUInt8 *p) {
+    RwUInt32 v = 0;
+    std::memcpy(&v, p, 4);
+    return v;
 }
 
-// Printable texture name? ([A-Za-z][A-Za-z0-9_]{1,..}, NUL-terminated)
-bool ValidLevelName(const RwUInt8 *p, RwUInt32 len) {
-    if (len == 0 || len > 48) {
+bool IsRwVersion(RwUInt32 v) { return (v & 0xFFFF0000u) == 0x18030000u || (v & 0xFFFF0000u) == 0x18020000u; }
+
+// Parses one PI dictionary at `o`; appends to pOut. Returns false on a
+// malformed dictionary (nothing appended past the failure point).
+bool ParsePiDictionary(const RwUInt8 *pData, RwUInt32 len, RwUInt32 o, RwTxdImage *pOut) {
+    const RwUInt32 dictSize = PackU32(pData + o + 4);
+    const RwUInt32 dictEnd = o + 12 + dictSize;
+    if (dictEnd > len || dictSize < 4) {
         return false;
     }
-    if (!((p[0] >= 'A' && p[0] <= 'Z') ||
-          (p[0] >= 'a' && p[0] <= 'z'))) {
-        return false;
-    }
-    RwUInt32 i = 0;
-    for (; i < len; ++i) {
-        const RwUInt8 c = p[i];
-        if (c == 0) {
-            break;
+    RwUInt32 p = o + 12;
+    RwUInt16 count = 0;
+    std::memcpy(&count, pData + p, 2);
+    p += 4;
+    for (RwUInt32 t = 0; t < count; ++t) {
+        if (p + 4 > dictEnd) return false;
+        const RwUInt32 mips = PackU32(pData + p);
+        p += 4;
+        if (mips == 0 || mips > 16) return false;
+        RwUInt32 w = 0, h = 0, dep = 0, pitch = 0, px = 0;
+        for (RwUInt32 m = 0; m < mips; ++m) {
+            if (p + 40 > dictEnd || PackU32(pData + p) != 0x18 ||
+                PackU32(pData + p + 12) != 0x01 || PackU32(pData + p + 16) != 16) {
+                return false;
+            }
+            const RwUInt32 imgSize = PackU32(pData + p + 4);
+            if (m == 0) {
+                w = PackU32(pData + p + 24);
+                h = PackU32(pData + p + 28);
+                dep = PackU32(pData + p + 32);
+                pitch = PackU32(pData + p + 36);
+                px = p + 40;
+            }
+            p += 12 + imgSize;
         }
-        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-              (c >= '0' && c <= '9') || c == '_')) {
-            return false;
+        // rwID_TEXTURE: STRUCT (filter), STRING name.
+        if (p + 12 > dictEnd || PackU32(pData + p) != 0x06) return false;
+        const RwUInt32 texEnd = p + 12 + PackU32(pData + p + 4);
+        if (texEnd > dictEnd) return false;
+        RwUInt32 q = p + 12;
+        q += 12 + PackU32(pData + q + 4); // filter struct
+        char name[rwtxdMAX_NAME] = {0};
+        if (q + 12 <= texEnd && PackU32(pData + q) == 0x02) {
+            const RwUInt32 nlen = PackU32(pData + q + 4);
+            for (RwUInt32 i = 0; i < nlen && i + 1 < sizeof(name) && q + 12 + i < texEnd; ++i) {
+                const char c = (char)pData[q + 12 + i];
+                if (c == 0) break;
+                name[i] = c;
+            }
         }
+        p = texEnd;
+        const RwUInt32 bpp = dep / 8;
+        const bool supported = (dep == 32 || dep == 8) && w > 0 && h > 0 && w <= 2048 &&
+                               h <= 2048 && pitch >= w * bpp &&
+                               px + pitch * h + (dep == 8 ? 1024u : 0u) <= dictEnd;
+        if (!supported || name[0] == 0) {
+            continue;
+        }
+        if (pOut->count >= rwtxdMAX_TEXTURES) {
+            return true;
+        }
+        RwTxdTexture *pTex = &pOut->textures[pOut->count++];
+        std::memcpy(pTex->name, name, sizeof(pTex->name));
+        pTex->width = w;
+        pTex->height = h;
+        pTex->depth = dep;
+        pTex->pitch = pitch;
+        pTex->pPixels = pData + px;
+        pTex->pixelBytes = pitch * h;
+        pTex->pPalette = (dep == 8) ? pData + px + pitch * h : 0;
     }
-    return i > 1 && i < len;
+    return true;
 }
 
 } // namespace
@@ -190,74 +249,12 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
         return FALSE;
     }
     std::memset(pOut, 0, sizeof(*pOut));
-    // Name record signature: 06 11 00 00 02 00 00 00 len(<=48) libid
-    static const RwUInt8 kSig[8] = {0x06, 0x11, 0x00, 0x00,
-                                    0x02, 0x00, 0x00, 0x00};
-    static const RwUInt8 kLib[4] = {0xFF, 0xFF, 0x03, 0x18};
-    static const RwUInt8 kDims[12] = {0x01, 0x00, 0x00, 0x00,
-                                      0x10, 0x00, 0x00, 0x00,
-                                      0xFF, 0xFF, 0x03, 0x18};
-    for (RwUInt32 o = 0; o + 16 < len; ++o) {
-        if (std::memcmp(pData + o, kSig, 8) != 0) {
+    for (RwUInt32 o = 0; o + 16 <= len; o += 4) {
+        if (PackU32(pData + o) != 0x23 || !IsRwVersion(PackU32(pData + o + 8))) {
             continue;
         }
-        RwUInt32 nlen = 0;
-        std::memcpy(&nlen, pData + o + 8, 4);
-        if (nlen == 0 || nlen > 48 || o + 16 + nlen > len) {
-            continue;
-        }
-        if (std::memcmp(pData + o + 12, kLib, 4) != 0) {
-            continue;
-        }
-        const RwUInt8 *np = pData + o + 16;
-        if (!ValidLevelName(np, nlen)) {
-            continue;
-        }
-        // Dimensions record: first valid dims signature in the 30KB window.
-        RwUInt32 base = o + 16 + nlen;
-        for (RwUInt32 q = base; q + 28 < len && q < base + 30000; ++q) {
-            if (std::memcmp(pData + q, kDims, 12) != 0) {
-                continue;
-            }
-            RwUInt32 w = 0, h = 0, dep = 0, pi = 0;
-            std::memcpy(&w, pData + q + 12, 4);
-            std::memcpy(&h, pData + q + 16, 4);
-            std::memcpy(&dep, pData + q + 20, 4);
-            std::memcpy(&pi, pData + q + 24, 4);
-            if (!IsPow2Size(w) || !IsPow2Size(h) || (dep != 32 && dep != 8)) {
-                continue;
-            }
-            const RwUInt32 bpp = dep / 8;
-            if (pi < w * bpp || pi > w * bpp + 64) {
-                continue;
-            }
-            const RwUInt32 px = q + 28;
-            // depth 8 (e.g. BEAVER01 "soldier"): indices, then a 256-entry
-            // RGBA palette.
-            const RwUInt32 palBytes = (dep == 8) ? 256u * 4u : 0u;
-            if (px + pi * h + palBytes > len) {
-                continue;
-            }
-            if (pOut->count >= rwtxdMAX_TEXTURES) {
-                return (pOut->count > 0) ? TRUE : FALSE;
-            }
-            RwTxdTexture *t = &pOut->textures[pOut->count];
-            RwUInt32 ni = 0;
-            for (; ni < nlen && np[ni] != 0 &&
-                   ni + 1 < (RwUInt32)rwtxdMAX_NAME;
-                 ++ni) {
-                t->name[ni] = static_cast<RwChar>(np[ni]);
-            }
-            t->name[ni] = 0;
-            t->width = w;
-            t->height = h;
-            t->depth = dep;
-            t->pitch = pi;
-            t->pPixels = pData + px;
-            t->pixelBytes = pi * h;
-            t->pPalette = (dep == 8) ? pData + px + pi * h : 0;
-            ++pOut->count;
-            break; // first valid dims for this name
+        if (ParsePiDictionary(pData, len, o, pOut)) {
+            o += 12 + PackU32(pData + o + 4) - 4; // continue after this dictionary
         }
     }
     pOut->textureCount = (RwUInt16)pOut->count;

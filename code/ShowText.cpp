@@ -13,6 +13,7 @@
 #include "RenderPlatform.h"
 #include "framework/core/attributehandler/cclassfactory.h"
 #include "FontSystem.h"
+#include "GameFont.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -441,6 +442,33 @@ void ShowText_DrawBitmapText(const char *pText, RwReal x, RwReal y,
 {
     if (pText == 0 || scale <= 0)
         return;
+
+    // The game's own font (Localiza/lang_<lang>.fnt + brady48 atlas). Callers
+    // lay text out on the 5x7 grid (advance 6*scale), so each line is centred
+    // in the width the grid would have used and the glyph cell is sized so
+    // capitals match the 7*scale grid height.
+    if (GameFont_Load() == TRUE)
+    {
+        const RwReal cell = 12.0f * (RwReal)scale;
+        const RwUInt32 argb = ((RwUInt32)a << 24) | ((RwUInt32)r << 16) |
+                              ((RwUInt32)g << 8) | (RwUInt32)b;
+        const char *line = pText;
+        RwReal lineY = y;
+        while (true)
+        {
+            const char *end = std::strchr(line, '\n');
+            const std::string one = end ? std::string(line, end - line) : std::string(line);
+            const RwReal gridW = (RwReal)(one.size() * kFontAdvance * scale);
+            const RwReal fontW = GameFont_Measure(one.c_str(), cell);
+            GameFont_Draw(one.c_str(), x + (gridW - fontW) * 0.5f,
+                          lineY - 2.5f * (RwReal)scale, cell, argb);
+            if (!end)
+                break;
+            line = end + 1;
+            lineY += (RwReal)(kFontLineStep * scale);
+        }
+        return;
+    }
 
     // im2d nearZ constant (no camera access — a constant is passed to DrawPixel)
     const RwReal nearZ = 0.9997f;

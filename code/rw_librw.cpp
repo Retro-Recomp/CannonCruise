@@ -550,28 +550,6 @@ RpClump *RpClumpStreamReadMemory(const void *pData, RwUInt32 size) {
     mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
     rw::Clump *pClump = rw::Clump::streamRead(&mem);
     mem.close();
-    // The game's level models store texture coordinates as (v, u): e.g.
-    // Viking_Destroyer's oars index a column of their atlas that only makes
-    // sense transposed, and Hugo_Ship's hull showed the black side of its
-    // atlas. Swap them before the geometry is instanced.
-    static const RwBool s_noSwap =
-        std::getenv("CANNONCRUISE_NO_UVSWAP") != nullptr ? TRUE : FALSE;
-    if (pClump != nullptr && s_noSwap != TRUE) {
-        FORLIST(lnk, pClump->atomics) {
-            rw::Geometry *pGeo = rw::Atomic::fromClump(lnk)->geometry;
-            if (pGeo == nullptr || (pGeo->flags & rw::Geometry::NATIVE)) {
-                continue;
-            }
-            for (rw::int32 s = 0; s < pGeo->numTexCoordSets; ++s) {
-                rw::TexCoords *pTc = pGeo->texCoords[s];
-                for (rw::int32 i = 0; pTc != nullptr && i < pGeo->numVertices; ++i) {
-                    const rw::float32 t = pTc[i].u;
-                    pTc[i].u = pTc[i].v;
-                    pTc[i].v = t;
-                }
-            }
-        }
-    }
     return reinterpret_cast<RpClump *>(pClump);
 }
 
@@ -620,6 +598,44 @@ RwBool RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos) {
 
 // Axis-aligned bounds of all atomics (morph target 0) relative to the
 // clump's root frame (i.e. the model's own space, before its placement).
+RwInt32 RpClumpPortForAllTriangles(RpClump *clump, RpClumpPortTriangleCB callback,
+                                   void *pContext) {
+    if (!clump || !callback) {
+        return 0;
+    }
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    RwInt32 count = 0;
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        rw::Geometry *pGeo = pAtomic->geometry;
+        if (!pGeo || pGeo->numMorphTargets < 1 || !pGeo->morphTargets[0].vertices ||
+            !pGeo->triangles) {
+            continue;
+        }
+        rw::Matrix ltm;
+        rw::Frame *pFrame = pAtomic->getFrame();
+        if (pFrame) {
+            ltm = *pFrame->getLTM();
+        } else {
+            ltm.setIdentity();
+        }
+        const rw::V3d *pV = pGeo->morphTargets[0].vertices;
+        for (rw::int32 t = 0; t < pGeo->numTriangles; ++t) {
+            RwReal w[3][3];
+            for (int k = 0; k < 3; ++k) {
+                rw::V3d p;
+                rw::V3d::transformPoints(&p, &pV[pGeo->triangles[t].v[k]], 1, &ltm);
+                w[k][0] = p.x;
+                w[k][1] = p.y;
+                w[k][2] = p.z;
+            }
+            callback(w[0], w[1], w[2], pContext);
+            ++count;
+        }
+    }
+    return count;
+}
+
 RwBool RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax) {
     if (!clump || !pMin || !pMax) {
         return FALSE;

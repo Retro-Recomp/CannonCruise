@@ -63,6 +63,7 @@ static void ClampCameraToMap(RwReal camPos[3]) {
 #include "LocalizationManager.h"
 #include "BinkPlayer.h"  // binkw32 player - .bik playback (sub_45F350/45F270)
 #include "LevelScript.h"
+#include "ShipCollision.h"
 #include "LoadingScreen.h" // Phase 4.6ab � LOADING overlay (GLOBAL art)
 #include "rwcore.h"
 #include "AudioManager.h"
@@ -1444,6 +1445,9 @@ int main(int argc, char **argv) {
                     }
                 }
                 PlayerShip_Spawn(&shipPos, shipYaw);
+                // Land map from the world geometry: the ship cannot sail
+                // through islands, cliffs or piers.
+                ShipCollision_BuildLandMap(pipeline.pClump, 0.0f);
                 // Real ship model (Hugo_Ship) from the level; the hand-built
                 // placeholder is only drawn when the level has none.
                 if (pDataShip != nullptr && pDataShip->pModel != nullptr &&
@@ -2174,13 +2178,57 @@ if (bSimActive == TRUE) {
                     }
                 }
                 if (apHaveGoal == TRUE) {
-                    RwReal dyaw = std::atan2(apX - apShip.pos.x, apZ - apShip.pos.z) - apShip.yaw;
+                    // Pick the open heading closest to the goal direction
+                    // (probe 6..30 m ahead on the land map).
+                    const RwReal goalYaw = std::atan2(apX - apShip.pos.x, apZ - apShip.pos.z);
+                    const RwReal goalDist = std::hypot(apX - apShip.pos.x, apZ - apShip.pos.z);
+                    RwReal steerYaw = goalYaw;
+                    for (int k = 0; k <= 24; ++k) {
+                        const RwReal off = (k % 2 == 0 ? 1.0f : -1.0f) * (RwReal)((k + 1) / 2) * 0.13f;
+                        const RwReal cy = goalYaw + off;
+                        RwBool clear = TRUE;
+                        for (RwReal d = 6.0f; d <= 30.0f && d < goalDist + 4.0f; d += 6.0f) {
+                            if (ShipCollision_IsBlocked(apShip.pos.x + std::sin(cy) * d,
+                                                        apShip.pos.z + std::cos(cy) * d) == TRUE) {
+                                clear = FALSE;
+                                break;
+                            }
+                        }
+                        if (clear == TRUE) {
+                            steerYaw = cy;
+                            break;
+                        }
+                    }
+                    if (frame % 600 == 0) {
+                        std::printf("Autopilot: ship (%.0f,%.0f) goal (%.0f,%.0f) dist %.0f\n",
+                                    apShip.pos.x, apShip.pos.z, apX, apZ, goalDist);
+                    }
+                    RwReal dyaw = steerYaw - apShip.yaw;
                     while (dyaw > 3.14159265f) dyaw -= 6.2831853f;
                     while (dyaw < -3.14159265f) dyaw += 6.2831853f;
                     rudder = -dyaw * 2.0f; // rudder +1 turns to starboard (yaw decreases)
                     if (rudder > 1.0f) rudder = 1.0f;
                     if (rudder < -1.0f) rudder = -1.0f;
                     throttle = std::fabs(dyaw) > 1.2f ? 0.3f : 1.0f;
+                }
+                // Solid objects for the hull: towers and enemy ships afloat.
+                {
+                    std::vector<RwReal> obstacles;
+                    for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                        const RwV3d &tp = s_towers[ti]->GetWorldPosition();
+                        obstacles.push_back(tp.x);
+                        obstacles.push_back(tp.z);
+                        obstacles.push_back(2.5f);
+                    }
+                    for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                        const EnemyShipRuntime &e = s_enemies[ei];
+                        if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) continue;
+                        obstacles.push_back(e.x);
+                        obstacles.push_back(e.z);
+                        obstacles.push_back(3.5f * e.scale);
+                    }
+                    ShipCollision_SetObstacles(obstacles.empty() ? nullptr : &obstacles[0],
+                                               (RwInt32)(obstacles.size() / 3));
                 }
                 // Ride the same wave phase the ocean is drawn with this frame
                 // (the ocean adds kDt to its time later in the frame).

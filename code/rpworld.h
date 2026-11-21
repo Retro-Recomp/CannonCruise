@@ -53,6 +53,11 @@ RwBool      RpClumpPortSetMatrix(RpClump *clump, const RwReal m[16]);
 RwBool      RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos);
 RwInt32     RpClumpPortCountAtomics(RpClump *clump);
 RwBool      RpClumpPortGetLocalBounds(RpClump *clump, RwV3d *pMin, RwV3d *pMax);
+/// Calls back with every triangle of the clump in world space (a, b, c as xyz).
+typedef void (*RpClumpPortTriangleCB)(const RwReal a[3], const RwReal b[3],
+                                      const RwReal c[3], void *pContext);
+RwInt32     RpClumpPortForAllTriangles(RpClump *clump, RpClumpPortTriangleCB callback,
+                                       void *pContext);
 // HAnim clip animator for rigid hierarchical models (rw_librw.cpp).
 // Create returns NULL when the clump has no HAnim hierarchy.
 void*       RpClumpPortAnimatorCreate(RpClump *clump);

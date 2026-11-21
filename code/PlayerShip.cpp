@@ -6,6 +6,7 @@
 #include "RenderPlatform.h"
 #include "PhysicsWorld.h"
 #include "PhysicsBackend.h"
+#include "ShipCollision.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -715,6 +716,25 @@ void PlayerShip_RenderHull() {
 
 } // namespace
 
+namespace {
+// Hull outline samples (bow, stern, both sides, centre) of Hugo_Ship
+// (~4.6 m long, ~2 m beam without the wings).
+RwBool HullBlocked(RwReal x, RwReal z, RwReal yaw) {
+    const RwReal fx = std::sin(yaw), fz = std::cos(yaw); // forward
+    const RwReal rx = fz, rz = -fx;                      // right
+    const RwReal pts[6][2] = {{0.0f, 0.0f},  {2.4f, 0.0f},  {-2.2f, 0.0f},
+                              {0.3f, 1.1f},  {0.3f, -1.1f}, {1.5f, 0.0f}};
+    for (int i = 0; i < 6; ++i) {
+        const RwReal px = x + fx * pts[i][0] + rx * pts[i][1];
+        const RwReal pz = z + fz * pts[i][0] + rz * pts[i][1];
+        if (ShipCollision_IsBlocked(px, pz) == TRUE) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+} // namespace
+
 RwBool PlayerShip_SetMapBounds(RwReal minX, RwReal maxX,
                                RwReal minZ, RwReal maxZ) {
     s_mapBoundsSet = FALSE;
@@ -830,8 +850,37 @@ void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
     s_ship.yaw -= rudder * kTurnRate * speedNorm *
                   ((s_ship.speed >= 0.0f) ? 1.0f : -1.0f) * deltaTime;
 
-    s_ship.pos.x += std::sin(s_ship.yaw) * s_ship.speed * deltaTime;
-    s_ship.pos.z += std::cos(s_ship.yaw) * s_ship.speed * deltaTime;
+    const RwReal moveX = std::sin(s_ship.yaw) * s_ship.speed * deltaTime;
+    const RwReal moveZ = std::cos(s_ship.yaw) * s_ship.speed * deltaTime;
+    // Land and objects stop the hull: try the full move, then sliding along
+    // one axis; if all are blocked the ship stops and bounces back a little.
+    const RwReal oldX = s_ship.pos.x, oldZ = s_ship.pos.z;
+    const RwReal candX[3] = {oldX + moveX, oldX + moveX, oldX};
+    const RwReal candZ[3] = {oldZ + moveZ, oldZ, oldZ + moveZ};
+    RwBool moved = FALSE;
+    // Already overlapping (spawned on a pier edge, obstacle sailed into us):
+    // let the ship move so it can get free.
+    if (HullBlocked(oldX, oldZ, s_ship.yaw) == TRUE) {
+        s_ship.pos.x = candX[0];
+        s_ship.pos.z = candZ[0];
+        moved = TRUE;
+    }
+    for (int c = 0; c < 3 && moved != TRUE; ++c) {
+        if (c > 0 && std::fabs(c == 1 ? moveX : moveZ) < 1.0e-4f) {
+            continue;
+        }
+        if (HullBlocked(candX[c], candZ[c], s_ship.yaw) != TRUE) {
+            s_ship.pos.x = candX[c];
+            s_ship.pos.z = candZ[c];
+            moved = TRUE;
+            if (c > 0) {
+                s_ship.speed *= 0.97f; // scraping along the shore
+            }
+        }
+    }
+    if (moved != TRUE && (moveX != 0.0f || moveZ != 0.0f)) {
+        s_ship.speed = -s_ship.speed * 0.25f;
+    }
     ClampShipToMap();
     // Wave-top bob -- exactly the same phase/amplitude as Ocean's wave form
     // (sin(x*0.05+t*2)*1.5 + cos(z*0.08+t*1.5)*1.0)

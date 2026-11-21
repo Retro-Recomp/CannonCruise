@@ -742,6 +742,51 @@ void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
 }
 
+void RenderPlatform_DrawTextureRegion(void *pTexture, RwReal x, RwReal y, RwReal w,
+                                      RwReal h, RwReal u0, RwReal v0, RwReal u1,
+                                      RwReal v1, RwUInt32 argb)
+{
+    if (RenderPlatform_IsInitialized() != TRUE || pTexture == nullptr) {
+        return;
+    }
+    rw::Texture *tex = static_cast<rw::Texture *>(pTexture);
+    if (tex->raster == nullptr) {
+        return;
+    }
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, tex->raster);
+    const RwUInt8 r = (RwUInt8)((argb >> 16) & 0xFF);
+    const RwUInt8 g = (RwUInt8)((argb >> 8) & 0xFF);
+    const RwUInt8 b = (RwUInt8)(argb & 0xFF);
+    const RwUInt8 a = (RwUInt8)((argb >> 24) & 0xFF);
+    const RwReal z = rw::im2d::GetNearZ();
+    RwIm2DVertex verts[4];
+    const RwReal vx[4] = {x, x, x + w, x + w};
+    const RwReal vy[4] = {y, y + h, y, y + h};
+    const RwReal vu[4] = {u0, u0, u1, u1};
+    const RwReal vv[4] = {v0, v1, v0, v1};
+    for (int i = 0; i < 4; ++i) {
+        verts[i].x = vx[i];
+        verts[i].y = vy[i];
+        verts[i].z = z;
+        verts[i].rhw = 1.0f;
+#if defined(RW_D3D9)
+        verts[i].color.red = b; // D3DCOLOR byte order (see DrawOverlayQuad)
+        verts[i].color.green = g;
+        verts[i].color.blue = r;
+#else
+        verts[i].color.red = r;
+        verts[i].color.green = g;
+        verts[i].color.blue = b;
+#endif
+        verts[i].color.alpha = a;
+        verts[i].u = vu[i];
+        verts[i].v = vv[i];
+    }
+    RwUInt16 indices[6] = {0, 1, 2, 2, 1, 3};
+    rw::im2d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, verts, 4, indices, 6);
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+}
+
 void RenderPlatform_ClearTextures(void)
 {
     for (size_t i = 0; i < s_menuTextures.size(); ++i) {

@@ -173,6 +173,14 @@ void *RenderPlatform_GetTexture(const char *name);
 void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
                                      const char *texName);
 
+/**
+ * @brief Draws a UV sub-rectangle of a texture (rw::Texture*) tinted with argb
+ *        (0xAARRGGBB). Called after BeginOverlay2D (font glyphs).
+ */
+void RenderPlatform_DrawTextureRegion(void *pTexture, RwReal x, RwReal y, RwReal w,
+                                      RwReal h, RwReal u0, RwReal v0, RwReal u1,
+                                      RwReal v1, RwUInt32 argb);
+
 /** @brief Destroys all loaded textures (menu teardown/terminate). */
 void RenderPlatform_ClearTextures(void);
 
