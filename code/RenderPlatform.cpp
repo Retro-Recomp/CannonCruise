@@ -820,10 +820,27 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
                                 t->height == 0) {
                                 continue;
                             }
+                            const RwUInt8 *pRgba = t->pPixels;
+                            RwInt32 rgbaPitch = (RwInt32)t->pitch;
+                            std::vector<RwUInt8> expanded;
+                            if (t->depth == 8 && t->pPalette != nullptr) {
+                                // Palettized: expand the indices to RGBA.
+                                expanded.resize((size_t)t->width * t->height * 4);
+                                for (RwUInt32 y = 0; y < t->height; ++y) {
+                                    for (RwUInt32 x = 0; x < t->width; ++x) {
+                                        const RwUInt8 idx = t->pPixels[y * t->pitch + x];
+                                        std::memcpy(&expanded[((size_t)y * t->width + x) * 4],
+                                                    t->pPalette + idx * 4, 4);
+                                    }
+                                }
+                                pRgba = &expanded[0];
+                                rgbaPitch = (RwInt32)t->width * 4;
+                            } else if (t->depth != 32) {
+                                continue;
+                            }
                             rw::Texture *tex = CreateTextureFromRGBA(
                                 t->name, (RwInt32)t->width,
-                                (RwInt32)t->height, t->pPixels,
-                                (RwInt32)t->pitch);
+                                (RwInt32)t->height, pRgba, rgbaPitch);
                             if (tex == nullptr) {
                                 continue;
                             }

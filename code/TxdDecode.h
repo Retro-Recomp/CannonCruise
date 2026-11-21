@@ -24,7 +24,7 @@
 
 #include "rwcore.h"
 
-#define rwtxdMAX_TEXTURES 64
+#define rwtxdMAX_TEXTURES 256 // BEAVER01 holds 73 level textures
 #define rwtxdMAX_NAME 32
 
 /**
@@ -41,6 +41,7 @@ struct RwTxdTexture {
     RwUInt32 pitch;                 ///< raster nested: row bytes
     const RwUInt8 *pPixels;         ///< pixel data (pointer into the payload)
     RwUInt32 pixelBytes;            ///< pitch*height
+    const RwUInt8 *pPalette;        ///< depth 8: 256 RGBA entries after the pixels (else NULL)
 };
 
 /**

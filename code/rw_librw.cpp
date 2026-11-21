@@ -550,6 +550,28 @@ RpClump *RpClumpStreamReadMemory(const void *pData, RwUInt32 size) {
     mem.open(static_cast<rw::uint8 *>(const_cast<void *>(pData)), size, size);
     rw::Clump *pClump = rw::Clump::streamRead(&mem);
     mem.close();
+    // The game's level models store texture coordinates as (v, u): e.g.
+    // Viking_Destroyer's oars index a column of their atlas that only makes
+    // sense transposed, and Hugo_Ship's hull showed the black side of its
+    // atlas. Swap them before the geometry is instanced.
+    static const RwBool s_noSwap =
+        std::getenv("CANNONCRUISE_NO_UVSWAP") != nullptr ? TRUE : FALSE;
+    if (pClump != nullptr && s_noSwap != TRUE) {
+        FORLIST(lnk, pClump->atomics) {
+            rw::Geometry *pGeo = rw::Atomic::fromClump(lnk)->geometry;
+            if (pGeo == nullptr || (pGeo->flags & rw::Geometry::NATIVE)) {
+                continue;
+            }
+            for (rw::int32 s = 0; s < pGeo->numTexCoordSets; ++s) {
+                rw::TexCoords *pTc = pGeo->texCoords[s];
+                for (rw::int32 i = 0; pTc != nullptr && i < pGeo->numVertices; ++i) {
+                    const rw::float32 t = pTc[i].u;
+                    pTc[i].u = pTc[i].v;
+                    pTc[i].v = t;
+                }
+            }
+        }
+    }
     return reinterpret_cast<RpClump *>(pClump);
 }
 

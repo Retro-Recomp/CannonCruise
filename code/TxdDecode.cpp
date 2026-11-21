@@ -224,14 +224,18 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
             std::memcpy(&h, pData + q + 16, 4);
             std::memcpy(&dep, pData + q + 20, 4);
             std::memcpy(&pi, pData + q + 24, 4);
-            if (!IsPow2Size(w) || !IsPow2Size(h) || dep != 32) {
+            if (!IsPow2Size(w) || !IsPow2Size(h) || (dep != 32 && dep != 8)) {
                 continue;
             }
-            if (pi < w * 4 || pi > w * 4 + 64) {
+            const RwUInt32 bpp = dep / 8;
+            if (pi < w * bpp || pi > w * bpp + 64) {
                 continue;
             }
             const RwUInt32 px = q + 28;
-            if (px + pi * h > len) {
+            // depth 8 (e.g. BEAVER01 "soldier"): indices, then a 256-entry
+            // RGBA palette.
+            const RwUInt32 palBytes = (dep == 8) ? 256u * 4u : 0u;
+            if (px + pi * h + palBytes > len) {
                 continue;
             }
             if (pOut->count >= rwtxdMAX_TEXTURES) {
@@ -251,6 +255,7 @@ RwBool RwTxdDecodeLevelPack(const RwUInt8 *pData, RwUInt32 len,
             t->pitch = pi;
             t->pPixels = pData + px;
             t->pixelBytes = pi * h;
+            t->pPalette = (dep == 8) ? pData + px + pi * h : 0;
             ++pOut->count;
             break; // first valid dims for this name
         }
