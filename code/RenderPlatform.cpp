@@ -25,6 +25,7 @@
 #include <OpenGL/gl3.h>
 #endif
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -470,6 +471,23 @@ RwBool RenderPlatform_RenderClump(void *pClump) {
     return TRUE;
 }
 
+RwBool RenderPlatform_RenderBackgroundClump(void *pClump) {
+    if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
+        return FALSE;
+    }
+    // Sky layers: behind everything, no depth, both faces, unlit-looking
+    // (lights are left on; the dome materials are bright).
+    const rw::uint32 oldCull = rw::GetRenderState(rw::CULLMODE);
+    rw::SetRenderState(rw::ZTESTENABLE, 0);
+    rw::SetRenderState(rw::ZWRITEENABLE, 0);
+    rw::SetRenderState(rw::CULLMODE, rw::CULLNONE);
+    static_cast<rw::Clump *>(pClump)->render();
+    rw::SetRenderState(rw::ZTESTENABLE, 1);
+    rw::SetRenderState(rw::ZWRITEENABLE, 1);
+    rw::SetRenderState(rw::CULLMODE, oldCull);
+    return TRUE;
+}
+
 RwBool RenderPlatform_RemoveClump(void *pClump) {
     if (RenderPlatform_IsInitialized() != TRUE || pClump == nullptr) {
         return FALSE;
@@ -742,6 +760,79 @@ void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
 }
 
+namespace {
+rw::Texture *FindAnyTexture(const char *name) {
+    rw::Texture *t = FindMenuTexture(name);
+    if (t == nullptr && s_worldDict != nullptr) t = s_worldDict->find(name);
+    return t;
+}
+void SetIm2DColor(RwIm2DVertex &v, RwUInt32 argb) {
+    const RwUInt8 r = (RwUInt8)((argb >> 16) & 0xFF), g = (RwUInt8)((argb >> 8) & 0xFF),
+                  b = (RwUInt8)(argb & 0xFF), a = (RwUInt8)((argb >> 24) & 0xFF);
+#if defined(RW_D3D9)
+    v.color.red = b; // D3DCOLOR byte order (see DrawOverlayQuad)
+    v.color.green = g;
+    v.color.blue = r;
+#else
+    v.color.red = r;
+    v.color.green = g;
+    v.color.blue = b;
+#endif
+    v.color.alpha = a;
+}
+} // namespace
+
+void RenderPlatform_DrawTextureDisc(const char *texName, RwReal cx, RwReal cy, RwReal radius,
+                                    RwReal uc, RwReal vc, RwReal uvRadius, RwUInt32 argb)
+{
+    if (RenderPlatform_IsInitialized() != TRUE) return;
+    rw::Texture *tex = FindAnyTexture(texName);
+    if (tex == nullptr || tex->raster == nullptr) return;
+    const int kSeg = 32;
+    RwIm2DVertex v[kSeg + 2];
+    const RwReal z = rw::im2d::GetNearZ();
+    for (int i = 0; i < kSeg + 2; ++i) {
+        const RwReal a = (i == 0) ? 0.0f : (RwReal)(i - 1) / (RwReal)kSeg * 6.2831853f;
+        const RwReal sx = (i == 0) ? 0.0f : std::cos(a), sy = (i == 0) ? 0.0f : std::sin(a);
+        v[i].x = cx + sx * radius;
+        v[i].y = cy + sy * radius;
+        v[i].z = z;
+        v[i].rhw = 1.0f;
+        SetIm2DColor(v[i], argb);
+        v[i].u = uc + sx * uvRadius;
+        v[i].v = vc + sy * uvRadius;
+    }
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, tex->raster);
+    rw::im2d::RenderPrimitive(rw::PRIMTYPETRIFAN, v, kSeg + 2);
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+}
+
+void RenderPlatform_DrawRotatedSprite(const char *texName, RwReal cx, RwReal cy, RwReal w,
+                                      RwReal h, RwReal angle, RwUInt32 argb)
+{
+    if (RenderPlatform_IsInitialized() != TRUE) return;
+    rw::Texture *tex = FindAnyTexture(texName);
+    if (tex == nullptr || tex->raster == nullptr) return;
+    const RwReal c = std::cos(angle), s = std::sin(angle);
+    const RwReal lx[4] = {-0.5f, -0.5f, 0.5f, 0.5f}, ly[4] = {-0.5f, 0.5f, -0.5f, 0.5f};
+    RwIm2DVertex v[4];
+    const RwReal z = rw::im2d::GetNearZ();
+    for (int i = 0; i < 4; ++i) {
+        const RwReal px = lx[i] * w, py = ly[i] * h;
+        v[i].x = cx + px * c - py * s;
+        v[i].y = cy + px * s + py * c;
+        v[i].z = z;
+        v[i].rhw = 1.0f;
+        SetIm2DColor(v[i], argb);
+        v[i].u = lx[i] + 0.5f;
+        v[i].v = ly[i] + 0.5f;
+    }
+    RwUInt16 idx[6] = {0, 1, 2, 2, 1, 3};
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, tex->raster);
+    rw::im2d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, v, 4, idx, 6);
+    rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
+}
+
 void RenderPlatform_DrawSprite(const char *texName, RwReal x, RwReal y, RwReal w,
                                RwReal h, RwUInt32 fallbackArgb)
 {
@@ -853,6 +944,33 @@ RwBool RenderPlatform_LoadWorldDictionary(const char *rwsPath)
                                 t->name, (RwInt32)t->width,
                                 (RwInt32)t->height, t->pPixels,
                                 (RwInt32)t->pitch);
+                            // CANNONCRUISE_DUMPGUI=<dir>: write each UI texture
+                            // as an uncompressed TGA (diagnostics).
+                            const char *dumpDir = std::getenv("CANNONCRUISE_DUMPGUI");
+                            if (dumpDir != nullptr) {
+                                char path[512];
+                                std::snprintf(path, sizeof(path), "%s/%s.tga", dumpDir, t->name);
+                                FILE *tf = std::fopen(path, "wb");
+                                if (tf != nullptr) {
+                                    RwUInt8 hdr[18] = {0};
+                                    hdr[2] = 2;
+                                    hdr[12] = (RwUInt8)(t->width & 0xFF);
+                                    hdr[13] = (RwUInt8)(t->width >> 8);
+                                    hdr[14] = (RwUInt8)(t->height & 0xFF);
+                                    hdr[15] = (RwUInt8)(t->height >> 8);
+                                    hdr[16] = 32;
+                                    hdr[17] = 0x28; // top-left origin, 8 alpha bits
+                                    std::fwrite(hdr, 1, 18, tf);
+                                    for (RwUInt32 y = 0; y < t->height; ++y) {
+                                        for (RwUInt32 x = 0; x < t->width; ++x) {
+                                            const RwUInt8 *p = t->pPixels + y * t->pitch + x * 4;
+                                            const RwUInt8 bgra[4] = {p[2], p[1], p[0], p[3]};
+                                            std::fwrite(bgra, 1, 4, tf);
+                                        }
+                                    }
+                                    std::fclose(tf);
+                                }
+                            }
                         }
                         std::printf("WorldDict: %s: %u UI textures\n",
                                     rwsPath, pGui->count);

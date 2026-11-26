@@ -86,12 +86,48 @@ void COceanTile::Update(RwReal waveTime)
     if (!m_paVertices) return;
 
     // Same formula as COcean::CalculateWaterHeight (FUN_0042f500):
-    // y = sin(x*0.05 + t*2)*1.5 + cos(z*0.08 + t*1.5)*1.0
+    // y = sin(x*0.05 + t*2)*0.6 + cos(z*0.08 + t*1.5)*0.4 (about +-1 m; the
+    // former +-2.5 m swell flooded piers and beaches)
     for (RwUInt32 i = 0; i < m_uNumVertices; ++i)
     {
         m_paVertices[i].y =
-            std::sin(m_paVertices[i].x * 0.05f + waveTime * 2.0f) * 1.5f +
-            std::cos(m_paVertices[i].z * 0.08f + waveTime * 1.5f) * 1.0f;
+            std::sin(m_paVertices[i].x * 0.05f + waveTime * 2.0f) * 0.6f +
+            std::cos(m_paVertices[i].z * 0.08f + waveTime * 1.5f) * 0.4f;
+    }
+}
+
+namespace {
+RwUInt8 Mix(RwUInt8 a, RwUInt8 b, RwReal t) {
+    return (RwUInt8)((RwReal)a + ((RwReal)b - (RwReal)a) * t);
+}
+RwRGBA MixColor(const RwRGBA &a, const RwRGBA &b, RwReal t) {
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    RwRGBA c;
+    c.red = Mix(a.red, b.red, t);
+    c.green = Mix(a.green, b.green, t);
+    c.blue = Mix(a.blue, b.blue, t);
+    c.alpha = 255;
+    return c;
+}
+} // namespace
+
+void COceanTile::Update(RwReal waveTime, const Shade &shade)
+{
+    Update(waveTime);
+    if (!m_paVertices || !m_paColors || shade.valid != TRUE) return;
+    for (RwUInt32 i = 0; i < m_uNumVertices; ++i)
+    {
+        // Base colour, a touch of the deep colour in troughs and the light
+        // crest colour on top (the wave spans about -1..+1 m).
+        const RwReal h = (m_paVertices[i].y + 1.0f) * 0.5f;
+        RwRGBA c = MixColor(shade.deep, shade.base, 0.55f + h * 0.45f);
+        if (h > 0.7f) c = MixColor(c, shade.crest, (h - 0.7f) * 2.0f);
+        // Fade toward the horizon colour with distance.
+        const RwReal dx = m_paVertices[i].x - shade.viewX;
+        const RwReal dz = m_paVertices[i].z - shade.viewZ;
+        const RwReal d = std::sqrt(dx * dx + dz * dz);
+        m_paColors[i] = MixColor(c, shade.horizon, (d - 250.0f) / 900.0f * 0.85f);
     }
 }
 

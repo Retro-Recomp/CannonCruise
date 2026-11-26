@@ -108,6 +108,25 @@ struct WorldSpawnActor {
     RwUInt32 clipCount;
 };
 
+/// COcean record: sky dome / clouds / sun models (sun_*.dff, clouds_*.dff,
+/// sky_*.dff) and its raw attributes (id 9..14 are ARGB colours).
+struct WorldSpawnSky {
+    const void *models[4];   ///< const RwsResource*
+    RwUInt32 modelCount;
+    RwUInt32 attr[40];       ///< raw 4-byte COcean attributes by id
+};
+
+const WorldSpawnSky *WorldSpawn_GetSky(void);
+
+/// CGUIMap record: minimap world size (metres) and zoom (fraction of the map
+/// width shown). valid is FALSE when the level has none.
+struct WorldSpawnGuiMap {
+    RwBool valid;
+    RwReal worldW, worldH, zoom;
+};
+
+const WorldSpawnGuiMap *WorldSpawn_GetGuiMap(void);
+
 /// Hugo (index 0) and Fernando (index 1); pModel is NULL when absent.
 const WorldSpawnActor *WorldSpawn_GetActor(RwUInt32 index);
 

@@ -36,6 +36,12 @@ static const RwInt32 kMaxBlips = 64;   // = WORLDSPAWN_MAX_TOWERS
 static TowerBlip s_blips[kMaxBlips];
 static RwInt32 s_blipCount = 0;        // highest blip index set + 1
 static RwInt32 s_noAmmoFlash = 0;      // "NO AMMO" flash counter (frames)
+static char s_mapTex[64] = {0};        // minimap texture ("" = compass only)
+static RwReal s_mapW = 1000.0f, s_mapH = 1000.0f, s_mapZoom = 0.25f;
+static RwReal s_shipX = 0.0f, s_shipZ = 0.0f;
+static RwInt32 s_upgCannon = 0, s_upgSails = 0;
+static TowerBlip s_enemyBlips[64];
+static RwInt32 s_enemyBlipCount = 0;
 static RwBool s_goalActive = FALSE;    // mission goal marker (green blip)
 static RwReal s_goalX = 0.0f, s_goalZ = 0.0f;
 
@@ -63,6 +69,9 @@ void HUD_Initialize(void) {
     s_score = 0;
     s_towersDestroyed = 0;
     s_goalActive = FALSE;
+    s_enemyBlipCount = 0;
+    s_upgCannon = 0;
+    s_upgSails = 0;
     s_shipYaw = 0.0f;
     s_towersTotal = 0;
     for (RwInt32 i = 0; i < kMaxBlips; ++i) {
@@ -137,6 +146,31 @@ void HUD_SetTowerBlip(RwInt32 index, RwReal bearingX, RwReal bearingZ,
     s_blips[index].x = bearingX;
     s_blips[index].z = bearingZ;
     s_blips[index].alive = alive == TRUE ? TRUE : FALSE;
+}
+
+void HUD_SetMinimap(const char *texName, RwReal worldW, RwReal worldH, RwReal zoom) {
+    std::snprintf(s_mapTex, sizeof(s_mapTex), "%s", texName != nullptr ? texName : "");
+    s_mapW = worldW > 1.0f ? worldW : 1000.0f;
+    s_mapH = worldH > 1.0f ? worldH : 1000.0f;
+    s_mapZoom = (zoom > 0.01f && zoom <= 1.0f) ? zoom : 0.25f;
+}
+
+void HUD_SetShipPosition(RwReal x, RwReal z) {
+    s_shipX = x;
+    s_shipZ = z;
+}
+
+void HUD_SetUpgrades(RwInt32 cannon, RwInt32 sails) {
+    s_upgCannon = cannon < 0 ? 0 : (cannon > 5 ? 5 : cannon);
+    s_upgSails = sails < 0 ? 0 : (sails > 5 ? 5 : sails);
+}
+
+void HUD_SetEnemyBlip(RwInt32 index, RwReal relX, RwReal relZ, RwBool alive) {
+    if (index < 0 || index >= 64) return;
+    if (index >= s_enemyBlipCount) s_enemyBlipCount = index + 1;
+    s_enemyBlips[index].x = relX;
+    s_enemyBlips[index].z = relZ;
+    s_enemyBlips[index].alive = alive == TRUE ? TRUE : FALSE;
 }
 
 void HUD_SetGoalBlip(RwBool active, RwReal bearingX, RwReal bearingZ) {
@@ -298,6 +332,19 @@ void HUD_Render(void) {
                            0xFF1A1A1Au);
     }
 
+    // Upgrade handles: cannon upgrades on the left of the globe, sail
+    // upgrades on the right (GUI_037 / GUI_034), one per upgrade.
+    for (RwInt32 u = 0; u < s_upgCannon; ++u) {
+        DrawHudTexturedQuad(layout, dialX - 6.0f, dialY + 26.0f + (RwReal)u * 14.0f, 32.0f, 16.0f,
+                            "GUI_037");
+    }
+    for (RwInt32 u = 0; u < s_upgSails; ++u) {
+        RenderPlatform_DrawRotatedSprite(
+            "GUI_034", layout.MapX(dialX + dialSize - 10.0f),
+            layout.MapY(dialY + 34.0f + (RwReal)u * 14.0f), layout.MapSize(32.0f),
+            layout.MapSize(16.0f), 3.14159265f, 0xFFFFFFFFu);
+    }
+
     // Ammo count (above the globe)
     char ammoText[16];
     std::snprintf(ammoText, sizeof(ammoText), "%d", s_ammo);
@@ -367,48 +414,78 @@ void HUD_Render(void) {
     const RwReal compY = kDesignH - compSize - 34.0f;
     const RwReal compCX = compX + compSize * 0.5f;
     const RwReal compCY = compY + compSize * 0.5f;
-    if (RenderPlatform_HasTexture("GUI_020") == TRUE) {
-        DrawHudTexturedQuad(layout, compX, compY, compSize, compSize,
-                            "GUI_020");
-    } else {
+    if (RenderPlatform_HasTexture("GUI_020") != TRUE) {
         DrawHudOverlayQuad(layout, compX, compY, compSize, compSize,
                            0xFF202830u);
     }
-    // Tower blips (world direction, north-up): red dots
+    // North-up, +z = north (as the level map art): the map disc fills the
+    // ring's hole, centred on the ship; markers sit at their true offsets
+    // (clamped to the rim when off the map window).
+    const RwReal mapR = compSize * 0.285f;
+    const RwBool haveMap = (s_mapTex[0] != 0 && RenderPlatform_HasTexture(s_mapTex) == TRUE)
+                               ? TRUE : FALSE;
+    // Metres -> design pixels inside the disc.
+    const RwReal pxPerM = mapR / (s_mapZoom * s_mapW * 0.5f);
+    struct Local {
+        static void Place(RwReal cx, RwReal cy, RwReal r, RwReal relX, RwReal relZ,
+                          RwReal pxPerM, RwReal *pX, RwReal *pY) {
+            RwReal dx = relX * pxPerM, dy = -relZ * pxPerM;
+            const RwReal d = std::hypot(dx, dy);
+            if (d > r && d > 0.0f) {
+                dx *= r / d;
+                dy *= r / d;
+            }
+            *pX = cx + dx;
+            *pY = cy + dy;
+        }
+    };
+    if (haveMap == TRUE) {
+        const RwReal uc = (s_shipX + s_mapW * 0.5f) / s_mapW;
+        const RwReal vc = (s_mapH * 0.5f - s_shipZ) / s_mapH;
+        RenderPlatform_DrawTextureDisc(s_mapTex, layout.MapX(compCX), layout.MapY(compCY),
+                                       layout.MapSize(mapR), uc, vc, s_mapZoom * 0.5f,
+                                       0xFFFFFFFFu);
+    }
+    if (RenderPlatform_HasTexture("GUI_020") == TRUE) {
+        DrawHudTexturedQuad(layout, compX, compY, compSize, compSize, "GUI_020");
+    }
+    const RwReal blipR = mapR - 3.0f;
+    // Towers: red spots.
     for (int i = 0; i < s_blipCount; ++i) {
-        if (!s_blips[i].alive) {
-            continue;
-        }
-        const RwReal len = std::hypot(s_blips[i].x, s_blips[i].z);
-        if (!std::isfinite(len) || len < 1.0f) {
-            continue;
-        }
-        const RwReal nx = s_blips[i].x / len;
-        const RwReal nz = s_blips[i].z / len;
-        const RwReal bRad = compSize * 0.30f;
-        const RwReal bx = compCX + nx * bRad;
-        const RwReal by = compCY + nz * bRad;
-        DrawHudOverlayQuad(layout, bx - 4.0f, by - 4.0f, 8.0f, 8.0f,
-                           0xFFFF3030u);
+        if (!s_blips[i].alive) continue;
+        RwReal bx, by;
+        Local::Place(compCX, compCY, blipR, s_blips[i].x, s_blips[i].z, pxPerM, &bx, &by);
+        RenderPlatform_DrawSprite("compass_missionspot.png", layout.MapX(bx - 4.0f),
+                                  layout.MapY(by - 4.0f), layout.MapSize(8.0f),
+                                  layout.MapSize(8.0f), 0xFFFF3030u);
     }
-    // Mission goal: green marker on the rim (centre when the ship is on it).
+    // Enemy ships: yellow spots.
+    for (int i = 0; i < s_enemyBlipCount; ++i) {
+        if (!s_enemyBlips[i].alive) continue;
+        RwReal bx, by;
+        Local::Place(compCX, compCY, blipR, s_enemyBlips[i].x, s_enemyBlips[i].z, pxPerM, &bx, &by);
+        RenderPlatform_DrawSprite("compass_enemyspot.png", layout.MapX(bx - 4.0f),
+                                  layout.MapY(by - 4.0f), layout.MapSize(8.0f),
+                                  layout.MapSize(8.0f), 0xFFFFD030u);
+    }
+    // Mission goal: green spot ("the green marker on the map ...").
     if (s_goalActive == TRUE) {
-        const RwReal len = std::hypot(s_goalX, s_goalZ);
-        const RwReal bRad = compSize * 0.38f;
-        RwReal gx = compCX, gy = compCY;
-        if (len >= 1.0f) {
-            gx = compCX + s_goalX / len * bRad;
-            gy = compCY + s_goalZ / len * bRad;
-        }
-        DrawHudOverlayQuad(layout, gx - 7.0f, gy - 7.0f, 14.0f, 14.0f, 0xFF103010u);
-        DrawHudOverlayQuad(layout, gx - 5.0f, gy - 5.0f, 10.0f, 10.0f, 0xFF30F040u);
+        RwReal gx, gy;
+        Local::Place(compCX, compCY, blipR, s_goalX, s_goalZ, pxPerM, &gx, &gy);
+        RenderPlatform_DrawSprite("compass_piratespot.png", layout.MapX(gx - 6.0f),
+                                  layout.MapY(gy - 6.0f), layout.MapSize(12.0f),
+                                  layout.MapSize(12.0f), 0xFF30F040u);
     }
-    // Needle: rotates to face the ship's bow
-    DrawNeedle(layout.MapX(compCX), layout.MapY(compCY), s_shipYaw,
-               layout.MapSize(compSize * 0.30f), 0xFFF0F0F0u);
-    // Ship center point
-    DrawHudOverlayQuad(layout, compCX - 2.0f, compCY - 2.0f, 4.0f, 4.0f,
-                       0xFFFFFFFFu);
+    // The ship: GUI_004 arrow turned to the heading (forward = (sin, cos) of
+    // yaw; on screen +z is up, so yaw is a clockwise turn).
+    if (RenderPlatform_HasTexture("GUI_004") == TRUE) {
+        RenderPlatform_DrawRotatedSprite("GUI_004", layout.MapX(compCX), layout.MapY(compCY),
+                                         layout.MapSize(16.0f), layout.MapSize(16.0f), s_shipYaw,
+                                         0xFFFFFFFFu);
+    } else {
+        DrawNeedle(layout.MapX(compCX), layout.MapY(compCY), 3.14159265f - s_shipYaw,
+                   layout.MapSize(compSize * 0.30f), 0xFFF0F0F0u);
+    }
 
     // TOWERS indicator (below the compass, gold)
     if (s_towersTotal > 0) { // levels without a tower mission hide it

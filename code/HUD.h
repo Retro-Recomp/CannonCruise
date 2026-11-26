@@ -61,6 +61,20 @@ void HUD_SetShipHeading(RwReal yaw);
 void HUD_SetTowerBlip(RwInt32 index, RwReal bearingX, RwReal bearingZ,
                       RwBool alive);
 
+/** @brief Minimap inside the compass: level map texture (e.g. "Viking1.png")
+ *         covering worldW x worldH metres centred on the origin, showing
+ *         `zoom` of its width around the ship (CGUIMap record values). */
+void HUD_SetMinimap(const char *texName, RwReal worldW, RwReal worldH, RwReal zoom);
+
+/** @brief Ship world position for the minimap. */
+void HUD_SetShipPosition(RwReal x, RwReal z);
+
+/** @brief Upgrade handles beside the ammo dial (cannon left, sails right). */
+void HUD_SetUpgrades(RwInt32 cannon, RwInt32 sails);
+
+/** @brief Enemy ship marker on the minimap (index 0..63; relative position). */
+void HUD_SetEnemyBlip(RwInt32 index, RwReal relX, RwReal relZ, RwBool alive);
+
 /** @brief Mission goal marker on the compass (green; bearing from the ship).
  *         active=FALSE hides it. */
 void HUD_SetGoalBlip(RwBool active, RwReal bearingX, RwReal bearingZ);

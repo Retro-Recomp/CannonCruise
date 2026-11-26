@@ -37,6 +37,7 @@ COcean::COcean()
 {
     sm_pInstance = this;
     memset(m_apSkyDomes, 0, sizeof(m_apSkyDomes));
+    memset(&m_Shade, 0, sizeof(m_Shade));
 }
 
 // ---------------------------------------------------------------------------
@@ -118,13 +119,14 @@ void COcean::Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
 // ---------------------------------------------------------------------------
 void COcean::Update(RwReal deltaTime)
 {
-    m_fWaveTime += deltaTime;
+    // Half speed: at full speed the swell looked hurried.
+    m_fWaveTime += deltaTime * 0.5f;
 
     for (size_t i = 0; i < m_Tiles.size(); ++i)
     {
         if (m_Tiles[i])
         {
-            m_Tiles[i]->Update(m_fWaveTime);
+            m_Tiles[i]->Update(m_fWaveTime, m_Shade);
         }
     }
 }
@@ -146,12 +148,26 @@ void COcean::Render()
 // ---------------------------------------------------------------------------
 // CalculateWaterHeight – mirrors FUN_0042f500 (ASM: 0042f500).
 // Evaluates compound sinusoidal wave displacement and surface normal:
-//   wave1 = sin(X * 0.05 + time * 2.0) * 1.5
-//   wave2 = cos(Z * 0.08 + time * 1.5) * 1.0
+//   wave1 = sin(X * 0.05 + time * 2.0) * 0.6
+//   wave2 = cos(Z * 0.08 + time * 1.5) * 0.4  (amplitudes lowered: +-2.5 m flooded piers)
 //   height = wave1 + wave2
 // Also computes partial derivatives for normalized surface normal calculation
 // required by physics buoyancy torque and water lighting.
 // ---------------------------------------------------------------------------
+void COcean::SetWaterColors(RwUInt32 deep, RwUInt32 base, RwUInt32 crest, RwUInt32 horizon)
+{
+    const RwUInt32 c[4] = {deep, base, crest, horizon};
+    RwRGBA *out[4] = {&m_Shade.deep, &m_Shade.base, &m_Shade.crest, &m_Shade.horizon};
+    for (int i = 0; i < 4; ++i)
+    {
+        out[i]->red = (RwUInt8)((c[i] >> 16) & 0xFF);
+        out[i]->green = (RwUInt8)((c[i] >> 8) & 0xFF);
+        out[i]->blue = (RwUInt8)(c[i] & 0xFF);
+        out[i]->alpha = 255;
+    }
+    m_Shade.valid = TRUE;
+}
+
 RwReal COcean::GetSurfaceHeight(RwReal worldX, RwReal worldZ) const
 {
     if (m_fGridCell <= 0.0f)
@@ -173,15 +189,15 @@ RwReal COcean::GetSurfaceHeight(RwReal worldX, RwReal worldZ) const
 
 RwReal COcean::CalculateWaterHeight(RwReal worldX, RwReal worldZ, RwV3d* pNormal) const
 {
-    RwReal wave1 = std::sin(worldX * 0.05f + m_fWaveTime * 2.0f) * 1.5f;
-    RwReal wave2 = std::cos(worldZ * 0.08f + m_fWaveTime * 1.5f) * 1.0f;
+    RwReal wave1 = std::sin(worldX * 0.05f + m_fWaveTime * 2.0f) * 0.6f;
+    RwReal wave2 = std::cos(worldZ * 0.08f + m_fWaveTime * 1.5f) * 0.4f;
     RwReal height = wave1 + wave2;
 
     if (pNormal)
     {
-        pNormal->x = -std::cos(worldX * 0.05f + m_fWaveTime * 2.0f) * 0.075f;
+        pNormal->x = -std::cos(worldX * 0.05f + m_fWaveTime * 2.0f) * 0.03f;
         pNormal->y = 1.0f;
-        pNormal->z = std::sin(worldZ * 0.08f + m_fWaveTime * 1.5f) * 0.08f;
+        pNormal->z = std::sin(worldZ * 0.08f + m_fWaveTime * 1.5f) * 0.032f;
         // Normalize normal vector
         RwReal len = std::sqrt(pNormal->x * pNormal->x + pNormal->y * pNormal->y + pNormal->z * pNormal->z);
         if (len > 0.0001f)

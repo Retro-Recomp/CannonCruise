@@ -46,6 +46,16 @@ public:
      */
     void Update(RwReal waveTime);
 
+    /// Water shading: colours by wave height and by distance from the viewer.
+    struct Shade {
+        RwRGBA deep, base, crest, horizon;
+        RwReal viewX, viewZ;
+        RwBool valid;
+    };
+
+    /// As Update(waveTime), and recolours the vertices with `shade`.
+    void Update(RwReal waveTime, const Shade &shade);
+
     /**
      * @brief Submits tile geometry to the rendering pipeline (COcean_W32).
      */

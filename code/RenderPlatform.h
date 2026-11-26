@@ -110,6 +110,9 @@ RwBool RenderPlatform_AddClump(void *pClump);
 /// e.g. the player ship after the ocean so the water cannot paint over it.
 RwBool RenderPlatform_RenderClump(void *pClump);
 
+/// Draws a sky layer clump with depth test/write off (call before the scene).
+RwBool RenderPlatform_RenderBackgroundClump(void *pClump);
+
 /// Removes a clump added with RenderPlatform_AddClump (does not destroy it).
 RwBool RenderPlatform_RemoveClump(void *pClump);
 
@@ -172,6 +175,16 @@ void *RenderPlatform_GetTexture(const char *name);
  */
 void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
                                      const char *texName);
+
+/** @brief Textured disc (menu or level texture): centre/radius in pixels, the
+ *         texture sampled around (uc, vc) with radius uvRadius. Minimap. */
+void RenderPlatform_DrawTextureDisc(const char *texName, RwReal cx, RwReal cy, RwReal radius,
+                                    RwReal uc, RwReal vc, RwReal uvRadius, RwUInt32 argb);
+
+/** @brief Texture quad centred at (cx, cy), rotated by angle (radians, clockwise
+ *         on screen). Minimap ship arrow. */
+void RenderPlatform_DrawRotatedSprite(const char *texName, RwReal cx, RwReal cy, RwReal w,
+                                      RwReal h, RwReal angle, RwUInt32 argb);
 
 /** @brief Textured quad of a loaded menu texture, or a solid quad in
  *         fallbackArgb when the texture is missing. After BeginOverlay2D. */

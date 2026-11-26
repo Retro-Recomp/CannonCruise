@@ -883,9 +883,9 @@ void PlayerShip_Update(RwReal deltaTime, RwReal waveT,
     }
     ClampShipToMap();
     // Wave-top bob -- exactly the same phase/amplitude as Ocean's wave form
-    // (sin(x*0.05+t*2)*1.5 + cos(z*0.08+t*1.5)*1.0)
-    const RwReal wave = std::sin(s_ship.pos.x * 0.05f + waveT * 2.0f) * 1.5f +
-                        std::cos(s_ship.pos.z * 0.08f + waveT * 1.5f) * 1.0f;
+    // (sin(x*0.05+t*2)*0.6 + cos(z*0.08+t*1.5)*0.4)
+    const RwReal wave = std::sin(s_ship.pos.x * 0.05f + waveT * 2.0f) * 0.6f +
+                        std::cos(s_ship.pos.z * 0.08f + waveT * 1.5f) * 0.4f;
     s_ship.pos.y = kWaterY + 0.8f + wave;
     // Bullet -- match the kinematic body position with the manual integration
     if (s_pShipBody != nullptr) {

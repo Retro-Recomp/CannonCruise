@@ -420,6 +420,47 @@ WorldSpawnFish s_fish[WORLDSPAWN_MAX_FISH];
 RwUInt32 s_fishCount = 0;
 
 WorldSpawnActor s_actors[2];
+WorldSpawnSky s_sky;
+WorldSpawnGuiMap s_guiMap;
+
+void CollectGuiMap(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 || std::strcmp(pObj->behaviours[0].className, "CGUIMap") != 0) {
+        return;
+    }
+    for (RWS::CAttributeCommandIterator it(packet, "CGUIMap"); !it.IsFinished(); ++it) {
+        if (it->GetDataSize() != 4) continue;
+        RwReal f = 0.0f;
+        std::memcpy(&f, it->GetCommandData(), 4);
+        if (it->GetCommandId() == 5) s_guiMap.worldW = f;
+        if (it->GetCommandId() == 6) s_guiMap.worldH = f;
+        if (it->GetCommandId() == 7) s_guiMap.zoom = f;
+    }
+    s_guiMap.valid = (s_guiMap.worldW > 1.0f && s_guiMap.worldH > 1.0f) ? TRUE : FALSE;
+}
+
+// COcean: sky dome, cloud layer and sun models + its colour attributes.
+void CollectSky(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 || std::strcmp(pObj->behaviours[0].className, "COcean") != 0 ||
+        s_sky.modelCount > 0) {
+        return;
+    }
+    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands"); !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 0 || it->GetDataSize() != 16 || s_sky.modelCount >= 4) {
+            continue;
+        }
+        const RwsResource *pRes =
+            RwsResources_Find(static_cast<const RwUInt8 *>(it->GetCommandData()));
+        if (pRes != 0 && pRes->embeddedType == rwsRESOURCE_CLUMP) {
+            s_sky.models[s_sky.modelCount++] = pRes;
+        }
+    }
+    for (RWS::CAttributeCommandIterator it(packet, "COcean"); !it.IsFinished(); ++it) {
+        const RwUInt32 id = it->GetCommandId();
+        if (id < 40 && it->GetDataSize() == 4) {
+            std::memcpy(&s_sky.attr[id], it->GetCommandData(), 4);
+        }
+    }
+}
 
 // CHugoActor (0) / CFernandoActor (1): main model + every animation the
 // record references.
@@ -578,6 +619,10 @@ void CollectTower(const RwStudioObject *pObj,
 
 } // namespace
 
+const WorldSpawnSky *WorldSpawn_GetSky(void) { return &s_sky; }
+
+const WorldSpawnGuiMap *WorldSpawn_GetGuiMap(void) { return &s_guiMap; }
+
 const WorldSpawnActor *WorldSpawn_GetActor(RwUInt32 index) {
     return index < 2 ? &s_actors[index] : 0;
 }
@@ -675,6 +720,8 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_waypointCount = 0;
     s_fishCount = 0;
     std::memset(s_actors, 0, sizeof(s_actors));
+    std::memset(&s_sky, 0, sizeof(s_sky));
+    std::memset(&s_guiMap, 0, sizeof(s_guiMap));
     LevelScript_Reset();
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
@@ -708,6 +755,33 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         CollectWaypoint(pObj, packet);
         CollectFish(pObj, packet);
         CollectActor(pObj, packet);
+        CollectSky(pObj, packet);
+        CollectGuiMap(pObj, packet);
+        // CANNONCRUISE_DUMPREFS=CClassA,CClassB: list the resources and
+        // attributes such records reference (diagnostics).
+        static const char *s_dumpRefs = std::getenv("CANNONCRUISE_DUMPREFS");
+        if (s_dumpRefs != 0 && pObj->behaviourCount > 0 &&
+            std::strstr(s_dumpRefs, pObj->behaviours[0].className) != 0) {
+            std::printf("DumpRefs: %s\n", pObj->behaviours[0].className);
+            for (RWS::CAttributeCommandIterator it(packet, 0); !it.IsFinished(); ++it) {
+                if (it->GetCommandId() == 0 && it->GetDataSize() == 16) {
+                    const RwsResource *pRes = RwsResources_Find(
+                        static_cast<const RwUInt8 *>(it->GetCommandData()));
+                    std::printf("  res %s (type 0x%x)\n", pRes ? pRes->name : "?",
+                                pRes ? (unsigned)pRes->embeddedType : 0u);
+                } else if (it->GetDataSize() == 4) {
+                    RwReal f = 0.0f;
+                    RwInt32 n = 0;
+                    std::memcpy(&f, it->GetCommandData(), 4);
+                    std::memcpy(&n, it->GetCommandData(), 4);
+                    std::printf("  id%u = %d / %g\n", (unsigned)it->GetCommandId(), (int)n, (double)f);
+                } else {
+                    const char *p = static_cast<const char *>(it->GetCommandData());
+                    std::printf("  id%u (%u bytes) '%.*s'\n", (unsigned)it->GetCommandId(),
+                                (unsigned)it->GetDataSize(), (int)(it->GetDataSize() < 60 ? it->GetDataSize() : 60), p);
+                }
+            }
+        }
         LevelScript_CollectObject(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(

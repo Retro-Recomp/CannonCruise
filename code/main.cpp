@@ -74,6 +74,7 @@ static void ClampCameraToMap(RwReal camPos[3]) {
 #include "SaveGameManager.h"
 
 #include <cmath>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -604,6 +605,10 @@ int main(int argc, char **argv) {
     RwInt32 s_enemiesSunk = 0;
     // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
     void *s_pShipAnimator = nullptr;
+    // Sky layers from the COcean record, drawn around the camera (dome first).
+    RpClump *s_skyClumps[4] = {nullptr, nullptr, nullptr, nullptr};
+    int s_skyCount = 0;
+    RwReal s_skyLift = 0.0f;
     // Crew: 0 = Hugo (at the wheel, aft), 1 = Fernando (bow deck).
     RpClump *s_crewClump[2] = {nullptr, nullptr};
     void *s_crewAnim[2] = {nullptr, nullptr};
@@ -1582,6 +1587,56 @@ int main(int argc, char **argv) {
                                         bmin.x, bmax.x, bmin.y, bmax.y, bmin.z, bmax.z);
                         }
                     }
+                    // Sky: order dome (sky_*), clouds, sun so later layers draw on top.
+                    {
+                        // Minimap: the level map art is the first texture of
+                        // the pack, named after the level ("VIKING01" ->
+                        // "Viking1.png"); size/zoom from the CGUIMap record.
+                        {
+                            const WorldSpawnGuiMap *pMap = WorldSpawn_GetGuiMap();
+                            char mapTex[64] = {0};
+                            const char *pBase = pWorldPath != nullptr ? pWorldPath : "";
+                            const char *pSlash = std::strrchr(pBase, '/');
+                            const char *pBack = std::strrchr(pBase, '\\');
+                            if (pBack != nullptr && (pSlash == nullptr || pBack > pSlash)) pSlash = pBack;
+                            pBase = pSlash != nullptr ? pSlash + 1 : pBase;
+                            size_t n = 0;
+                            while (pBase[n] != 0 && !(pBase[n] >= '0' && pBase[n] <= '9') && n < 30) {
+                                mapTex[n] = (char)(n == 0 ? std::toupper((unsigned char)pBase[n])
+                                                          : std::tolower((unsigned char)pBase[n]));
+                                ++n;
+                            }
+                            const int levelNo = std::atoi(pBase + n);
+                            std::snprintf(mapTex + n, sizeof(mapTex) - n, "%d.png", levelNo);
+                            RWS::HUD_SetMinimap(mapTex, pMap->valid ? pMap->worldW : 1000.0f,
+                                                pMap->valid ? pMap->worldH : 1000.0f,
+                                                pMap->valid ? pMap->zoom : 0.25f);
+                            std::printf("CannonCruise: minimap %s (%s)\n", mapTex,
+                                        RenderPlatform_HasTexture(mapTex) == TRUE ? "ok" : "missing");
+                        }
+                        const WorldSpawnSky *pSky = WorldSpawn_GetSky();
+                        // Water colours from the same COcean record (ARGB ids
+                        // 14 deep, 11 base, 10 crest, 9 horizon).
+                        if (pOcean != nullptr && pSky != nullptr && pSky->attr[11] != 0) {
+                            pOcean->SetWaterColors(pSky->attr[14], pSky->attr[11],
+                                                   pSky->attr[10], pSky->attr[9]);
+                        }
+                        const char *kOrder[3] = {"sky", "cloud", "sun"};
+                        for (int oi = 0; oi < 3 && pSky != nullptr; ++oi) {
+                            for (RwUInt32 mi = 0; mi < pSky->modelCount && s_skyCount < 4; ++mi) {
+                                const RwsResource *pRes = static_cast<const RwsResource *>(pSky->models[mi]);
+                                if (std::strncmp(pRes->name, kOrder[oi], std::strlen(kOrder[oi])) != 0) continue;
+                                RpClump *pClump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                                if (pClump == nullptr) continue;
+                                s_skyClumps[s_skyCount++] = pClump;
+                                RwV3d smin, smax;
+                                if (RpClumpPortGetLocalBounds(pClump, &smin, &smax) == TRUE) {
+                                    std::printf("  sky %s bounds x[%.0f..%.0f] y[%.0f..%.0f] z[%.0f..%.0f]\n",
+                                                pRes->name, smin.x, smax.x, smin.y, smax.y, smin.z, smax.z);
+                                }
+                            }
+                        }
+                    }
                     // Crew models (CHugoActor / CFernandoActor) with an idle loop.
                     for (RwUInt32 ai = 0; ai < 2; ++ai) {
                         const WorldSpawnActor *pActor = WorldSpawn_GetActor(ai);
@@ -1976,6 +2031,13 @@ int main(int argc, char **argv) {
                 if (pWorld != nullptr && bSimActive == TRUE) {
                     pWorld->Update(1.0f / 60.0f);
                 }
+            }
+            // Sky (COcean's dome, clouds, sun) follows the camera, behind the world.
+            for (int si = 0; si < s_skyCount; ++si) {
+                const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+                                      camPos[0], camPos[1] + s_skyLift, camPos[2], 1};
+                RpClumpPortSetMatrix(s_skyClumps[si], m);
+                RenderPlatform_RenderBackgroundClump(s_skyClumps[si]);
             }
             if (std::getenv("CANNONCRUISE_NO_WORLD") == nullptr) {
                 RenderPlatform_RenderScene();
@@ -2501,6 +2563,7 @@ if (bSimActive == TRUE) {
                     // COcean::Update takes a delta and accumulates it; passing
                     // the absolute time made the water run ahead of the ship's
                     // bob, so wave crests covered the hull.
+                    pOcean->SetViewer(camPos[0], camPos[2]);
                     pOcean->Update(1.0f / 60.0f);
                 }
                 pOcean->Render(); // between Begin/End
@@ -2718,6 +2781,18 @@ if (bSimActive == TRUE) {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
                     RWS::HUD_SetShipHeading(ss.yaw);
+                    RWS::HUD_SetShipPosition(ss.pos.x, ss.pos.z);
+                    for (size_t ei = 0; ei < s_enemies.size() && ei < 64; ++ei) {
+                        const EnemyShipRuntime &e = s_enemies[ei];
+                        RWS::HUD_SetEnemyBlip((RwInt32)ei, e.x - ss.pos.x, e.z - ss.pos.z,
+                                              (enemyPresent(e) == TRUE && e.sinkTime <= 0.0f) ? TRUE : FALSE);
+                    }
+                    // Upgrades granted by the level script (NORDIC02's chest
+                    // gives faster sails; later levels send the explicit events).
+                    RWS::HUD_SetUpgrades(
+                        (LevelScript_WasSent("CannonUpgrade") ? 1 : 0) +
+                            (LevelScript_WasSent("CannonBallUpgrade") ? 1 : 0),
+                        (LevelScript_WasSent("SpeedUpgrade") || LevelScript_WasSent("UpgradeText")) ? 1 : 0);
                     for (size_t ti = 0; ti < s_towers.size(); ++ti) {
                         CTowerCatapult *pT = s_towers[ti];
                         const RwV3d &tp = pT->GetWorldPosition();

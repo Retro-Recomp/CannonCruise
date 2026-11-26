@@ -14,7 +14,7 @@
 
 #define OCEAN_MAX_SKY_DOMES 4
 
-class COceanTile;
+#include "OceanTile.h"
 
 /**
  * @class COcean
@@ -64,6 +64,13 @@ public:
      */
     void Update(RwReal deltaTime);
 
+    /// Water colours from the level's COcean record (ARGB attributes:
+    /// deep, base, crest, horizon).
+    void SetWaterColors(RwUInt32 deep, RwUInt32 base, RwUInt32 crest, RwUInt32 horizon);
+
+    /// Viewer position for the distance fade toward the horizon colour.
+    void SetViewer(RwReal x, RwReal z) { m_Shade.viewX = x; m_Shade.viewZ = z; }
+
     /// Accumulated wave time (seconds) the tiles are currently drawn with.
     RwReal GetWaveTime() const { return m_fWaveTime; }
 
@@ -101,6 +108,7 @@ private:
     RwBool m_bHiDetail;                                 ///< Flag enabling high-resolution water mesh geometry.
     RwReal m_fGridOriginX, m_fGridOriginZ;              ///< Corner of the tile grid.
     RwReal m_fGridCell;                                 ///< Width of one mesh quad.
+    COceanTile::Shade m_Shade;                          ///< Water colours (valid once set).
 };
 
 #endif // OCEAN_H
