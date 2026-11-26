@@ -95,6 +95,10 @@ void RenderPlatform_Terminate(void);
 void RenderPlatform_SetCameraPose(const RwReal position[3],
                                   const RwReal lookAt[3]);
 
+/** @brief Projects a world point to screen pixels with the current camera
+ *         pose; FALSE when it is behind the camera. */
+RwBool RenderPlatform_WorldToScreen(const RwReal p[3], RwReal *pX, RwReal *pY);
+
 /**
  * @brief Adds the clump to the platform world (render + world ownership
  * at the ATOMIC/CLUMP level -- clump destroy is the caller's job).

@@ -6,6 +6,7 @@
 #include "SfxMixer.h"
 #include "framework/toolkits/Audio/Audio.h"
 #include <cassert>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <windows.h>
@@ -75,8 +76,23 @@ void CAudioManager::PlaySound(const char* pSoundName, const RwV3d* pPos)
 
     // Mixed DirectSound voice (effects overlap, cached in memory) at the
     // master x FX volume; PlaySoundA (one sound at a time) only as fallback.
-    const RwReal volume = m_afVolumeGroups[0] * m_afVolumeGroups[2];
-    if (SfxMixer_Play(fullPath, (float)volume)) {
+    RwReal volume = m_afVolumeGroups[0] * m_afVolumeGroups[2];
+    RwReal pan = 0.0f;
+    if (pPos != nullptr && m_bListenerSet == TRUE) {
+        // Positional: full volume within 15 m, silent beyond ~250 m; panned
+        // by the side of the camera the sound is on.
+        const RwReal dx = pPos->x - m_afListener[0], dy = pPos->y - m_afListener[1];
+        const RwReal dz = pPos->z - m_afListener[2];
+        const RwReal d = std::sqrt(dx * dx + dy * dy + dz * dz);
+        RwReal att = d <= 15.0f ? 1.0f : 15.0f / d;
+        if (d > 250.0f) att = 0.0f;
+        volume *= att;
+        if (d > 1.0f) pan = (dx * m_afListener[3] + dz * m_afListener[4]) / d;
+    }
+    if (volume <= 0.001f) {
+        return;
+    }
+    if (SfxMixer_Play(fullPath, (float)volume, (float)pan)) {
         return;
     }
     DWORD flags = SND_FILENAME | SND_ASYNC | SND_NODEFAULT;
@@ -203,6 +219,17 @@ RwReal CAudioManager::GetVolumeGroup(RwUInt32 groupIndex) const
         return m_afVolumeGroups[groupIndex];
     }
     return 1.0f;
+}
+
+void CAudioManager::SetListener(RwReal x, RwReal y, RwReal z, RwReal rightX, RwReal rightZ)
+{
+    m_afListener[0] = x;
+    m_afListener[1] = y;
+    m_afListener[2] = z;
+    const RwReal len = std::sqrt(rightX * rightX + rightZ * rightZ);
+    m_afListener[3] = len > 0.0001f ? rightX / len : 1.0f;
+    m_afListener[4] = len > 0.0001f ? rightZ / len : 0.0f;
+    m_bListenerSet = TRUE;
 }
 
 // ---------------------------------------------------------------------------

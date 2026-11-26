@@ -91,11 +91,17 @@ public:
      */
     void UpdateListenerPosition(const RwMatrix* pMatrix);
 
+    /// Listener for positional effects: position and the camera's
+    /// screen-right direction (x, z) used for panning.
+    void SetListener(RwReal x, RwReal y, RwReal z, RwReal rightX, RwReal rightZ);
+
 private:
     RwReal m_afVolumeGroups[3];     ///< Volume scalars for groups: 0=Master, 1=Music, 2=FX.
     RwMatrix m_ListenerMatrix;      ///< Current camera transform matrix for 3D panning.
     std::string m_SoundPath;        ///< Base directory path ("Sound\\Win32\\").
     std::string m_CurrentStream;    ///< Currently active stream filename.
+    RwReal m_afListener[5] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f}; ///< x, y, z, rightX, rightZ
+    RwBool m_bListenerSet = FALSE;
     void ApplyStreamVolume();       ///< Pushes master x music volume to the MCI stream.
 };
 

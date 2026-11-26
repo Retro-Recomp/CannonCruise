@@ -1116,6 +1116,25 @@ void RenderPlatform_ClearWorldDictionary(void)
     }
 }
 
+RwBool RenderPlatform_WorldToScreen(const RwReal p[3], RwReal *pX, RwReal *pY) {
+    if (RenderPlatform_IsInitialized() != TRUE || s_pCameraFrame == nullptr || s_width <= 0) {
+        return FALSE;
+    }
+    const rw::Matrix &m = s_pCameraFrame->matrix;
+    const rw::V3d d = rw::makeV3d(p[0] - m.pos.x, p[1] - m.pos.y, p[2] - m.pos.z);
+    const RwReal z = rw::dot(d, m.at);
+    if (z < 0.5f) {
+        return FALSE; // behind the camera / too close
+    }
+    // RenderWare cameras mirror X: the frame's "right" axis is screen left.
+    const RwReal x = -rw::dot(d, m.right);
+    const RwReal y = rw::dot(d, m.up);
+    const rw::V2d &vw = s_pCamera->viewWindow;
+    *pX = (RwReal)s_width * 0.5f * (1.0f + x / (z * vw.x));
+    *pY = (RwReal)s_height * 0.5f * (1.0f - y / (z * vw.y));
+    return TRUE;
+}
+
 void RenderPlatform_SetCameraPose(const RwReal position[3],
                                   const RwReal lookAt[3]) {
     if (RenderPlatform_IsInitialized() != TRUE) {

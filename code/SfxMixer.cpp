@@ -101,7 +101,7 @@ void ReapFinished() {
 
 } // namespace
 
-bool SfxMixer_Play(const char *pPath, float volume) {
+bool SfxMixer_Play(const char *pPath, float volume, float pan) {
     if (pPath == nullptr || !EnsureDevice()) return false;
     const Sample *pSample = LoadSample(pPath);
     if (pSample == nullptr) return false;
@@ -114,7 +114,7 @@ bool SfxMixer_Play(const char *pPath, float volume) {
     DSBUFFERDESC desc;
     std::memset(&desc, 0, sizeof(desc));
     desc.dwSize = sizeof(desc);
-    desc.dwFlags = DSBCAPS_CTRLVOLUME | DSBCAPS_GLOBALFOCUS;
+    desc.dwFlags = DSBCAPS_CTRLVOLUME | DSBCAPS_CTRLPAN | DSBCAPS_GLOBALFOCUS;
     desc.dwBufferBytes = (DWORD)pSample->data.size();
     WAVEFORMATEX fmt = pSample->format;
     desc.lpwfxFormat = &fmt;
@@ -135,6 +135,9 @@ bool SfxMixer_Play(const char *pPath, float volume) {
     const LONG db = volume <= 0.0001f ? DSBVOLUME_MIN
                                       : (LONG)(2000.0f * std::log10(volume));
     pBuffer->SetVolume(db < DSBVOLUME_MIN ? DSBVOLUME_MIN : db);
+    if (pan < -1.0f) pan = -1.0f;
+    if (pan > 1.0f) pan = 1.0f;
+    pBuffer->SetPan((LONG)(pan * 2500.0f)); // up to 25 dB off the far side
     if (FAILED(pBuffer->Play(0, 0, 0))) {
         pBuffer->Release();
         return false;
@@ -161,7 +164,7 @@ void SfxMixer_Shutdown(void) {
 }
 
 #else
-bool SfxMixer_Play(const char *, float) { return false; }
+bool SfxMixer_Play(const char *, float, float) { return false; }
 void SfxMixer_StopAll(void) {}
 void SfxMixer_Shutdown(void) {}
 #endif

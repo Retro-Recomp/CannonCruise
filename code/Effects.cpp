@@ -28,6 +28,7 @@ struct Sprite {
     RwReal size0, size1;  // start / end size (m)
     RwUInt8 r, g, b;      // tint
     RwReal alpha0;        // start alpha (0..1), fades to 0
+    bool fire;            // fireball texture (else the soft round puff)
 };
 
 std::vector<Sprite> s_sprites;
@@ -37,7 +38,8 @@ RwReal Rand01() { return (RwReal)std::rand() / (RwReal)RAND_MAX; }
 void Add(RwReal x, RwReal y, RwReal z, RwReal vx, RwReal vy, RwReal vz, RwReal life,
          RwReal s0, RwReal s1, RwUInt8 r, RwUInt8 g, RwUInt8 b, RwReal a0) {
     if (s_sprites.size() > 600) return;
-    Sprite s = {x, y, z, vx, vy, vz, 0.0f, life, s0, s1, r, g, b, a0};
+    // Orange/yellow tints are fire; grey/white ones smoke and spray.
+    Sprite s = {x, y, z, vx, vy, vz, 0.0f, life, s0, s1, r, g, b, a0, (r > 200 && b < 150)};
     s_sprites.push_back(s);
 }
 
@@ -98,6 +100,23 @@ void Effects_Render(void) {
     const rw::Matrix *pView = pCam->getFrame()->getLTM();
     const rw::V3d right = pView->right, up = pView->up;
     rw::Texture *pTex = static_cast<rw::Texture *>(RenderPlatform_GetTexture("vikingfireball"));
+    // Soft round puff for smoke and spray (generated once; the fireball
+    // sprite's dark background showed as boxes under additive blending).
+    if (RenderPlatform_HasTexture("FX_Soft") != TRUE) {
+        static unsigned char s_puff[32 * 32 * 4];
+        for (int y = 0; y < 32; ++y) {
+            for (int x = 0; x < 32; ++x) {
+                const float dx = (x - 15.5f) / 15.5f, dy = (y - 15.5f) / 15.5f;
+                float a = 1.0f - std::sqrt(dx * dx + dy * dy);
+                if (a < 0.0f) a = 0.0f;
+                unsigned char *px = &s_puff[(y * 32 + x) * 4];
+                px[0] = px[1] = px[2] = (unsigned char)(255.0f * a);
+                px[3] = (unsigned char)(255.0f * a * a);
+            }
+        }
+        RenderPlatform_UploadTexture("FX_Soft", 32, 32, s_puff, 32 * 4);
+    }
+    rw::Texture *pSoft = static_cast<rw::Texture *>(RenderPlatform_GetTexture("FX_Soft"));
     std::vector<FxVertex> verts(s_sprites.size() * 4);
     std::vector<rw::uint16> idx(s_sprites.size() * 6);
     for (size_t i = 0; i < s_sprites.size(); ++i) {
@@ -123,23 +142,34 @@ void Effects_Render(void) {
                                  (rw::uint16)(b + 2), (rw::uint16)(b + 1), (rw::uint16)(b + 3)};
         for (int k = 0; k < 6; ++k) idx[i * 6 + k] = q[k];
     }
-    rw::SetRenderStatePtr(rw::TEXTURERASTER, pTex != nullptr ? pTex->raster : nullptr);
     rw::SetRenderState(rw::VERTEXALPHA, 1);
     rw::SetRenderState(rw::SRCBLEND, rw::BLENDSRCALPHA);
     // Additive: the sprite's black background vanishes, fire and spray glow.
     rw::SetRenderState(rw::DESTBLEND, rw::BLENDONE);
     rw::SetRenderState(rw::ZWRITEENABLE, 0);
     rw::SetRenderState(rw::CULLMODE, rw::CULLNONE);
-    // im3d draws are capped at 10000 indices: batch.
-    const size_t kPerBatch = 1600;
-    for (size_t first = 0; first < s_sprites.size(); first += kPerBatch) {
-        const size_t n = (s_sprites.size() - first) < kPerBatch ? (s_sprites.size() - first) : kPerBatch;
-        std::vector<rw::uint16> local(n * 6);
-        for (size_t k = 0; k < n * 6; ++k) local[k] = (rw::uint16)(idx[first * 6 + k] - first * 4);
-        rw::im3d::Transform(&verts[first * 4], (int)(n * 4), nullptr, rw::im3d::EVERYTHING);
-        rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, &local[0], (int)(n * 6));
+    // Two passes (fire with the fireball sprite, the rest with the puff);
+    // each sprite is its own 4-vertex batch slice (im3d caps 10000 indices).
+    for (int pass = 0; pass < 2; ++pass) {
+        rw::Texture *t = pass == 0 ? pTex : pSoft;
+        rw::SetRenderStatePtr(rw::TEXTURERASTER, t != nullptr ? t->raster : nullptr);
+        std::vector<FxVertex> pv;
+        std::vector<rw::uint16> pi;
+        for (size_t i = 0; i < s_sprites.size(); ++i) {
+            if (s_sprites[i].fire != (pass == 0)) continue;
+            const rw::uint16 b = (rw::uint16)pv.size();
+            for (int k = 0; k < 4; ++k) pv.push_back(verts[i * 4 + k]);
+            const rw::uint16 q[6] = {b, (rw::uint16)(b + 1), (rw::uint16)(b + 2),
+                                     (rw::uint16)(b + 2), (rw::uint16)(b + 1), (rw::uint16)(b + 3)};
+            for (int k = 0; k < 6; ++k) pi.push_back(q[k]);
+            if (pi.size() >= 9600) break;
+        }
+        if (pv.empty()) continue;
+        rw::im3d::Transform(&pv[0], (int)pv.size(), nullptr, rw::im3d::EVERYTHING);
+        rw::im3d::RenderIndexedPrimitive(rw::PRIMTYPETRILIST, &pi[0], (int)pi.size());
         rw::im3d::End();
     }
+    (void)idx;
     rw::SetRenderState(rw::ZWRITEENABLE, 1);
     rw::SetRenderState(rw::DESTBLEND, rw::BLENDINVSRCALPHA);
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);

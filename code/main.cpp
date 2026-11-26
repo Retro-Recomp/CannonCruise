@@ -334,6 +334,12 @@ RwBool PlayFmvDescriptor(const char *pDescriptor, RwInt32 screenW, RwInt32 scree
 // Pose of a hull floating on the drawn water: height from bow/stern/side
 // samples of the water mesh, pitched and rolled along the surface. `scale`
 // multiplies the axes (enemy record scale). Returns the hull's y.
+// Cannon aim: yaw relative to the bow (follows the camera orbit, as the
+// tutorial says) and elevation as tan(angle).
+RwReal s_cannonOrbit = 0.0f;
+RwReal s_cannonPitch = 0.06f;
+const RwReal kCannonSpeed = 55.0f;
+
 RwReal ShipOnWaterMatrix(const COcean *pOcean, RwReal x, RwReal z, RwReal yaw,
                          RwReal halfLen, RwReal halfBeam, RwReal lift, RwReal scale,
                          RwReal m[16]) {
@@ -585,6 +591,7 @@ int main(int argc, char **argv) {
         RwBool gone;             // sunk below the surface: no longer drawn
         RwChar spawnEvent[64];   // hidden until this script event ("" = at start)
         RwChar deathEvent[64];   // script event sent when sunk
+        RwReal hitShow;          // seconds the health bar stays up after a hit
     };
     std::vector<EnemyShipRuntime> s_enemies;
     // An enemy takes part once its spawn event (if any) has been sent.
@@ -2067,7 +2074,7 @@ int main(int argc, char **argv) {
                 } else {
                 PlayerShipState ss;
                 if (PlayerShip_GetState(&ss) == TRUE) {
-                    RwReal aimYaw = ss.yaw;
+                    RwReal aimYaw = ss.yaw + s_cannonOrbit;
                     RwReal aimDist = 0.0f;
                     // CANNONCRUISE_AUTOAIM=1 (test only): aim at the nearest
                     // alive mission tower instead of the bow direction.
@@ -2121,7 +2128,7 @@ int main(int argc, char **argv) {
                     // Elevation as tan(angle): flat shot (~3.4 deg) so the ball
                     // stays at tower height (towers are ~8 m tall) out to
                     // ~55 m; autoaim solves for the target distance.
-                    RwReal aimTan = 0.06f;
+                    RwReal aimTan = s_cannonPitch;
                     if (s_autoAim == TRUE && aimDist > 0.0f) {
                         const RwReal kG = 9.8f, kV = 55.0f;
                         aimTan = kG * aimDist / (2.0f * kV * kV) + aimDh / aimDist;
@@ -2285,6 +2292,7 @@ if (bSimActive == TRUE) {
                             continue;
                         }
                         e.hp -= 100.0f;
+                        e.hitShow = 4.0f;
                         ++s_shotsHit;
                         std::printf("CannonCruise: HIT enemy ship #%zu at (%.1f,%.1f) hp=%.0f\n",
                                     ei, e.x, e.z, e.hp);
@@ -2358,11 +2366,23 @@ if (bSimActive == TRUE) {
                 if (RwPlatformKeyDown('D')) {
                     rudder += 1.0f;
                 }
+                // Camera = cannon direction: mouse or Left/Right turn it and it
+                // stays turned (the cannon follows); Up/Down tilt the barrel;
+                // C centres the camera behind the ship.
                 int mdx = 0, mdy = 0;
                 if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
                     followOrbit += (RwReal)mdx * 0.0035f;
                 }
-                followOrbit *= 0.94f; // clamp -- turns behind the ship
+                if (RwPlatformKeyDown(RW_KEY_LEFT)) followOrbit -= 1.6f / 60.0f;
+                if (RwPlatformKeyDown(RW_KEY_RIGHT)) followOrbit += 1.6f / 60.0f;
+                if (RwPlatformKeyDown(RW_KEY_UP)) s_cannonPitch += 0.15f / 60.0f;
+                if (RwPlatformKeyDown(RW_KEY_DOWN)) s_cannonPitch -= 0.15f / 60.0f;
+                if (s_cannonPitch < 0.0f) s_cannonPitch = 0.0f;
+                if (s_cannonPitch > 0.35f) s_cannonPitch = 0.35f;
+                if (RwPlatformKeyDown('C')) followOrbit = 0.0f;
+                while (followOrbit > 3.14159265f) followOrbit -= 6.2831853f;
+                while (followOrbit < -3.14159265f) followOrbit += 6.2831853f;
+                s_cannonOrbit = followOrbit;
                 // CANNONCRUISE_DRIVE=throttle,rudder (headless tests): fixed input.
                 static const char *s_driveEnv = std::getenv("CANNONCRUISE_DRIVE");
                 if (s_driveEnv != nullptr) {
@@ -2472,6 +2492,10 @@ if (bSimActive == TRUE) {
                                     camPos[0], camPos[1], camPos[2]);
                     }
                     RenderPlatform_SetCameraPose(camPos, camLook);
+                    // Listener for positional effects: the camera, panned by its
+                    // screen-right direction (at x up = (-at.z, at.x) on the ground).
+                    audioMgr.SetListener(camPos[0], camPos[1], camPos[2],
+                                         -(camLook[2] - camPos[2]), camLook[0] - camPos[0]);
                 }
             } else {
                 const RwReal kDt = 1.0f / 60.0f;
@@ -2668,7 +2692,10 @@ if (bSimActive == TRUE) {
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingR, wingT);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipRudder, rudderT);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWheel, rudderT);
-                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, 0.2f);
+                        RwReal gunT = 0.2f + s_cannonOrbit / 6.2831853f * 0.4f;
+                        if (gunT < 0.005f) gunT = 0.005f;
+                        if (gunT > 0.395f) gunT = 0.395f;
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipGun, gunT);
                         RpClumpPortAnimatorUpdate(s_pShipAnimator);
                     }
                     // After the ocean: the water mesh drawn later used to paint
@@ -2776,6 +2803,81 @@ if (bSimActive == TRUE) {
             }
             // Impact flashes, smoke and splashes (after the 3D scene, before the HUD).
             Effects_Render();
+            // Aim reticle: where a shot fired now would come down (ballistic
+            // path from the muzzle); white when a target is close to it, red
+            // when the shot would hit.
+            if (bSimActive == TRUE && s_gameState == GAMESTATE_GAMEPLAY) {
+                PlayerShipState as;
+                if (PlayerShip_GetState(&as) == TRUE) {
+                    const RwReal yaw = as.yaw + s_cannonOrbit;
+                    const RwReal len = std::sqrt(1.0f + s_cannonPitch * s_cannonPitch);
+                    const RwReal vx = std::sin(yaw) / len * kCannonSpeed;
+                    const RwReal vy = s_cannonPitch / len * kCannonSpeed;
+                    const RwReal vz = std::cos(yaw) / len * kCannonSpeed;
+                    RwReal p[3] = {as.pos.x + std::sin(yaw) * 4.0f, as.pos.y + 2.5f,
+                                   as.pos.z + std::cos(yaw) * 4.0f};
+                    RwReal vyy = vy;
+                    RwReal best = 1.0e9f; // closest target distance along the path
+                    for (int step = 0; step < 240 && p[1] > -0.5f; ++step) {
+                        const RwReal dt = 1.0f / 60.0f;
+                        p[0] += vx * dt;
+                        p[1] += vyy * dt;
+                        p[2] += vz * dt;
+                        vyy -= 9.8f * dt;
+                        for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                            const EnemyShipRuntime &e = s_enemies[ei];
+                            if (enemyPresent(e) != TRUE || e.sinkTime > 0.0f) continue;
+                            const RwReal dx = p[0] - e.x, dz = p[2] - e.z;
+                            const RwReal d = std::sqrt(dx * dx + dz * dz) / (4.5f * e.scale);
+                            if (d < best && std::fabs(p[1] - (e.y + 1.5f)) < 4.0f) best = d;
+                        }
+                        for (size_t ti = 0; ti < s_towers.size(); ++ti) {
+                            if (s_towers[ti]->IsDestroyed()) continue;
+                            const RwV3d &tp = s_towers[ti]->GetWorldPosition();
+                            const RwReal dx = p[0] - tp.x, dz = p[2] - tp.z;
+                            const RwReal d = std::sqrt(dx * dx + dz * dz) / 3.0f;
+                            if (d < best && p[1] < tp.y + 10.0f) best = d;
+                        }
+                    }
+                    RwReal sx = 0.0f, sy = 0.0f;
+                    if (RenderPlatform_WorldToScreen(p, &sx, &sy) == TRUE) {
+                        const RwUInt32 col = best <= 1.0f ? 0xFFFF3020u
+                                             : best <= 3.0f ? 0xFFFFFFFFu : 0xB0FFE080u;
+                        RenderPlatform_BeginOverlay2D();
+                        RenderPlatform_DrawOverlayQuad(sx - 14.0f, sy - 1.5f, 10.0f, 3.0f, col);
+                        RenderPlatform_DrawOverlayQuad(sx + 4.0f, sy - 1.5f, 10.0f, 3.0f, col);
+                        RenderPlatform_DrawOverlayQuad(sx - 1.5f, sy - 14.0f, 3.0f, 10.0f, col);
+                        RenderPlatform_DrawOverlayQuad(sx - 1.5f, sy + 4.0f, 3.0f, 10.0f, col);
+                        RenderPlatform_EndOverlay2D();
+                    }
+                }
+            }
+            // Enemy health bars: shown for a few seconds after a hit, above the
+            // ship (green = health left, red = lost; all red = sunk).
+            {
+                RwBool begun = FALSE;
+                for (size_t ei = 0; ei < s_enemies.size(); ++ei) {
+                    EnemyShipRuntime &e = s_enemies[ei];
+                    if (e.hitShow <= 0.0f || enemyPresent(e) != TRUE) continue;
+                    if (bSimActive == TRUE) e.hitShow -= 1.0f / 60.0f;
+                    const RwReal top[3] = {e.x, e.y + 7.0f * e.scale, e.z};
+                    RwReal sx = 0.0f, sy = 0.0f;
+                    if (RenderPlatform_WorldToScreen(top, &sx, &sy) != TRUE) continue;
+                    if (begun != TRUE) {
+                        RenderPlatform_BeginOverlay2D();
+                        begun = TRUE;
+                    }
+                    RwReal frac = e.hp / 150.0f;
+                    if (frac < 0.0f) frac = 0.0f;
+                    const RwReal bw = 64.0f, bh = 8.0f;
+                    RenderPlatform_DrawOverlayQuad(sx - bw * 0.5f - 2.0f, sy - 2.0f, bw + 4.0f, bh + 4.0f, 0xE0201008u);
+                    RenderPlatform_DrawOverlayQuad(sx - bw * 0.5f, sy, bw, bh, 0xFFD02020u);
+                    if (frac > 0.0f) {
+                        RenderPlatform_DrawOverlayQuad(sx - bw * 0.5f, sy, bw * frac, bh, 0xFF30D040u);
+                    }
+                }
+                if (begun == TRUE) RenderPlatform_EndOverlay2D();
+            }
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;

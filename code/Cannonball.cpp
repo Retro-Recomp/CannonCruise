@@ -159,19 +159,26 @@ void CCannonball::Update(RwReal deltaTime)
 void CCannonball::OnHit(void* pTarget, RwUInt32 hitType)
 {
     CAudioManager* pAudio = CAudioManager::GetSingletonPtr();
+    RwV3d hitPos = {0.0f, 0.0f, 0.0f};
+    const RwBool havePos = (m_pRigidBody != 0) ? TRUE : FALSE;
+    if (havePos == TRUE)
+    {
+        PhysicsBody_GetPosition(m_pRigidBody, &hitPos.x, &hitPos.y, &hitPos.z);
+    }
     if (pAudio)
     {
+        const RwV3d *pAt = havePos == TRUE ? &hitPos : 0;
         if (hitType == 0)
         {
-            pAudio->PlaySound("Audio_CannonHit");
+            pAudio->PlaySound("Audio_CannonHit", pAt);
         }
         else if (hitType == 1)
         {
-            pAudio->PlaySound("Audio_WaterHit");
+            pAudio->PlaySound("Audio_WaterHit", pAt);
         }
         else
         {
-            pAudio->PlaySound("Audio_StaticHit");
+            pAudio->PlaySound("Audio_StaticHit", pAt);
         }
     }
     if (m_pRigidBody != 0)
