@@ -81,6 +81,10 @@ public:
      */
     RwReal CalculateWaterHeight(RwReal worldX, RwReal worldZ, RwV3d* pNormal = 0) const;
 
+    /// Height of the drawn water mesh at a point (the tiles are coarse, so it
+    /// differs from CalculateWaterHeight by up to ~0.5 m); ships ride on this.
+    RwReal GetSurfaceHeight(RwReal worldX, RwReal worldZ) const;
+
     static COcean* GetInstance() { return sm_pInstance; }
     static RwReal GetWaterHeight(RwReal worldX, RwReal worldZ, RwV3d* pNormal = 0)
     {
@@ -95,6 +99,8 @@ private:
     RwUInt32 m_uSkyDomeCount;                           ///< Number of active sky dome models.
     RwReal m_fWaveTime;                                 ///< Accumulated wave animation time in seconds.
     RwBool m_bHiDetail;                                 ///< Flag enabling high-resolution water mesh geometry.
+    RwReal m_fGridOriginX, m_fGridOriginZ;              ///< Corner of the tile grid.
+    RwReal m_fGridCell;                                 ///< Width of one mesh quad.
 };
 
 #endif // OCEAN_H

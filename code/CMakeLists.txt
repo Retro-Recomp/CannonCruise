@@ -93,7 +93,7 @@ target_link_libraries(CannonCruiseLib
 
 if(WIN32)
     target_compile_definitions(CannonCruiseLib PUBLIC WIN32 _WINDOWS)
-    target_link_libraries(CannonCruiseLib PUBLIC winmm.lib)
+    target_link_libraries(CannonCruiseLib PUBLIC winmm.lib dsound.lib dxguid.lib)
     if(CANNONCRUISE_RW_PLATFORM STREQUAL "D3D9")
         target_compile_definitions(CannonCruiseLib PUBLIC D3D9)
         target_link_libraries(CannonCruiseLib PUBLIC d3d9.lib)

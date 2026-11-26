@@ -15,6 +15,8 @@
 #include "AudioManager.h"
 #include "PhysicsBackend.h"
 #include "PhysicsWorld.h"
+#include "Effects.h"
+#include "Ocean.h"
 #include <cassert>
 
 // Register CCannonball with RenderWare Studio's reflection class factory
@@ -118,13 +120,31 @@ void CCannonball::Spawn(const SCannonballSpawnData& spawnData)
 // ---------------------------------------------------------------------------
 void CCannonball::Update(RwReal deltaTime)
 {
-    if (m_fLifeTimer > 0.0f)
+    if (m_fLifeTimer <= 0.0f || m_pRigidBody == 0)
     {
-        m_fLifeTimer -= deltaTime;
-        if (m_fLifeTimer <= 0.0f)
-        {
-            RemoveFromWorld();
-        }
+        return;
+    }
+    m_fLifeTimer -= deltaTime;
+    RwV3d pos;
+    PhysicsBody_GetPosition(m_pRigidBody, &pos.x, &pos.y, &pos.z);
+    RwV3d vel;
+    PhysicsBody_GetLinearVelocity(m_pRigidBody, &vel.x, &vel.y, &vel.z);
+    // Splash down when the ball reaches the water surface.
+    if (pos.y < COcean::GetWaterHeight(pos.x, pos.z))
+    {
+        OnHit(0, 1);
+        return;
+    }
+    // Stopped on land (rock, beach): burst there.
+    const RwReal speed2 = vel.x * vel.x + vel.y * vel.y + vel.z * vel.z;
+    if (m_fLifeTimer < 4.7f && speed2 < 4.0f)
+    {
+        OnHit(0, 2);
+        return;
+    }
+    if (m_fLifeTimer <= 0.0f)
+    {
+        RemoveFromWorld();
     }
 }
 
@@ -154,6 +174,14 @@ void CCannonball::OnHit(void* pTarget, RwUInt32 hitType)
             pAudio->PlaySound("Audio_StaticHit");
         }
     }
+    if (m_pRigidBody != 0)
+    {
+        RwV3d pos;
+        PhysicsBody_GetPosition(m_pRigidBody, &pos.x, &pos.y, &pos.z);
+        Effects_Spawn(hitType == 1 ? EFFECT_SPLASH : EFFECT_EXPLOSION, pos.x,
+                      hitType == 1 ? COcean::GetWaterHeight(pos.x, pos.z) : pos.y - 1.0f, pos.z);
+    }
+    m_fLifeTimer = 0.0f;
 
     RemoveFromWorld();
 }

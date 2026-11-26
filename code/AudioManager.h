@@ -96,6 +96,7 @@ private:
     RwMatrix m_ListenerMatrix;      ///< Current camera transform matrix for 3D panning.
     std::string m_SoundPath;        ///< Base directory path ("Sound\\Win32\\").
     std::string m_CurrentStream;    ///< Currently active stream filename.
+    void ApplyStreamVolume();       ///< Pushes master x music volume to the MCI stream.
 };
 
 #endif // AUDIOMANAGER_H

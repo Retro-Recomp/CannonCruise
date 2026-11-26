@@ -30,7 +30,10 @@ COcean* COcean::sm_pInstance = 0;
 COcean::COcean()
     : m_uSkyDomeCount(0),
       m_fWaveTime(0.0f),
-      m_bHiDetail(TRUE)
+      m_bHiDetail(TRUE),
+      m_fGridOriginX(0.0f),
+      m_fGridOriginZ(0.0f),
+      m_fGridCell(0.0f)
 {
     sm_pInstance = this;
     memset(m_apSkyDomes, 0, sizeof(m_apSkyDomes));
@@ -94,6 +97,9 @@ void COcean::Initialize(RwInt32 numTilesX, RwInt32 numTilesZ, RwReal tileSize,
     // covered the hull. 40*40*6 = 9600 indices stays under librw D3D9 im3d's
     // 10000-index limit per draw.
     const RwInt32 kSubdivisions = 40;
+    m_fGridOriginX = originX;
+    m_fGridOriginZ = originZ;
+    m_fGridCell = tileSize / (RwReal)kSubdivisions;
 
     for (RwInt32 z = 0; z < numTilesZ; ++z) {
         for (RwInt32 x = 0; x < numTilesX; ++x) {
@@ -146,6 +152,25 @@ void COcean::Render()
 // Also computes partial derivatives for normalized surface normal calculation
 // required by physics buoyancy torque and water lighting.
 // ---------------------------------------------------------------------------
+RwReal COcean::GetSurfaceHeight(RwReal worldX, RwReal worldZ) const
+{
+    if (m_fGridCell <= 0.0f)
+    {
+        return CalculateWaterHeight(worldX, worldZ);
+    }
+    // Bilinear blend of the wave at the four grid vertices around the point:
+    // the height of the mesh as it is drawn (its quads are metres wide).
+    const RwReal gx = (worldX - m_fGridOriginX) / m_fGridCell;
+    const RwReal gz = (worldZ - m_fGridOriginZ) / m_fGridCell;
+    const RwReal fx = std::floor(gx), fz = std::floor(gz);
+    const RwReal tx = gx - fx, tz = gz - fz;
+    const RwReal x0 = m_fGridOriginX + fx * m_fGridCell, x1 = x0 + m_fGridCell;
+    const RwReal z0 = m_fGridOriginZ + fz * m_fGridCell, z1 = z0 + m_fGridCell;
+    const RwReal h00 = CalculateWaterHeight(x0, z0), h10 = CalculateWaterHeight(x1, z0);
+    const RwReal h01 = CalculateWaterHeight(x0, z1), h11 = CalculateWaterHeight(x1, z1);
+    return (h00 * (1.0f - tx) + h10 * tx) * (1.0f - tz) + (h01 * (1.0f - tx) + h11 * tx) * tz;
+}
+
 RwReal COcean::CalculateWaterHeight(RwReal worldX, RwReal worldZ, RwV3d* pNormal) const
 {
     RwReal wave1 = std::sin(worldX * 0.05f + m_fWaveTime * 2.0f) * 1.5f;

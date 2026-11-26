@@ -742,6 +742,16 @@ void RenderPlatform_DrawTexturedQuad(RwReal x, RwReal y, RwReal w, RwReal h,
     rw::SetRenderStatePtr(rw::TEXTURERASTER, nullptr);
 }
 
+void RenderPlatform_DrawSprite(const char *texName, RwReal x, RwReal y, RwReal w,
+                               RwReal h, RwUInt32 fallbackArgb)
+{
+    if (RenderPlatform_HasTexture(texName) == TRUE) {
+        RenderPlatform_DrawTexturedQuad(x, y, w, h, texName);
+    } else {
+        RenderPlatform_DrawOverlayQuad(x, y, w, h, fallbackArgb);
+    }
+}
+
 void RenderPlatform_DrawTextureRegion(void *pTexture, RwReal x, RwReal y, RwReal w,
                                       RwReal h, RwReal u0, RwReal v0, RwReal u1,
                                       RwReal v1, RwUInt32 argb)

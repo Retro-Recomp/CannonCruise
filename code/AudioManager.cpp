@@ -3,6 +3,7 @@
 // ============================================================================
 
 #include "AudioManager.h"
+#include "SfxMixer.h"
 #include "framework/toolkits/Audio/Audio.h"
 #include <cassert>
 #include <cstdio>
@@ -72,7 +73,12 @@ void CAudioManager::PlaySound(const char* pSoundName, const RwV3d* pPos)
         }
     }
 
-    // Play asynchronously so it doesn't block the game loop
+    // Mixed DirectSound voice (effects overlap, cached in memory) at the
+    // master x FX volume; PlaySoundA (one sound at a time) only as fallback.
+    const RwReal volume = m_afVolumeGroups[0] * m_afVolumeGroups[2];
+    if (SfxMixer_Play(fullPath, (float)volume)) {
+        return;
+    }
     DWORD flags = SND_FILENAME | SND_ASYNC | SND_NODEFAULT;
     ::PlaySoundA(fullPath, nullptr, flags);
 }
@@ -117,16 +123,26 @@ void CAudioManager::PlayStream(const char* pStreamName, RwBool bLoop)
 
     m_CurrentStream = pStreamName;
 
+    // "mpegvideo" (DirectShow) plays .wav and supports "repeat"; the
+    // "waveaudio" device rejects "play ... repeat", so looped music (menu,
+    // level themes) never started.
     char mciCmd[MAX_PATH + 64] = {0};
-    std::snprintf(mciCmd, sizeof(mciCmd), "open \"%s\" type waveaudio alias cc_bgm", fullPath);
+    std::snprintf(mciCmd, sizeof(mciCmd), "open \"%s\" type mpegvideo alias cc_bgm", fullPath);
     MCIERROR err = ::mciSendStringA(mciCmd, nullptr, 0, nullptr);
     if (err == 0) {
-        if (bLoop) {
-            ::mciSendStringA("play cc_bgm repeat", nullptr, 0, nullptr);
-        } else {
-            ::mciSendStringA("play cc_bgm", nullptr, 0, nullptr);
+        ApplyStreamVolume();
+        err = ::mciSendStringA(bLoop ? "play cc_bgm repeat" : "play cc_bgm", nullptr, 0, nullptr);
+        if (err != 0 && bLoop) {
+            err = ::mciSendStringA("play cc_bgm", nullptr, 0, nullptr);
         }
-    } else {
+    }
+    if (err != 0) {
+        char msg[256] = {0};
+        ::mciGetErrorStringA(err, msg, sizeof(msg));
+        std::printf("Audio: music %s failed (%s)\n", fullPath, msg);
+    }
+    if (err != 0) {
+        ::mciSendStringA("close cc_bgm", nullptr, 0, nullptr);
         // Fallback to PlaySoundA if MCI device unavailable
         DWORD flags = SND_FILENAME | SND_ASYNC | SND_NODEFAULT;
         if (bLoop) {
@@ -152,6 +168,7 @@ void CAudioManager::StopStream()
 void CAudioManager::StopAllVoices()
 {
     StopStream();
+    SfxMixer_StopAll();
     ::PlaySoundA(nullptr, nullptr, 0); // Stop all sounds
 }
 
@@ -162,7 +179,19 @@ void CAudioManager::SetVolumeGroup(RwUInt32 groupIndex, RwReal volume)
 {
     if (groupIndex < 3) {
         m_afVolumeGroups[groupIndex] = volume;
+        ApplyStreamVolume();
     }
+}
+
+// Music volume = master x music (MCI mpegvideo scale 0..1000).
+void CAudioManager::ApplyStreamVolume()
+{
+    RwReal v = m_afVolumeGroups[0] * m_afVolumeGroups[1];
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    char cmd[64];
+    std::snprintf(cmd, sizeof(cmd), "setaudio cc_bgm volume to %d", (int)(v * 1000.0f));
+    ::mciSendStringA(cmd, nullptr, 0, nullptr);
 }
 
 // ---------------------------------------------------------------------------

@@ -63,6 +63,7 @@ static void ClampCameraToMap(RwReal camPos[3]) {
 #include "LocalizationManager.h"
 #include "BinkPlayer.h"  // binkw32 player - .bik playback (sub_45F350/45F270)
 #include "LevelScript.h"
+#include "Effects.h"
 #include "ShipCollision.h"
 #include "LoadingScreen.h" // Phase 4.6ab � LOADING overlay (GLOBAL art)
 #include "rwcore.h"
@@ -280,6 +281,96 @@ int FmvSpinIdle(void) {
         return 1;
     }
     return 0;
+}
+
+// Plays the .bik behind an FMV descriptor (e.g. Streams/CREDITS.RWS) full
+// screen; Esc/Space skips. Returns TRUE if any frame was shown.
+RwBool PlayFmvDescriptor(const char *pDescriptor, RwInt32 screenW, RwInt32 screenH) {
+    FmvSceneDescriptor fmv;
+    if (FmvScene_Load(pDescriptor, &fmv) != 1) {
+        return FALSE;
+    }
+    char videoFull[512] = {0};
+    if (FmvScene_VideoResolve(fmv.behaviour, videoFull, sizeof(videoFull)) != 1) {
+        std::printf("FMV: %s video '%s' not found\n", pDescriptor, fmv.behaviour);
+        return FALSE;
+    }
+    void *pBink = BinkPlayer_Open(videoFull);
+    if (pBink == nullptr) {
+        return FALSE;
+    }
+    const int vw = BinkPlayer_Width(pBink);
+    const int vh = BinkPlayer_Height(pBink);
+    std::vector<unsigned char> pixels((size_t)vw * (size_t)vh * 4u);
+    int shown = 0;
+    s_fmvArmed = FALSE;
+    s_fmvSkip = FALSE;
+    for (;;) {
+        BinkPlayer_Wait(pBink, FmvSpinIdle);
+        if (s_fmvSkip == TRUE || BinkPlayer_IsFinished(pBink) == 1 ||
+            BinkPlayer_DecodeRGBA(pBink, pixels.data(), vw * 4) != 1) {
+            break;
+        }
+        s_fmvArmed = TRUE;
+        if (RenderPlatform_UploadTexture("FMV", vw, vh, pixels.data(), vw * 4) != TRUE ||
+            RenderPlatform_BeginFrame(nullptr) != TRUE) {
+            break;
+        }
+        RenderPlatform_BeginOverlay2D();
+        RenderPlatform_DrawTexturedQuad(0.0f, 0.0f, (RwReal)screenW, (RwReal)screenH, "FMV");
+        RenderPlatform_EndOverlay2D();
+        RenderPlatform_EndFrame();
+        ++shown;
+        BinkPlayer_Next(pBink);
+    }
+    BinkPlayer_Close(pBink);
+    RenderPlatform_ClearTextures();
+    std::printf("FMV: %s played %d frames%s\n", videoFull, shown,
+                s_fmvSkip == TRUE ? " (skipped)" : "");
+    return shown > 0 ? TRUE : FALSE;
+}
+
+// Pose of a hull floating on the drawn water: height from bow/stern/side
+// samples of the water mesh, pitched and rolled along the surface. `scale`
+// multiplies the axes (enemy record scale). Returns the hull's y.
+RwReal ShipOnWaterMatrix(const COcean *pOcean, RwReal x, RwReal z, RwReal yaw,
+                         RwReal halfLen, RwReal halfBeam, RwReal lift, RwReal scale,
+                         RwReal m[16]) {
+    const RwReal sy = std::sin(yaw), cy = std::cos(yaw);
+    RwReal hBow = 0.0f, hStern = 0.0f, hPort = 0.0f, hStar = 0.0f, hMid = 0.0f;
+    if (pOcean != nullptr) {
+        hBow = pOcean->GetSurfaceHeight(x + sy * halfLen, z + cy * halfLen);
+        hStern = pOcean->GetSurfaceHeight(x - sy * halfLen, z - cy * halfLen);
+        hStar = pOcean->GetSurfaceHeight(x + cy * halfBeam, z - sy * halfBeam);
+        hPort = pOcean->GetSurfaceHeight(x - cy * halfBeam, z + sy * halfBeam);
+        hMid = pOcean->GetSurfaceHeight(x, z);
+    }
+    // Sit on the surface the hull spans, never with the middle under water.
+    RwReal y = (hBow + hStern + hPort + hStar + hMid) * 0.2f;
+    if (hMid > y) y = hMid;
+    y += lift;
+    const RwReal pitch = std::atan2(hBow - hStern, 2.0f * halfLen);
+    const RwReal roll = std::atan2(hPort - hStar, 2.0f * halfBeam);
+    // Yaw basis, then pitch about the right axis, then roll about the bow axis.
+    RwReal R[3] = {cy, 0.0f, -sy}, U[3] = {0.0f, 1.0f, 0.0f}, A[3] = {sy, 0.0f, cy};
+    const RwReal cp = std::cos(pitch), sp = std::sin(pitch);
+    RwReal A2[3], U2[3];
+    for (int i = 0; i < 3; ++i) {
+        A2[i] = A[i] * cp + U[i] * sp;
+        U2[i] = U[i] * cp - A[i] * sp;
+    }
+    const RwReal cr = std::cos(roll), sr = std::sin(roll);
+    RwReal R3[3], U3[3];
+    for (int i = 0; i < 3; ++i) {
+        R3[i] = R[i] * cr - U2[i] * sr; // port higher -> starboard side dips
+        U3[i] = U2[i] * cr + R[i] * sr;
+    }
+    const RwReal out[16] = {R3[0] * scale, R3[1] * scale, R3[2] * scale, 0.0f,
+                            U3[0] * scale, U3[1] * scale, U3[2] * scale, 0.0f,
+                            A2[0] * scale, A2[1] * scale, A2[2] * scale, 0.0f,
+                            x, y, z, 1.0f};
+    std::memcpy(m, out, sizeof(out));
+    return y;
 }
 
 } // namespace
@@ -513,6 +604,12 @@ int main(int argc, char **argv) {
     RwInt32 s_enemiesSunk = 0;
     // Hugo_Ship HAnim clips driven as poses (see RpClumpPortAnimator*).
     void *s_pShipAnimator = nullptr;
+    // Crew: 0 = Hugo (at the wheel, aft), 1 = Fernando (bow deck).
+    RpClump *s_crewClump[2] = {nullptr, nullptr};
+    void *s_crewAnim[2] = {nullptr, nullptr};
+    RwInt32 s_crewIdle[2] = {-1, -1};
+    // Ship-local offsets (right, up, forward) in metres.
+    const RwReal s_crewOffset[2][3] = {{0.0f, 0.9f, -1.2f}, {0.0f, 3.75f, 0.2f}};
     RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
             s_shipClipWheel = -1, s_shipClipGun = -1;
     std::vector<CCannonball *> s_cannonballs;
@@ -968,19 +1065,19 @@ int main(int argc, char **argv) {
                     std::printf("Menu: action QUITGAME\n");
                     bQuitApp = TRUE;
                 } else if (act == CMenuBehavior::MENUACTION_CREDITS) {
-                    // Load Credits.RWS; afterwards return to MainMenu.
+                    // CREDITS.RWS is an FMV descriptor: play the credits
+                    // video, then show the main menu again (it used to fall
+                    // through to loading the default level).
                     char credPath[512] = {0};
-                    if (FmvScene_NextScenePath("Credits", credPath, sizeof(credPath)) == 1) {
-                        std::printf("Menu: action CREDITS -> loading %s\n", credPath);
-                        // Load RWS file; textures/visuals loaded via
-                        // MenuTextures_LoadFromRws then return to MainMenu.
-                        RwsAssets_Resolve("Streams/CREDITS.RWS", credPath,
-                                          sizeof(credPath));
-                        // Set game state to return to MainMenu.
-                        s_gameState = GAMESTATE_CREDITS;
-                    } else {
-                        std::printf("Menu: action CREDITS (no path found)\n");
-                    }
+                    RwsAssets_Resolve("Streams/CREDITS.RWS", credPath, sizeof(credPath));
+                    std::printf("Menu: action CREDITS -> %s\n", credPath);
+                    s_gameState = GAMESTATE_CREDITS;
+                    audioMgr.StopStream();
+                    audioMgr.StopAllVoices();
+                    RenderPlatform_ClearTextures();
+                    PlayFmvDescriptor(credPath, kScreenW, kScreenH);
+                    mi = (RwUInt32)-1; // back to the main menu
+                    continue;
                 } else if (act == CMenuBehavior::MENUACTION_NEWGAME) {
                     std::printf("Menu: action NEWGAME\n");
                 } else if (act == CMenuBehavior::MENUACTION_LOADGAME) {
@@ -1485,6 +1582,41 @@ int main(int argc, char **argv) {
                                         bmin.x, bmax.x, bmin.y, bmax.y, bmin.z, bmax.z);
                         }
                     }
+                    // Crew models (CHugoActor / CFernandoActor) with an idle loop.
+                    for (RwUInt32 ai = 0; ai < 2; ++ai) {
+                        const WorldSpawnActor *pActor = WorldSpawn_GetActor(ai);
+                        if (pActor == nullptr || pActor->pModel == nullptr) continue;
+                        const RwsResource *pModel = static_cast<const RwsResource *>(pActor->pModel);
+                        s_crewClump[ai] = RpClumpStreamReadMemory(pModel->pData, pModel->size);
+                        if (s_crewClump[ai] == nullptr) continue;
+                        if (ai == 0) {
+                            // Hugo's conch is a prop for the conch animations
+                            // only; in the idle loop it hung off the hull.
+                            std::printf("  crew 0 conch atomics hidden: %d\n",
+                                        (int)RpClumpPortHideAtomicsWithTexture(s_crewClump[ai],
+                                                                               "SnailShell_03"));
+                        }
+                        s_crewAnim[ai] = RpClumpPortAnimatorCreate(s_crewClump[ai]);
+                        const RwInt32 root = RpClumpPortAnimatorRootNodeId(s_crewAnim[ai]);
+                        for (RwUInt32 ci = 0; s_crewAnim[ai] != nullptr && ci < pActor->clipCount; ++ci) {
+                            const RwsResource *pAnim = static_cast<const RwsResource *>(pActor->clips[ci]);
+                            const RwInt32 idx = RpClumpPortAnimatorAddClip(s_crewAnim[ai], pAnim->pData,
+                                                                            pAnim->size, root);
+                            std::printf("  crew %u clip %s: %s\n", (unsigned)ai, pAnim->name,
+                                        idx >= 0 ? "ok" : "FAILED");
+                            const RwBool idle = std::strstr(pAnim->name, "Idle_Breathe") != nullptr || std::strstr(pAnim->name, "Idle_01") != nullptr ||
+                                                std::strstr(pAnim->name, "idle") != nullptr;
+                            if (idx >= 0 && (s_crewIdle[ai] < 0 || idle == TRUE) &&
+                                std::strstr(pAnim->name, "Dead") == nullptr) {
+                                if (idle == TRUE || s_crewIdle[ai] < 0) s_crewIdle[ai] = idx;
+                            }
+                        }
+                        RwV3d cmin, cmax;
+                        if (RpClumpPortGetLocalBounds(s_crewClump[ai], &cmin, &cmax) == TRUE) {
+                            std::printf("  crew %u %s bounds y[%.2f..%.2f] idle clip %d\n", (unsigned)ai,
+                                        pModel->name, cmin.y, cmax.y, (int)s_crewIdle[ai]);
+                        }
+                    }
                 }
                 PlayerShipState spawnedShip;
                 if (PlayerShip_GetState(&spawnedShip) == TRUE) {
@@ -1855,7 +1987,19 @@ int main(int argc, char **argv) {
             const int autoFireEvery = s_autoFireEnv ? std::atoi(s_autoFireEnv) : 0;
             const RwBool bAutoFire =
                 (autoFireEvery > 0 && frame % autoFireEvery == 0) ? TRUE : FALSE;
-            if (bSimActive == TRUE && (RwPlatformKeyDown(' ') || bAutoFire == TRUE)) {
+            // One shot per key press, and the cannon reloads for 0.5 s
+            // (holding Space used to fire every frame).
+            static RwBool s_fireKeyPrev = FALSE;
+            static int s_reloadFrames = 0;
+            const RwBool fireKey = RwPlatformKeyDown(' ');
+            const RwBool firePressed = (fireKey == TRUE && s_fireKeyPrev != TRUE) ? TRUE : FALSE;
+            s_fireKeyPrev = fireKey;
+            if (s_reloadFrames > 0 && bSimActive == TRUE) {
+                --s_reloadFrames;
+            }
+            if (bSimActive == TRUE && s_reloadFrames == 0 &&
+                (firePressed == TRUE || bAutoFire == TRUE)) {
+                s_reloadFrames = 30;
                 if (RWS::HUD_GetAmmo() <= 0) {
                     RWS::HUD_FlashNoAmmo();
                 } else {
@@ -1943,6 +2087,7 @@ int main(int argc, char **argv) {
                     if (pBall != nullptr) {
                         pBall->Spawn(spawnData);
                         s_cannonballs.push_back(pBall);
+                        Effects_Spawn(EFFECT_MUZZLE, firePos.x, firePos.y, firePos.z);
                         RWS::HUD_UseAmmo(1);
                         ++s_shotsFired;
                         std::printf("CannonCruise: fired cannonball from "
@@ -2096,6 +2241,13 @@ if (bSimActive == TRUE) {
             }
             // Sprint 1 -- remove dead cannonballs from the list
             if (bSimActive == TRUE) {
+                // Lifetime, splash-down on water, bursting on land.
+                for (size_t bi = 0; bi < s_cannonballs.size(); ++bi) {
+                    if (s_cannonballs[bi]->IsAlive()) {
+                        s_cannonballs[bi]->Update(1.0f / 60.0f);
+                    }
+                }
+                Effects_Update(1.0f / 60.0f);
                 for (auto it = s_cannonballs.begin();
                      it != s_cannonballs.end();) {
                     if (!(*it)->IsAlive()) {
@@ -2381,7 +2533,7 @@ if (bSimActive == TRUE) {
                     e.x += std::sin(e.yaw) * kSpeed * kEnemyDt;
                     e.z += std::cos(e.yaw) * kSpeed * kEnemyDt;
                 }
-                e.y = (pOcean != nullptr) ? pOcean->CalculateWaterHeight(e.x, e.z) + 0.8f
+                e.y = (pOcean != nullptr) ? pOcean->GetSurfaceHeight(e.x, e.z) + 0.8f
                                           : 0.8f;
                 RwReal roll = 0.0f;
                 if (e.sinkTime > 0.0f) {
@@ -2404,7 +2556,15 @@ if (bSimActive == TRUE) {
                                       ux * s, uy * s, uz * s, 0.0f,
                                       sy * s, 0.0f, cy * s, 0.0f,
                                       e.x, e.y, e.z, 1.0f};
-                RpClumpPortSetMatrix(e.clump, m);
+                if (e.sinkTime <= 0.0f) {
+                    // Afloat: ride the drawn water, pitched and rolled with it.
+                    RwReal mw[16];
+                    e.y = ShipOnWaterMatrix(pOcean, e.x, e.z, e.yaw, 5.0f * e.scale,
+                                            1.6f * e.scale, 0.8f, e.scale, mw);
+                    RpClumpPortSetMatrix(e.clump, mw);
+                } else {
+                    RpClumpPortSetMatrix(e.clump, m);
+                }
                 if (e.animator != nullptr) {
                     // Paddles row while sailing (pose ranges loop at 0.4 s
                     // like Hugo_Ship's clips); the rudder follows the steer.
@@ -2426,12 +2586,10 @@ if (bSimActive == TRUE) {
                 // Real model follows the simulated ship: forward = (sin yaw, 0, cos yaw).
                 PlayerShipState shipNow;
                 if (PlayerShip_GetState(&shipNow) == TRUE) {
-                    const RwReal sy = std::sin(shipNow.yaw), cy = std::cos(shipNow.yaw);
-                    const RwReal m[16] = {cy, 0.0f, -sy, 0.0f,
-                                          0.0f, 1.0f, 0.0f, 0.0f,
-                                          sy, 0.0f, cy, 0.0f,
-                                          shipNow.pos.x, shipNow.pos.y,
-                                          shipNow.pos.z, 1.0f};
+                    // Hugo_Ship: ~4.6 m long, ~2.2 m beam; keel 0.57 m below origin.
+                    RwReal m[16];
+                    ShipOnWaterMatrix(pOcean, shipNow.pos.x, shipNow.pos.z, shipNow.yaw,
+                                      2.3f, 1.1f, 0.8f, 1.0f, m);
                     RpClumpPortSetMatrix(s_pShipClump, m);
                     if (s_pShipAnimator != nullptr) {
                         // Clips are 0.4 s pose ranges (0.4 wraps to 0, so stay
@@ -2453,6 +2611,32 @@ if (bSimActive == TRUE) {
                     // After the ocean: the water mesh drawn later used to paint
                     // over the low hull on some wave phases.
                     RenderPlatform_RenderClump(s_pShipClump);
+                    // Crew: Hugo at the wheel, Fernando on the bow deck, riding
+                    // the ship's pose and playing their idle loops.
+                    static RwReal s_crewT = 0.0f;
+                    if (bSimActive == TRUE) s_crewT += 1.0f / 60.0f;
+                    for (int ai = 0; ai < 2; ++ai) {
+                        if (s_crewClump[ai] == nullptr) continue;
+                        const RwReal *o = s_crewOffset[ai];
+                        RwReal am[16];
+                        std::memcpy(am, m, sizeof(am));
+                        // Face the bow (models look down -Z in their own space).
+                        for (int k = 0; k < 3; ++k) {
+                            am[k] = -m[k];
+                            am[8 + k] = -m[8 + k];
+                        }
+                        for (int k = 0; k < 3; ++k) {
+                            am[12 + k] = m[12 + k] + m[k] * o[0] + m[4 + k] * o[1] + m[8 + k] * o[2];
+                        }
+                        RpClumpPortSetMatrix(s_crewClump[ai], am);
+                        if (s_crewAnim[ai] != nullptr && s_crewIdle[ai] >= 0) {
+                            const RwReal dur = RpClumpPortAnimatorClipDuration(s_crewAnim[ai], s_crewIdle[ai]);
+                            RpClumpPortAnimatorSetPose(s_crewAnim[ai], s_crewIdle[ai],
+                                                       dur > 0.0f ? std::fmod(s_crewT, dur) : 0.0f);
+                        }
+                        if (s_crewAnim[ai] != nullptr) RpClumpPortAnimatorUpdate(s_crewAnim[ai]);
+                        RenderPlatform_RenderClump(s_crewClump[ai]);
+                    }
                 }
             } else {
                 PlayerShip_Render(); // placeholder hull (GL3/D3D9: im3d)
@@ -2527,6 +2711,8 @@ if (bSimActive == TRUE) {
                 RpClumpPortSetMatrix(f.clump, m);
                 RenderPlatform_RenderClump(f.clump);
             }
+            // Impact flashes, smoke and splashes (after the 3D scene, before the HUD).
+            Effects_Render();
             // Sprint 2 � minimal HUD overlay: player HP + tower sayac + skor.
             {
                 PlayerShipState ss;

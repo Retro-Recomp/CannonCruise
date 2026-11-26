@@ -173,6 +173,26 @@ int BinkPlayer_Initialize(void)
     }
 
     g_api.hModule = h;
+
+    // Sound: without a sound system Bink decodes the videos silently (the
+    // intro jingle, credits and cut-scenes had no audio). Use waveOut (needs
+    // no DirectSound object) and select audio track 0, which the 0x4000
+    // (BINKSNDTRACK) open flag plays.
+    typedef int(__stdcall *PFN_BinkSetSoundSystem)(void *open, unsigned int param);
+    typedef void(__stdcall *PFN_BinkSetSoundTrack)(unsigned int total, unsigned int *tracks);
+    PFN_BinkSetSoundSystem pSetSoundSystem =
+        (PFN_BinkSetSoundSystem)::GetProcAddress(h, "_BinkSetSoundSystem@8");
+    FARPROC pOpenWaveOut = ::GetProcAddress(h, "_BinkOpenWaveOut@4");
+    PFN_BinkSetSoundTrack pSetSoundTrack =
+        (PFN_BinkSetSoundTrack)::GetProcAddress(h, "_BinkSetSoundTrack@8");
+    if (pSetSoundSystem != nullptr && pOpenWaveOut != nullptr) {
+        const int ok = pSetSoundSystem((void *)pOpenWaveOut, 0);
+        std::printf("binkw32: waveOut sound %s\n", ok ? "on" : "unavailable");
+    }
+    if (pSetSoundTrack != nullptr) {
+        static unsigned int s_track0 = 0;
+        pSetSoundTrack(1, &s_track0);
+    }
     return 1;
 }
 

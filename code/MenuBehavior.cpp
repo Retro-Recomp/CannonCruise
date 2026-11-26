@@ -184,8 +184,8 @@ void CMenuBehavior::Render()
             if (i == m_selection)
             {
                 // round cursor (video: cannonball left of the selected row)
-                RenderPlatform_DrawOverlayQuad(ballX, y - 4.0f, 26.0f, 30.0f,
-                                               kBall);
+                RenderPlatform_DrawSprite("Menu_087", ballX - 4.0f, y - 6.0f, 34.0f, 34.0f,
+                                          kBall);
             }
             ShowText_DrawBitmapText(kItems[i], listX, y, 3,
                                     0x4A, 0x28, 0x10, 255);
@@ -216,8 +216,8 @@ void CMenuBehavior::Render()
             const RwReal y = listY + (RwReal)i * rowH;
             if (i == m_selection)
             {
-                RenderPlatform_DrawOverlayQuad(ballX, y - 4.0f, 26.0f, 30.0f,
-                                               kBall);
+                RenderPlatform_DrawSprite("Menu_087", ballX - 4.0f, y - 6.0f, 34.0f, 34.0f,
+                                          kBall);
             }
             if (m_screen == MENUSCREEN_OPTIONS)
             {
@@ -248,12 +248,23 @@ void CMenuBehavior::Render()
                                     : (i == 1) ? m_volEffects : m_volMusic;
                 ShowText_DrawBitmapText(label, listX, y, 3,
                                         0x4A, 0x28, 0x10, 255);
-                // 10-segment sound bar (video layout)
-                for (RwInt32 s = 0; s < 10; ++s)
+                // Wave-shaped volume bar from the menu art: Menu_117 (0)
+                // .. Menu_137 (10), one texture per level.
+                char barName[16];
+                const RwInt32 level = vol < 0 ? 0 : (vol > 10 ? 10 : vol);
+                std::snprintf(barName, sizeof(barName), "Menu_%03d", (int)(117 + 2 * level));
+                if (RenderPlatform_HasTexture(barName) == TRUE)
                 {
-                    RenderPlatform_DrawOverlayQuad(
-                        700.0f + (RwReal)s * 26.0f, y - 2.0f, 22.0f, 26.0f,
-                        (s < vol) ? kBarFull : kBarEmpty);
+                    RenderPlatform_DrawTexturedQuad(640.0f, y - 14.0f, 256.0f, 64.0f, barName);
+                }
+                else
+                {
+                    for (RwInt32 s = 0; s < 10; ++s)
+                    {
+                        RenderPlatform_DrawOverlayQuad(
+                            700.0f + (RwReal)s * 26.0f, y - 2.0f, 22.0f, 26.0f,
+                            (s < vol) ? kBarFull : kBarEmpty);
+                    }
                 }
             }
             else if (m_screen == MENUSCREEN_DIFFICULTY)
@@ -274,13 +285,27 @@ void CMenuBehavior::Render()
     }
 
     // keyboard hints (video: SELECT/BACK + key boxes)
-    RenderPlatform_DrawOverlayQuad(150.0f, 636.0f, 86.0f, 30.0f, kKeyBox);
-    ShowText_DrawBitmapText("Enter", 158.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
+    if (RenderPlatform_HasTexture("Menu_084") == TRUE)
+    {
+        RenderPlatform_DrawTexturedQuad(190.0f, 626.0f, 44.0f, 44.0f, "Menu_084");
+    }
+    else
+    {
+        RenderPlatform_DrawOverlayQuad(150.0f, 636.0f, 86.0f, 30.0f, kKeyBox);
+        ShowText_DrawBitmapText("Enter", 158.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
+    }
     ShowText_DrawBitmapText("SELECT", 244.0f, 640.0f, 2, 0x4A, 0x28, 0x10,
                             255);
     // Esc box covers the parchment tear at x~626 so "BACK" stays legible.
-    RenderPlatform_DrawOverlayQuad(580.0f, 636.0f, 58.0f, 30.0f, kKeyBox);
-    ShowText_DrawBitmapText("Esc", 588.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
+    if (RenderPlatform_HasTexture("Menu_095") == TRUE)
+    {
+        RenderPlatform_DrawTexturedQuad(596.0f, 626.0f, 44.0f, 44.0f, "Menu_095");
+    }
+    else
+    {
+        RenderPlatform_DrawOverlayQuad(580.0f, 636.0f, 58.0f, 30.0f, kKeyBox);
+        ShowText_DrawBitmapText("Esc", 588.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
+    }
     ShowText_DrawBitmapText("BACK", 646.0f, 640.0f, 2, 0x4A, 0x28, 0x10, 255);
 
     RenderPlatform_EndOverlay2D();

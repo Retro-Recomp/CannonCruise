@@ -598,6 +598,27 @@ RwBool RpClumpPortGetPosition(RpClump *clump, RwV3d *pPos) {
 
 // Axis-aligned bounds of all atomics (morph target 0) relative to the
 // clump's root frame (i.e. the model's own space, before its placement).
+RwInt32 RpClumpPortHideAtomicsWithTexture(RpClump *clump, const char *pTexName) {
+    if (!clump || !pTexName) {
+        return 0;
+    }
+    RwInt32 hidden = 0;
+    rw::Clump *pClump = reinterpret_cast<rw::Clump *>(clump);
+    FORLIST(lnk, pClump->atomics) {
+        rw::Atomic *pAtomic = rw::Atomic::fromClump(lnk);
+        rw::Geometry *pGeo = pAtomic->geometry;
+        for (rw::int32 m = 0; pGeo && m < pGeo->matList.numMaterials; ++m) {
+            rw::Texture *pTex = pGeo->matList.materials[m]->texture;
+            if (pTex && std::strcmp(pTex->name, pTexName) == 0) {
+                pAtomic->setFlags(pAtomic->getFlags() & ~rw::Atomic::RENDER);
+                ++hidden;
+                break;
+            }
+        }
+    }
+    return hidden;
+}
+
 RwInt32 RpClumpPortForAllTriangles(RpClump *clump, RpClumpPortTriangleCB callback,
                                    void *pContext) {
     if (!clump || !callback) {
@@ -803,6 +824,14 @@ RwInt32 RpClumpPortAnimatorAddClip(void *animator, const void *pData,
     PortClip clip = {pAnim, pInterp, first, n};
     pAnimator->clips.push_back(clip);
     return (RwInt32)pAnimator->clips.size() - 1;
+}
+
+RwInt32 RpClumpPortAnimatorRootNodeId(void *animator) {
+    PortAnimator *pAnimator = static_cast<PortAnimator *>(animator);
+    if (!pAnimator || !pAnimator->hier || pAnimator->hier->numNodes <= 0) {
+        return -1;
+    }
+    return pAnimator->hier->nodeInfo[0].id;
 }
 
 RwReal RpClumpPortAnimatorClipDuration(void *animator, RwInt32 clip) {

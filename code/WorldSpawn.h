@@ -101,6 +101,16 @@ struct WorldSpawnFish {
 
 #define WORLDSPAWN_MAX_FISH 64
 
+/// Crew on the player's ship (CHugoActor / CFernandoActor records).
+struct WorldSpawnActor {
+    const void *pModel;      ///< const RwsResource* (Hugo.dff / fernando_Anim.dff)
+    const void *clips[24];   ///< const RwsResource* animations (full skeleton)
+    RwUInt32 clipCount;
+};
+
+/// Hugo (index 0) and Fernando (index 1); pModel is NULL when absent.
+const WorldSpawnActor *WorldSpawn_GetActor(RwUInt32 index);
+
 /// Fish of the last WorldSpawn_FromFile() call; returns the count.
 RwUInt32 WorldSpawn_GetFish(const WorldSpawnFish **ppFish);
 

@@ -263,8 +263,8 @@ void CAfterGameMenuBehavior::Render()
             const RwReal y = listY + (RwReal)i * rowH;
             if (li == m_selection)
             {
-                RenderPlatform_DrawOverlayQuad(listX - 34.0f, y - 4.0f,
-                                               24.0f, 28.0f, kBall);
+                RenderPlatform_DrawSprite("Menu_087", listX - 38.0f, y - 6.0f,
+                                          30.0f, 30.0f, kBall);
             }
             ShowText_DrawBitmapText(m_levels[li].display, listX, y, 2,
                                     0x4A, 0x28, 0x10, 255);

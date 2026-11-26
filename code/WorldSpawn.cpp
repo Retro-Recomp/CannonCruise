@@ -419,6 +419,41 @@ void CollectEnemyShip(const RwStudioObject *pObj,
 WorldSpawnFish s_fish[WORLDSPAWN_MAX_FISH];
 RwUInt32 s_fishCount = 0;
 
+WorldSpawnActor s_actors[2];
+
+// CHugoActor (0) / CFernandoActor (1): main model + every animation the
+// record references.
+void CollectActor(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0) {
+        return;
+    }
+    const char *cls = pObj->behaviours[0].className;
+    const int idx = std::strcmp(cls, "CHugoActor") == 0       ? 0
+                    : std::strcmp(cls, "CFernandoActor") == 0 ? 1
+                                                               : -1;
+    if (idx < 0 || s_actors[idx].pModel != 0) {
+        return;
+    }
+    WorldSpawnActor &a = s_actors[idx];
+    a.pModel = FindModel(packet, idx == 0 ? "Hugo.dff" : "fernando_Anim", TRUE);
+    if (a.pModel == 0) {
+        a.pModel = FindModel(packet, 0, TRUE);
+    }
+    for (RWS::CAttributeCommandIterator it(packet, "CSystemCommands"); !it.IsFinished(); ++it) {
+        if (it->GetCommandId() != 0 || it->GetDataSize() != 16 || a.clipCount >= 24) {
+            continue;
+        }
+        const RwsResource *pRes =
+            RwsResources_Find(static_cast<const RwUInt8 *>(it->GetCommandData()));
+        if (pRes != 0 && pRes->embeddedType == rwsRESOURCE_HANIM) {
+            a.clips[a.clipCount++] = pRes;
+        }
+    }
+    std::printf("WorldSpawn: %s model %s, %u clips\n", cls,
+                a.pModel ? static_cast<const RwsResource *>(a.pModel)->name : "-",
+                (unsigned)a.clipCount);
+}
+
 void CollectFish(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
     if (pObj->behaviourCount == 0 ||
         std::strcmp(pObj->behaviours[0].className, "CFishGreen") != 0 ||
@@ -543,6 +578,10 @@ void CollectTower(const RwStudioObject *pObj,
 
 } // namespace
 
+const WorldSpawnActor *WorldSpawn_GetActor(RwUInt32 index) {
+    return index < 2 ? &s_actors[index] : 0;
+}
+
 RwUInt32 WorldSpawn_GetFish(const WorldSpawnFish **ppFish) {
     if (ppFish) {
         *ppFish = s_fish;
@@ -635,6 +674,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_enemyShipCount = 0;
     s_waypointCount = 0;
     s_fishCount = 0;
+    std::memset(s_actors, 0, sizeof(s_actors));
     LevelScript_Reset();
     WorldSpawn_RegisterResources(pPath);
     WorldSpawnStats stats;
@@ -667,6 +707,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         CollectEnemyShip(pObj, packet);
         CollectWaypoint(pObj, packet);
         CollectFish(pObj, packet);
+        CollectActor(pObj, packet);
         LevelScript_CollectObject(pObj, packet);
         void *pInstances[1];
         const RwInt32 applied = BehaviourLoader::ProcessObject(
