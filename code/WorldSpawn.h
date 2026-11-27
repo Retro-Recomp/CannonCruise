@@ -101,6 +101,19 @@ struct WorldSpawnFish {
 
 #define WORLDSPAWN_MAX_FISH 64
 
+/// Ambient seagull (CBirdSeaGull record): circles its spot flapping.
+struct WorldSpawnBird {
+    RwReal pos[3];
+    const void *pModel;      ///< const RwsResource* (Seagull)
+    const void *pFlap;       ///< const RwsResource* flap clip (Seagull_tag100.anm)
+    RwInt32 flapNode;        ///< node id from the clip name
+};
+
+#define WORLDSPAWN_MAX_BIRDS 64
+
+/// Seagulls of the last WorldSpawn_FromFile() call; returns the count.
+RwUInt32 WorldSpawn_GetBirds(const WorldSpawnBird **ppBirds);
+
 /// Crew on the player's ship (CHugoActor / CFernandoActor records).
 struct WorldSpawnActor {
     const void *pModel;      ///< const RwsResource* (Hugo.dff / fernando_Anim.dff)

@@ -614,6 +614,14 @@ int main(int argc, char **argv) {
     void *s_pShipAnimator = nullptr;
     // Sky layers from the COcean record, drawn around the camera (dome first).
     RpClump *s_skyClumps[4] = {nullptr, nullptr, nullptr, nullptr};
+    // Seagulls circling their spots (CBirdSeaGull records).
+    struct BirdRuntime {
+        RpClump *clump;
+        void *anim;
+        RwInt32 flap;
+        RwReal cx, cy, cz, radius, phase, speed;
+    };
+    std::vector<BirdRuntime> s_birdsRt;
     // Flying cannonballs are drawn with the level's Cannon_Ball.dff.
     RpClump *s_ballClump = nullptr;
     int s_skyCount = 0;
@@ -2480,11 +2488,17 @@ if (bSimActive == TRUE) {
                         shipState.yaw + 3.14159265f + followOrbit;
                     // Camera above-behind, tied rigidly to the ship: looking
                     // down over the stern at the deck and bow (reference view).
-                    camPos[0] =
-                        shipState.pos.x + std::sin(ang) * kFollowCameraDistance;
-                    camPos[1] = shipState.pos.y + kFollowCameraHeight;
-                    camPos[2] =
-                        shipState.pos.z + std::cos(ang) * kFollowCameraDistance;
+                    // Pulls back and up as the ship speeds up (the original
+                    // shows the whole ship and its wake under way); eased.
+                    static RwReal s_camPull = 0.0f;
+                    RwReal pullTarget = std::fabs(shipState.speed) / 8.5f;
+                    if (pullTarget > 1.0f) pullTarget = 1.0f;
+                    s_camPull += (pullTarget - s_camPull) * 0.02f;
+                    const RwReal camDist = kFollowCameraDistance + s_camPull * 5.5f;
+                    const RwReal camHeight = kFollowCameraHeight + s_camPull * 2.6f;
+                    camPos[0] = shipState.pos.x + std::sin(ang) * camDist;
+                    camPos[1] = shipState.pos.y + camHeight;
+                    camPos[2] = shipState.pos.z + std::cos(ang) * camDist;
                     ClampCameraToMap(camPos);
                     // Look past the ship in the camera's direction (= the
                     // cannon's when the camera is turned).
@@ -2809,6 +2823,66 @@ if (bSimActive == TRUE) {
                 const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, f.x, fy + 0.2f, f.z, 1};
                 RpClumpPortSetMatrix(f.clump, m);
                 RenderPlatform_RenderClump(f.clump);
+            }
+            // Seagulls: lazy circles (radius 8..20 m, 12..20 m up) around
+            // their record position, flapping.
+            {
+                static RwBool s_birdsInit = FALSE;
+                static RwReal s_birdT = 0.0f;
+                if (s_birdsInit != TRUE) {
+                    s_birdsInit = TRUE;
+                    const WorldSpawnBird *pB = nullptr;
+                    const RwUInt32 nb = WorldSpawn_GetBirds(&pB);
+                    for (RwUInt32 i = 0; i < nb; ++i) {
+                        const RwsResource *pRes = static_cast<const RwsResource *>(pB[i].pModel);
+                        BirdRuntime br;
+                        br.clump = RpClumpStreamReadMemory(pRes->pData, pRes->size);
+                        if (br.clump == nullptr) continue;
+                        br.anim = nullptr;
+                        br.flap = -1;
+                        if (pB[i].pFlap != nullptr) {
+                            br.anim = RpClumpPortAnimatorCreate(br.clump);
+                            const RwsResource *pA = static_cast<const RwsResource *>(pB[i].pFlap);
+                            if (br.anim != nullptr) {
+                                br.flap = RpClumpPortAnimatorAddClip(br.anim, pA->pData, pA->size, pB[i].flapNode);
+                                if (br.flap < 0) {
+                                    br.flap = RpClumpPortAnimatorAddClip(br.anim, pA->pData, pA->size,
+                                                                          RpClumpPortAnimatorRootNodeId(br.anim));
+                                }
+                            }
+                        }
+                        const RwReal r = (RwReal)((i * 37) % 13);
+                        br.cx = pB[i].pos[0];
+                        br.cy = pB[i].pos[1] + 12.0f + (RwReal)((i * 53) % 9);
+                        br.cz = pB[i].pos[2];
+                        br.radius = 8.0f + r;
+                        br.phase = (RwReal)i * 1.7f;
+                        br.speed = (i % 2 == 0 ? 1.0f : -1.0f) * (5.0f / br.radius);
+                        s_birdsRt.push_back(br);
+                    }
+                    std::printf("CannonCruise: %u seagulls\n", (unsigned)s_birdsRt.size());
+                }
+                if (bSimActive == TRUE) s_birdT += 1.0f / 60.0f;
+                for (size_t i = 0; i < s_birdsRt.size(); ++i) {
+                    BirdRuntime &br = s_birdsRt[i];
+                    const RwReal a = br.phase + s_birdT * br.speed;
+                    const RwReal x = br.cx + std::cos(a) * br.radius;
+                    const RwReal z = br.cz + std::sin(a) * br.radius;
+                    const RwReal y = br.cy + std::sin(s_birdT * 0.7f + br.phase) * 1.5f;
+                    // Fly along the circle: forward = derivative direction.
+                    RwReal fx = -std::sin(a) * br.speed, fz = std::cos(a) * br.speed;
+                    const RwReal fl = std::sqrt(fx * fx + fz * fz);
+                    fx /= fl; fz /= fl;
+                    const RwReal m[16] = {fz, 0, -fx, 0, 0, 1, 0, 0, fx, 0, fz, 0, x, y, z, 1};
+                    RpClumpPortSetMatrix(br.clump, m);
+                    if (br.anim != nullptr && br.flap >= 0) {
+                        const RwReal dur = RpClumpPortAnimatorClipDuration(br.anim, br.flap);
+                        RpClumpPortAnimatorSetPose(br.anim, br.flap,
+                                                   dur > 0.0f ? std::fmod(s_birdT + br.phase, dur) : 0.0f);
+                        RpClumpPortAnimatorUpdate(br.anim);
+                    }
+                    RenderPlatform_RenderClump(br.clump);
+                }
             }
             // Cannonballs in flight (Cannon_Ball.dff from the level).
             {

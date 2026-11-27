@@ -420,6 +420,32 @@ WorldSpawnFish s_fish[WORLDSPAWN_MAX_FISH];
 RwUInt32 s_fishCount = 0;
 
 WorldSpawnActor s_actors[2];
+WorldSpawnBird s_birds[WORLDSPAWN_MAX_BIRDS];
+RwUInt32 s_birdCount = 0;
+
+void CollectBird(const RwStudioObject *pObj, const RWS::CAttributePacket &packet) {
+    if (pObj->behaviourCount == 0 ||
+        std::strcmp(pObj->behaviours[0].className, "CBirdSeaGull") != 0 ||
+        s_birdCount >= WORLDSPAWN_MAX_BIRDS) {
+        return;
+    }
+    WorldSpawnBird b;
+    std::memset(&b, 0, sizeof(b));
+    RwReal m[16];
+    if (RWS::CSystemCommands::ExtractMatrix(packet, m) != TRUE) return;
+    b.pos[0] = m[12];
+    b.pos[1] = m[13];
+    b.pos[2] = m[14];
+    b.pModel = FindModel(packet, 0, TRUE);
+    WorldSpawnPlayerShip::Clip clips[2];
+    RwUInt32 n = 0;
+    CollectClips(packet, clips, 2, &n);
+    if (n > 0) {
+        b.pFlap = clips[0].pAnim;
+        b.flapNode = clips[0].nodeId;
+    }
+    if (b.pModel != 0) s_birds[s_birdCount++] = b;
+}
 WorldSpawnSky s_sky;
 WorldSpawnGuiMap s_guiMap;
 
@@ -621,6 +647,11 @@ void CollectTower(const RwStudioObject *pObj,
 
 const WorldSpawnSky *WorldSpawn_GetSky(void) { return &s_sky; }
 
+RwUInt32 WorldSpawn_GetBirds(const WorldSpawnBird **ppBirds) {
+    if (ppBirds) *ppBirds = s_birds;
+    return s_birdCount;
+}
+
 const WorldSpawnGuiMap *WorldSpawn_GetGuiMap(void) { return &s_guiMap; }
 
 const WorldSpawnActor *WorldSpawn_GetActor(RwUInt32 index) {
@@ -720,6 +751,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
     s_waypointCount = 0;
     s_fishCount = 0;
     std::memset(s_actors, 0, sizeof(s_actors));
+    s_birdCount = 0;
     std::memset(&s_sky, 0, sizeof(s_sky));
     std::memset(&s_guiMap, 0, sizeof(s_guiMap));
     LevelScript_Reset();
@@ -755,6 +787,7 @@ RwInt32 WorldSpawn_FromFile(const RwChar *pPath, WorldSpawnStats *pStats) {
         CollectWaypoint(pObj, packet);
         CollectFish(pObj, packet);
         CollectActor(pObj, packet);
+        CollectBird(pObj, packet);
         CollectSky(pObj, packet);
         CollectGuiMap(pObj, packet);
         // CANNONCRUISE_DUMPREFS=CClassA,CClassB: list the resources and
