@@ -24,7 +24,7 @@
 #include <limits>
 
 static const int kFrames = 120;        // 120 frames × 1/60 s = 2 s
-static const RwReal kMaxSpeedExpect = 18.0f;
+static const RwReal kMaxSpeedExpect = 8.5f;
 static const RwReal kTargetTime = 120.0f / 60.0f; // 2 seconds
 
 static int g_failures = 0;
@@ -65,12 +65,12 @@ int main(int argc, char **argv) {
     std::printf("Final speed = %.3f, pos=(%.3f, %.3f, %.3f)\n",
                 state.speed, state.pos.x, state.pos.y, state.pos.z);
     // asymptotically approaches target speed in 2 seconds:
-    // v(∞) = 18 (kMaxSpeed); 2 saniyede ≈ 18*(1-e^{-1.8}) ≈ 15.07 (%84).
+    // v(inf) = 8.5 (kMaxSpeed, original game); after 2 s 8.5*(1-e^-2) = 7.35 (86%).
     Check(state.speed > kMaxSpeedExpect * 0.75f,
           "speed >= 75% of kMaxSpeed after 2 s", __LINE__);
     // should have advanced in +Z direction
-    Check(state.pos.z > 10.0f,
-          "ship moved forward (z > 10)", __LINE__);
+    Check(state.pos.z > 8.0f,
+          "ship moved forward (z > 8)", __LINE__);
     const RwReal yawBeforeSteering = state.yaw;
     for (int i = 0; i < kFrames; ++i) {
         PlayerShip_Update(dt, (RwReal)(kFrames + i) * dt, 1.0f, 1.0f);

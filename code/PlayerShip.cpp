@@ -30,9 +30,9 @@ RwReal s_mapMaxZ = 0.0f;
 const RwReal kShipScale = 0.5f;    ///< hull scale: matches Hugo_Ship (~4.6 m long)
 const RwReal kMapClearance = 22.0f;
 
-const RwReal kMaxSpeed = 18.0f;    ///< full throttle target speed (units/s)
-const RwReal kReverseSpeed = -9.0f;///< full reverse throttle target speed
-const RwReal kSpeedLerp = 0.9f;    ///< speed convergence coefficient (1/s)
+const RwReal kMaxSpeed = 8.5f;     ///< full throttle speed: the original covers ~95 m in ~13 s from rest
+const RwReal kReverseSpeed = -4.0f;///< full reverse throttle target speed
+const RwReal kSpeedLerp = 1.0f;    ///< speed convergence coefficient (1/s)
 const RwReal kTurnRate = 0.55f;    ///< rad/s (full rudder + full speed)
 const RwReal kWaterY = 0.0f;       ///< water level
 

@@ -2695,7 +2695,7 @@ if (bSimActive == TRUE) {
                         //  wings  0 = spread (at rest) .. folded back (full speed)
                         //  rudder/wheel 0.2 = centred, +-0.18 = full rudder
                         //  gun    0.2 = pointing forward
-                        RwReal speedNorm = std::fabs(shipNow.speed) / 18.0f;
+                        RwReal speedNorm = std::fabs(shipNow.speed) / 8.5f;
                         if (speedNorm > 1.0f) speedNorm = 1.0f;
                         const RwReal wingT = 0.02f + speedNorm * 0.36f;
                         const RwReal rudderT = 0.2f + shipNow.rudder * 0.18f;
