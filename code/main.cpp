@@ -614,6 +614,8 @@ int main(int argc, char **argv) {
     void *s_pShipAnimator = nullptr;
     // Sky layers from the COcean record, drawn around the camera (dome first).
     RpClump *s_skyClumps[4] = {nullptr, nullptr, nullptr, nullptr};
+    // Flying cannonballs are drawn with the level's Cannon_Ball.dff.
+    RpClump *s_ballClump = nullptr;
     int s_skyCount = 0;
     RwReal s_skyLift = 0.0f;
     // Crew: 0 = Hugo (at the wheel, aft), 1 = Fernando (bow deck).
@@ -2807,6 +2809,26 @@ if (bSimActive == TRUE) {
                 const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, f.x, fy + 0.2f, f.z, 1};
                 RpClumpPortSetMatrix(f.clump, m);
                 RenderPlatform_RenderClump(f.clump);
+            }
+            // Cannonballs in flight (Cannon_Ball.dff from the level).
+            {
+                static RwBool s_ballTried = FALSE;
+                if (s_ballTried != TRUE) {
+                    s_ballTried = TRUE;
+                    const RwsResource *pBallRes = RwsResources_FindByName("Cannon_Ball.dff");
+                    if (pBallRes != nullptr) {
+                        s_ballClump = RpClumpStreamReadMemory(pBallRes->pData, pBallRes->size);
+                    }
+                }
+                for (size_t bi = 0; s_ballClump != nullptr && bi < s_cannonballs.size(); ++bi) {
+                    void *pBody = s_cannonballs[bi]->GetRigidBody();
+                    if (pBody == nullptr || !s_cannonballs[bi]->IsAlive()) continue;
+                    RwV3d bp;
+                    PhysicsBody_GetPosition(pBody, &bp.x, &bp.y, &bp.z);
+                    const RwReal m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, bp.x, bp.y, bp.z, 1};
+                    RpClumpPortSetMatrix(s_ballClump, m);
+                    RenderPlatform_RenderClump(s_ballClump);
+                }
             }
             // Impact flashes, smoke and splashes (after the 3D scene, before the HUD).
             Effects_Render();

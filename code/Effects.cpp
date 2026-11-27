@@ -47,16 +47,18 @@ void Add(RwReal x, RwReal y, RwReal z, RwReal vx, RwReal vy, RwReal vz, RwReal l
 
 void Effects_Spawn(EffectKind kind, RwReal x, RwReal y, RwReal z) {
     if (kind == EFFECT_EXPLOSION) {
-        Add(x, y + 1.0f, z, 0, 0.5f, 0, 0.45f, 2.0f, 7.0f, 255, 200, 90, 1.0f); // flash
-        for (int i = 0; i < 6; ++i) {                                              // fire
-            Add(x + (Rand01() - 0.5f) * 2.0f, y + 0.8f + Rand01(), z + (Rand01() - 0.5f) * 2.0f,
-                (Rand01() - 0.5f) * 3.0f, 2.0f + Rand01() * 2.0f, (Rand01() - 0.5f) * 3.0f,
-                0.6f + Rand01() * 0.3f, 1.5f, 3.5f, 255, 140, 40, 0.95f);
+        // As in the original: a burst of pale dust and splinters, no fire
+        // (Cannon_hit_dust / Cannon_hit_flare in the game's particle bank).
+        Add(x, y + 1.0f, z, 0, 0.3f, 0, 0.18f, 1.5f, 4.0f, 255, 235, 190, 0.9f); // short flare
+        for (int i = 0; i < 10; ++i) {                                             // dust
+            Add(x + (Rand01() - 0.5f) * 1.5f, y + 0.8f + Rand01(), z + (Rand01() - 0.5f) * 1.5f,
+                (Rand01() - 0.5f) * 4.0f, 1.0f + Rand01() * 2.5f, (Rand01() - 0.5f) * 4.0f,
+                1.0f + Rand01() * 0.7f, 1.2f, 4.5f, 225, 205, 170, 0.55f);
         }
-        for (int i = 0; i < 8; ++i) {                                              // smoke
-            Add(x + (Rand01() - 0.5f) * 2.5f, y + 1.0f + Rand01(), z + (Rand01() - 0.5f) * 2.5f,
-                (Rand01() - 0.5f) * 1.5f, 1.5f + Rand01() * 1.5f, (Rand01() - 0.5f) * 1.5f,
-                1.6f + Rand01() * 0.8f, 2.0f, 6.0f, 90, 85, 80, 0.35f);
+        for (int i = 0; i < 6; ++i) {                                              // grey haze
+            Add(x + (Rand01() - 0.5f) * 2.0f, y + 1.2f + Rand01(), z + (Rand01() - 0.5f) * 2.0f,
+                (Rand01() - 0.5f) * 1.2f, 0.8f + Rand01(), (Rand01() - 0.5f) * 1.2f,
+                1.8f + Rand01() * 0.8f, 2.0f, 5.5f, 150, 140, 125, 0.30f);
         }
     } else if (kind == EFFECT_SPLASH) {
         for (int i = 0; i < 10; ++i) {
