@@ -26,7 +26,7 @@ struct TowerBlip {
 };
 
 static RwReal s_health = 1.0f;         // 0..1 (player ship HP ratio)
-static RwInt32 s_ammo = 175;           // remaining cannonballs (original game feel)
+static RwInt32 s_ammo = 200;           // remaining cannonballs (original game feel)
 static RwInt32 s_fish = 0;             // collected fish
 static RwInt32 s_score = 0;            // cumulative score
 static RwInt32 s_towersDestroyed = 0;  // towers shot down
@@ -64,7 +64,7 @@ static RwInt32 AddScoreDelta(RwInt32 score, RwInt32 amount) {
 
 void HUD_Initialize(void) {
     s_health = 1.0f;
-    s_ammo = 175;
+    s_ammo = 200;
     s_fish = 0;
     s_score = 0;
     s_towersDestroyed = 0;
@@ -294,137 +294,92 @@ void HUD_Render(void) {
 
     RenderPlatform_BeginOverlay2D();
 
-    char scoreText[32];
-    std::snprintf(scoreText, sizeof(scoreText), "SCORE %06d", s_score);
-    const RwInt32 scoreScale = layout.TextScale(2);
-    const RwReal scorePanelW =
-        (TextWidth(scoreText, scoreScale) + 16.0f) / layoutScale;
-    const RwReal scorePanelH = (7.0f * scoreScale + 8.0f) / layoutScale;
-    const RwReal scoreTextH = 7.0f * scoreScale / layoutScale;
-    const RwReal scorePanelY = 12.0f;
-    DrawHudOverlayQuad(layout, (kDesignW - scorePanelW) * 0.5f,
-                       scorePanelY, scorePanelW, scorePanelH, 0xA0101010u);
-    DrawAnchoredText(scoreText, kDesignW * 0.5f,
-                     scorePanelY + (scorePanelH - scoreTextH) * 0.5f, 2,
-                     0xFFFFD66Au, layout);
+    // Layout measured from the original game (640x480, scaled x1.5 to the
+    // 1280x720 design; left-side pieces anchored left, compass anchored
+    // right). No score panel or tower counter during play.
 
     // ================= Bottom-left: ammo dial =================
-    const RwReal dialX = 20.0f, dialSize = 128.0f;
-    const RwReal dialY = kDesignH - 168.0f;
-    const RwReal dialCX = dialX + dialSize * 0.5f;
-
+    const RwReal dialSize = 165.0f;
+    const RwReal dialX = 49.0f, dialY = 488.0f;
+    const RwReal globeCX = dialX + dialSize * 0.5f - 4.0f, globeCY = 566.0f;
+    const RwReal globeSize = 96.0f;
     if (RenderPlatform_HasTexture("GUI_022") == TRUE) {
-        DrawHudTexturedQuad(layout, dialX, dialY, dialSize, dialSize,
-                            "GUI_022");
+        DrawHudTexturedQuad(layout, dialX, dialY, dialSize, dialSize, "GUI_022");
     } else {
-        DrawHudOverlayQuad(layout, dialX, dialY, dialSize, dialSize,
-                           0xFF8B6914u);
+        DrawHudOverlayQuad(layout, dialX, dialY, dialSize, dialSize, 0xFF8B6914u);
     }
-    const RwReal globeSize = 74.0f;
-    const RwReal globeX = dialX + (dialSize - globeSize) * 0.5f;
-    const RwReal globeY = dialY + 16.0f;
     if (RenderPlatform_HasTexture("GUI_012") == TRUE) {
-        DrawHudTexturedQuad(layout, globeX, globeY, globeSize, globeSize,
-                            "GUI_012");
-    } else {
-        DrawHudOverlayQuad(layout, dialX + 20.0f, dialY + 20.0f,
-                           dialSize - 40.0f, dialSize - 40.0f,
-                           0xFF1A1A1Au);
+        DrawHudTexturedQuad(layout, globeCX - globeSize * 0.5f, globeCY - globeSize * 0.5f,
+                            globeSize, globeSize, "GUI_012");
     }
-
-    // Upgrade handles: cannon upgrades on the left of the globe, sail
-    // upgrades on the right (GUI_037 / GUI_034), one per upgrade.
-    for (RwInt32 u = 0; u < s_upgCannon; ++u) {
-        DrawHudTexturedQuad(layout, dialX - 6.0f, dialY + 26.0f + (RwReal)u * 14.0f, 32.0f, 16.0f,
-                            "GUI_037");
-    }
-    for (RwInt32 u = 0; u < s_upgSails; ++u) {
-        RenderPlatform_DrawRotatedSprite(
-            "GUI_034", layout.MapX(dialX + dialSize - 10.0f),
-            layout.MapY(dialY + 34.0f + (RwReal)u * 14.0f), layout.MapSize(32.0f),
-            layout.MapSize(16.0f), 3.14159265f, 0xFFFFFFFFu);
-    }
-
-    // Ammo count (above the globe)
+    // Upgrade handles at the lower corners of the ring, pointing out and
+    // down: cannon (left, orange tip) and sails (right, cream tip). They
+    // slide out a little per upgrade.
+    const RwReal handleW = 48.0f, handleH = 24.0f;
+    const RwReal cannonOut = 6.0f * (RwReal)s_upgCannon, sailOut = 6.0f * (RwReal)s_upgSails;
+    RenderPlatform_DrawRotatedSprite("GUI_037", layout.MapX(dialX + 22.0f - cannonOut * 0.8f),
+                                     layout.MapY(dialY + 121.0f + cannonOut * 0.6f),
+                                     layout.MapSize(handleW), layout.MapSize(handleH),
+                                     -0.62f + 3.14159265f, 0xFFFFFFFFu);
+    RenderPlatform_DrawRotatedSprite("GUI_034", layout.MapX(dialX + dialSize - 26.0f + sailOut * 0.8f),
+                                     layout.MapY(dialY + 121.0f + sailOut * 0.6f),
+                                     layout.MapSize(handleW), layout.MapSize(handleH),
+                                     0.62f, 0xFFFFFFFFu);
+    // Ammo count on the globe (yellow).
     char ammoText[16];
     std::snprintf(ammoText, sizeof(ammoText), "%d", s_ammo);
-    DrawAnchoredText(ammoText, dialCX, dialY + 44.0f, 3, 0xFFFFE666u,
-                     layout);
-
-    // "NO AMMO" flash
+    DrawAnchoredText(ammoText, globeCX, globeCY - 10.0f, 3, 0xFFFFE04Au, layout);
     if (s_noAmmoFlash > 0) {
         if ((s_noAmmoFlash / 6) % 2 == 0) {
-            DrawAnchoredText("NO AMMO", dialCX, dialY - 22.0f, 2,
-                             0xFFFF4040u, layout);
+            DrawAnchoredText("NO AMMO", globeCX, dialY - 24.0f, 2, 0xFFFF4040u, layout);
         }
         --s_noAmmoFlash;
     }
 
-    // ================= Bottom: health bar (wooden end caps + red) =================
-    const RwReal barX = 16.0f, barY = kDesignH - 40.0f;
-    const RwReal barH = 22.0f, capW = 26.0f, barW = 216.0f;
-    const RwReal midX = barX + capW, midW = barW - capW * 2.0f;
+    // ================= Health bar under the dial =================
+    const RwReal barX = 63.0f, barY = 657.0f, barW = 275.0f, barH = 30.0f, capW = 18.0f;
     if (RenderPlatform_HasTexture("GUI_024") == TRUE) {
-        DrawHudTexturedQuad(layout, midX, barY, midW, barH, "GUI_024");
+        DrawHudTexturedQuad(layout, barX + capW, barY, barW - capW * 2.0f, barH, "GUI_024");
     } else {
-        DrawHudOverlayQuad(layout, barX, barY, barW, barH, 0xFF101010u);
-        DrawHudOverlayQuad(layout, barX + 2.0f, barY + 2.0f, barW - 4.0f,
-                           barH - 4.0f, 0xFF302018u);
-    }
-    const RwReal innerX = midX + 6.0f, innerW = midW - 12.0f;
-    const RwReal innerY = barY + 8.0f, innerH = 6.0f;
-    DrawHudOverlayQuad(layout, innerX, innerY, innerW, innerH, 0xFF302018u);
-    if (s_health > 0.0f) {
-        const RwUInt8 rr = (RwUInt8)(140 + 100 * s_health);
-        const RwUInt8 gg = (RwUInt8)(30 * s_health);
-        const RwUInt8 bb = (RwUInt8)(20 * s_health);
-        const RwUInt32 fill =
-            0xFF000000u | ((RwUInt32)rr << 16) | ((RwUInt32)gg << 8) | bb;
-        DrawHudOverlayQuad(layout, innerX, innerY, innerW * s_health,
-                           innerH, fill);
+        DrawHudOverlayQuad(layout, barX, barY, barW, barH, 0xFF604020u);
     }
     if (RenderPlatform_HasTexture("GUI_026") == TRUE) {
         DrawHudTexturedQuad(layout, barX, barY, capW, barH, "GUI_026");
-    } else {
-        DrawHudOverlayQuad(layout, barX, barY, capW, barH, 0xFF604020u);
     }
     if (RenderPlatform_HasTexture("GUI_028") == TRUE) {
-        DrawHudTexturedQuad(layout, barX + barW - capW, barY, capW, barH,
-                            "GUI_028");
-    } else {
-        DrawHudOverlayQuad(layout, barX + barW - capW, barY, capW, barH,
-                           0xFF604020u);
+        DrawHudTexturedQuad(layout, barX + barW - capW, barY, capW, barH, "GUI_028");
+    }
+    const RwReal innerX = barX + 9.0f, innerW = barW - 18.0f;
+    const RwReal innerY = barY + 8.0f, innerH = barH - 16.0f;
+    DrawHudOverlayQuad(layout, innerX, innerY, innerW, innerH, 0xFF3A1A08u);
+    if (s_health > 0.0f) {
+        DrawHudOverlayQuad(layout, innerX, innerY, innerW * s_health, innerH, 0xFFF01010u);
+        // White highlight line through the red, as in the original.
+        DrawHudOverlayQuad(layout, innerX + 4.0f, innerY + innerH * 0.4f,
+                           (innerW - 8.0f) * s_health, 2.0f, 0xC0FFFFFFu);
     }
 
-    // ================= Middle-left: fish counter =================
-    const RwReal fishX = barX + barW + 14.0f, fishY = kDesignH - 58.0f;
-    if (RenderPlatform_HasTexture("GUI_031") == TRUE) {
-        DrawHudTexturedQuad(layout, fishX, fishY, 38.0f, 38.0f, "GUI_031");
-    } else {
-        DrawHudOverlayQuad(layout, fishX, fishY, 38.0f, 38.0f, 0xFF40C060u);
+    // ================= Fish counter (once a fish is caught) =================
+    if (s_fish > 0) {
+        const RwReal fishX = barX + barW + 12.0f, fishY = barY - 10.0f;
+        if (RenderPlatform_HasTexture("GUI_031") == TRUE) {
+            DrawHudTexturedQuad(layout, fishX, fishY, 44.0f, 44.0f, "GUI_031");
+        }
+        char fishText[16];
+        std::snprintf(fishText, sizeof(fishText), "%d", s_fish);
+        DrawScaledText(fishText, fishX + 50.0f, fishY + 12.0f, 3, 0xFFB8FF50u, layout);
     }
-    char fishText[16];
-    std::snprintf(fishText, sizeof(fishText), "%d", s_fish);
-    DrawScaledText(fishText, fishX + 46.0f, fishY + 10.0f, 3, 0xFFB8FF50u,
-                   layout);
 
-    // ================= Bottom-right: compass (north-up) =================
-    const RwReal compSize = 136.0f;
-    const RwReal compX = kDesignW - compSize - 18.0f;
-    const RwReal compY = kDesignH - compSize - 34.0f;
-    const RwReal compCX = compX + compSize * 0.5f;
-    const RwReal compCY = compY + compSize * 0.5f;
-    if (RenderPlatform_HasTexture("GUI_020") != TRUE) {
-        DrawHudOverlayQuad(layout, compX, compY, compSize, compSize,
-                           0xFF202830u);
-    }
+    // ================= Bottom-right: compass + minimap =================
+    const RwReal compSize = 183.0f;
+    const RwReal compCX = kDesignW - 141.0f, compCY = 586.0f;
+    const RwReal compX = compCX - compSize * 0.5f, compY = compCY - compSize * 0.5f;
     // North-up, +z = north (as the level map art): the map disc fills the
     // ring's hole, centred on the ship; markers sit at their true offsets
     // (clamped to the rim when off the map window).
-    const RwReal mapR = compSize * 0.285f;
+    const RwReal mapR = compSize * 0.295f;
     const RwBool haveMap = (s_mapTex[0] != 0 && RenderPlatform_HasTexture(s_mapTex) == TRUE)
                                ? TRUE : FALSE;
-    // Metres -> design pixels inside the disc.
     const RwReal pxPerM = mapR / (s_mapZoom * s_mapW * 0.5f);
     struct Local {
         static void Place(RwReal cx, RwReal cy, RwReal r, RwReal relX, RwReal relZ,
@@ -448,53 +403,57 @@ void HUD_Render(void) {
     }
     if (RenderPlatform_HasTexture("GUI_020") == TRUE) {
         DrawHudTexturedQuad(layout, compX, compY, compSize, compSize, "GUI_020");
+    } else {
+        DrawHudOverlayQuad(layout, compX, compY, compSize, compSize, 0xFF202830u);
     }
-    const RwReal blipR = mapR - 3.0f;
-    // Towers: red spots.
+    const RwReal blipR = mapR - 4.0f;
     for (int i = 0; i < s_blipCount; ++i) {
         if (!s_blips[i].alive) continue;
         RwReal bx, by;
         Local::Place(compCX, compCY, blipR, s_blips[i].x, s_blips[i].z, pxPerM, &bx, &by);
-        RenderPlatform_DrawSprite("compass_missionspot.png", layout.MapX(bx - 4.0f),
-                                  layout.MapY(by - 4.0f), layout.MapSize(8.0f),
-                                  layout.MapSize(8.0f), 0xFFFF3030u);
+        RenderPlatform_DrawSprite("compass_missionspot.png", layout.MapX(bx - 5.0f),
+                                  layout.MapY(by - 5.0f), layout.MapSize(10.0f),
+                                  layout.MapSize(10.0f), 0xFFFF3030u);
     }
-    // Enemy ships: yellow spots.
     for (int i = 0; i < s_enemyBlipCount; ++i) {
         if (!s_enemyBlips[i].alive) continue;
         RwReal bx, by;
         Local::Place(compCX, compCY, blipR, s_enemyBlips[i].x, s_enemyBlips[i].z, pxPerM, &bx, &by);
-        RenderPlatform_DrawSprite("compass_enemyspot.png", layout.MapX(bx - 4.0f),
-                                  layout.MapY(by - 4.0f), layout.MapSize(8.0f),
-                                  layout.MapSize(8.0f), 0xFFFFD030u);
+        RenderPlatform_DrawSprite("compass_enemyspot.png", layout.MapX(bx - 5.0f),
+                                  layout.MapY(by - 5.0f), layout.MapSize(10.0f),
+                                  layout.MapSize(10.0f), 0xFFFFD030u);
     }
-    // Mission goal: green spot ("the green marker on the map ...").
     if (s_goalActive == TRUE) {
+        // Green dot on the map ...
         RwReal gx, gy;
         Local::Place(compCX, compCY, blipR, s_goalX, s_goalZ, pxPerM, &gx, &gy);
         RenderPlatform_DrawSprite("compass_piratespot.png", layout.MapX(gx - 6.0f),
                                   layout.MapY(gy - 6.0f), layout.MapSize(12.0f),
                                   layout.MapSize(12.0f), 0xFF30F040u);
+        // ... and the green arrow in its wooden holder outside the ring,
+        // turned toward the goal.
+        const RwReal ang = std::atan2(s_goalX, s_goalZ); // 0 = north (top), clockwise
+        const RwReal rimR = compSize * 0.53f;
+        const RwReal hx = compCX + std::sin(ang) * rimR, hy = compCY - std::cos(ang) * rimR;
+        RenderPlatform_DrawRotatedSprite("GUI_008", layout.MapX(hx), layout.MapY(hy),
+                                         layout.MapSize(40.0f), layout.MapSize(30.0f), ang,
+                                         0xFFFFFFFFu);
+        RenderPlatform_DrawRotatedSprite("GUI_004", layout.MapX(hx), layout.MapY(hy),
+                                         layout.MapSize(24.0f), layout.MapSize(24.0f), ang,
+                                         0xFFFFFFFFu);
     }
-    // The ship: GUI_004 arrow turned to the heading (forward = (sin, cos) of
-    // yaw; on screen +z is up, so yaw is a clockwise turn).
-    if (RenderPlatform_HasTexture("GUI_004") == TRUE) {
-        RenderPlatform_DrawRotatedSprite("GUI_004", layout.MapX(compCX), layout.MapY(compCY),
-                                         layout.MapSize(16.0f), layout.MapSize(16.0f), s_shipYaw,
+    // The ship: white arrow (GUI_010) at the map centre, turned to the heading
+    // (forward = (sin, cos) of yaw; on screen +z is up, yaw turns clockwise).
+    if (RenderPlatform_HasTexture("GUI_010") == TRUE) {
+        RenderPlatform_DrawRotatedSprite("GUI_010", layout.MapX(compCX), layout.MapY(compCY),
+                                         layout.MapSize(14.0f), layout.MapSize(22.0f), s_shipYaw,
                                          0xFFFFFFFFu);
     } else {
         DrawNeedle(layout.MapX(compCX), layout.MapY(compCY), 3.14159265f - s_shipYaw,
-                   layout.MapSize(compSize * 0.30f), 0xFFF0F0F0u);
+                   layout.MapSize(compSize * 0.2f), 0xFFF0F0F0u);
     }
-
-    // TOWERS indicator (below the compass, gold)
-    if (s_towersTotal > 0) { // levels without a tower mission hide it
-        char towerText[32];
-        std::snprintf(towerText, sizeof(towerText), "TOWERS %d/%d",
-                      s_towersDestroyed, s_towersTotal);
-        DrawAnchoredText(towerText, compCX, compY + compSize + 4.0f, 2,
-                         0xFFFFD040u, layout);
-    }
+    (void)s_towersDestroyed;
+    (void)s_score;
 
     RenderPlatform_EndOverlay2D();
 }

@@ -105,14 +105,14 @@ int main(int argc, char **argv) {
         }
         std::printf("physics world: %p\n", (void*)pWorld);
         RWS::HUD_Initialize();
-        Check(RWS::HUD_GetAmmo() == 175,
-              "HUD ammo starts at 175", __LINE__);
+        Check(RWS::HUD_GetAmmo() == 200,
+              "HUD ammo starts at 200 (original game)", __LINE__);
         RWS::HUD_UseAmmo(-1);
-        Check(RWS::HUD_GetAmmo() == 175,
+        Check(RWS::HUD_GetAmmo() == 200,
               "negative ammo use is ignored", __LINE__);
         RWS::HUD_UseAmmo(3);
-        Check(RWS::HUD_GetAmmo() == 172,
-              "HUD ammo 175 -> 172 after UseAmmo(3)", __LINE__);
+        Check(RWS::HUD_GetAmmo() == 197,
+              "HUD ammo 200 -> 197 after UseAmmo(3)", __LINE__);
         RWS::HUD_UseAmmo((std::numeric_limits<RwInt32>::max)());
         Check(RWS::HUD_GetAmmo() == 0, "ammo clamps at zero", __LINE__);
 

@@ -118,16 +118,20 @@ void COceanTile::Update(RwReal waveTime, const Shade &shade)
     if (!m_paVertices || !m_paColors || shade.valid != TRUE) return;
     for (RwUInt32 i = 0; i < m_uNumVertices; ++i)
     {
-        // Base colour, a touch of the deep colour in troughs and the light
-        // crest colour on top (the wave spans about -1..+1 m).
-        const RwReal h = (m_paVertices[i].y + 1.0f) * 0.5f;
-        RwRGBA c = MixColor(shade.deep, shade.base, 0.55f + h * 0.45f);
-        if (h > 0.7f) c = MixColor(c, shade.crest, (h - 0.7f) * 2.0f);
-        // Fade toward the horizon colour with distance.
+        // As in the original: dark deep-water colour close to the viewer
+        // (looking down into it), the lighter base colour further out, the
+        // horizon colour in the distance; crests a touch lighter.
         const RwReal dx = m_paVertices[i].x - shade.viewX;
         const RwReal dz = m_paVertices[i].z - shade.viewZ;
         const RwReal d = std::sqrt(dx * dx + dz * dz);
-        m_paColors[i] = MixColor(c, shade.horizon, (d - 250.0f) / 900.0f * 0.85f);
+        RwRGBA nearC = MixColor(shade.deep, shade.base, 0.22f);
+        nearC.red = (RwUInt8)(nearC.red * 0.85f);
+        nearC.green = (RwUInt8)(nearC.green * 0.85f);
+        nearC.blue = (RwUInt8)(nearC.blue * 0.85f);
+        RwRGBA c = MixColor(nearC, shade.base, (d - 15.0f) / 650.0f * 0.7f);
+        const RwReal h = (m_paVertices[i].y + 1.0f) * 0.5f;
+        if (h > 0.75f) c = MixColor(c, shade.crest, (h - 0.75f) * 1.2f);
+        m_paColors[i] = MixColor(c, shade.horizon, (d - 700.0f) / 900.0f * 0.8f);
     }
 }
 

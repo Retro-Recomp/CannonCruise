@@ -66,6 +66,9 @@ void Effects_Spawn(EffectKind kind, RwReal x, RwReal y, RwReal z) {
                 245, 255, 0.85f);
         }
         Add(x, y + 0.2f, z, 0, 0, 0, 0.8f, 1.5f, 5.0f, 220, 235, 250, 0.6f); // foam ring
+    } else if (kind == EFFECT_WAKE) {
+        Add(x + (Rand01() - 0.5f) * 0.6f, y + 0.15f, z + (Rand01() - 0.5f) * 0.6f, 0, 0, 0,
+            2.2f, 1.2f, 3.6f, 220, 235, 240, 0.30f);
     } else {
         Add(x, y, z, 0, 0.3f, 0, 0.15f, 0.8f, 2.0f, 255, 220, 120, 1.0f);
         for (int i = 0; i < 3; ++i) {

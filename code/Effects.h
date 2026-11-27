@@ -15,7 +15,8 @@
 enum EffectKind {
     EFFECT_EXPLOSION = 0, ///< fire flash + smoke (ship, tower, ground hit)
     EFFECT_SPLASH = 1,    ///< white water splash
-    EFFECT_MUZZLE = 2     ///< small flash + puff at the cannon mouth
+    EFFECT_MUZZLE = 2,    ///< small flash + puff at the cannon mouth
+    EFFECT_WAKE = 3       ///< foam puff left behind a moving ship
 };
 
 /// Starts an effect at a world position.

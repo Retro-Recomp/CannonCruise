@@ -621,7 +621,7 @@ int main(int argc, char **argv) {
     void *s_crewAnim[2] = {nullptr, nullptr};
     RwInt32 s_crewIdle[2] = {-1, -1};
     // Ship-local offsets (right, up, forward) in metres.
-    const RwReal s_crewOffset[2][3] = {{0.0f, 0.9f, -1.2f}, {0.0f, 3.75f, 0.2f}};
+    const RwReal s_crewOffset[2][3] = {{0.0f, 0.9f, -1.2f}, {0.0f, 4.05f, 0.2f}};
     RwInt32 s_shipClipWingL = -1, s_shipClipWingR = -1, s_shipClipRudder = -1,
             s_shipClipWheel = -1, s_shipClipGun = -1;
     std::vector<CCannonball *> s_cannonballs;
@@ -1366,8 +1366,10 @@ int main(int argc, char **argv) {
     RwReal camPitch = 0.0f;
     RwReal camSpan = 400.0f; // world scale -- freecam speed base
     // Sized for the real Hugo_Ship (about 4.6 m long, 5.8 m across the wings).
-    const RwReal kFollowCameraDistance = 10.0f;
-    const RwReal kFollowCameraHeight = 4.5f;
+    // Close behind and just above the deck, as in the original game (the
+    // ship fills ~40% of the screen width, horizon a little above centre).
+    const RwReal kFollowCameraDistance = 6.5f;
+    const RwReal kFollowCameraHeight = 2.9f;
     if (bWorldLoaded == TRUE && pipeline.pClump != nullptr) {
         const char *bgmTrack = "BeaverM";
         if (pWorldPath != nullptr) {
@@ -2482,10 +2484,12 @@ if (bSimActive == TRUE) {
                     camPos[2] =
                         shipState.pos.z + std::cos(ang) * kFollowCameraDistance;
                     ClampCameraToMap(camPos);
-                    // aim at the deck, slightly ahead (over the bow)
-                    camLook[0] = shipState.pos.x + std::sin(shipState.yaw) * 2.0f;
-                    camLook[1] = shipState.pos.y + 1.5f;
-                    camLook[2] = shipState.pos.z + std::cos(shipState.yaw) * 2.0f;
+                    // Look past the ship in the camera's direction (= the
+                    // cannon's when the camera is turned).
+                    const RwReal lookYaw = shipState.yaw + followOrbit;
+                    camLook[0] = shipState.pos.x + std::sin(lookYaw) * 6.0f;
+                    camLook[1] = shipState.pos.y + 2.4f;
+                    camLook[2] = shipState.pos.z + std::cos(lookYaw) * 6.0f;
                     if (frame <= 3 && std::getenv("CANNONCRUISE_CAM_DEBUG") != nullptr) {
                         std::fprintf(stderr, "FOLLOWDBG frame=%d ship=(%.1f,%.1f,%.1f) cam=(%.1f,%.1f,%.1f)\n",
                                     frame, shipState.pos.x, shipState.pos.y, shipState.pos.z,
@@ -2673,6 +2677,13 @@ if (bSimActive == TRUE) {
                 // Real model follows the simulated ship: forward = (sin yaw, 0, cos yaw).
                 PlayerShipState shipNow;
                 if (PlayerShip_GetState(&shipNow) == TRUE) {
+                    // Wake: foam puffs left at the stern while under way.
+                    static int s_wakeTick = 0;
+                    if (bSimActive == TRUE && std::fabs(shipNow.speed) > 2.0f && (++s_wakeTick % 4) == 0) {
+                        const RwReal wy = pOcean != nullptr ? pOcean->GetSurfaceHeight(shipNow.pos.x, shipNow.pos.z) : 0.0f;
+                        Effects_Spawn(EFFECT_WAKE, shipNow.pos.x - std::sin(shipNow.yaw) * 2.4f, wy,
+                                      shipNow.pos.z - std::cos(shipNow.yaw) * 2.4f);
+                    }
                     // Hugo_Ship: ~4.6 m long, ~2.2 m beam; keel 0.57 m below origin.
                     RwReal m[16];
                     ShipOnWaterMatrix(pOcean, shipNow.pos.x, shipNow.pos.z, shipNow.yaw,
@@ -2710,11 +2721,7 @@ if (bSimActive == TRUE) {
                         const RwReal *o = s_crewOffset[ai];
                         RwReal am[16];
                         std::memcpy(am, m, sizeof(am));
-                        // Face the bow (models look down -Z in their own space).
-                        for (int k = 0; k < 3; ++k) {
-                            am[k] = -m[k];
-                            am[8 + k] = -m[8 + k];
-                        }
+                        // Same orientation as the ship: the crew face the bow.
                         for (int k = 0; k < 3; ++k) {
                             am[12 + k] = m[12 + k] + m[k] * o[0] + m[4 + k] * o[1] + m[8 + k] * o[2];
                         }
