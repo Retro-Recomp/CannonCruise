@@ -16,6 +16,7 @@
 #include "framework/core/attributehandler/cclassfactory.h"
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 RWS_REGISTER_CLASS(CAfterGameMenuBehavior, []() -> void* { return new CAfterGameMenuBehavior(); }, sizeof(CAfterGameMenuBehavior));
@@ -127,6 +128,31 @@ void CAfterGameMenuBehavior::AttachMaestro(Rt2dMaestro* pMaestro)
         std::snprintf(lv->file + bi, sizeof(lv->file) - bi, "%02d", num);
         ++m_levelCount;
     }
+    // Campaign order (the original starts a new game in NORDIC 1, then
+    // NORDIC 2, then the Viking, Beaver and Iduna seas); the map art lists
+    // the groups in another order.
+    struct Order {
+        static int Rank(const char *file) {
+            static const char *kSeas[4] = {"NORDIC", "VIKING", "BEAVER", "IDUNA"};
+            for (int s = 0; s < 4; ++s) {
+                if (std::strncmp(file, kSeas[s], std::strlen(kSeas[s])) == 0) {
+                    return s * 100 + std::atoi(file + std::strlen(kSeas[s]));
+                }
+            }
+            return 1000;
+        }
+    };
+    for (RwInt32 a = 1; a < m_levelCount; ++a)
+    {
+        MapLevel key = m_levels[a];
+        RwInt32 b = a - 1;
+        while (b >= 0 && Order::Rank(m_levels[b].file) > Order::Rank(key.file))
+        {
+            m_levels[b + 1] = m_levels[b];
+            --b;
+        }
+        m_levels[b + 1] = key;
+    }
 }
 
 RwBool CAfterGameMenuBehavior::MoveNext()
@@ -188,6 +214,32 @@ void CAfterGameMenuBehavior::Update(RwReal deltaTime)
     }
 }
 
+namespace {
+// Level names (title text of each level, lang_eng ids 1035, 1150 ...).
+void LevelTitle(const char *file, char *out, size_t outSize)
+{
+    static const struct { const char *file; const char *name; } kNames[] = {
+        {"NORDIC01", "TRICKY TROLL FJORD"}, {"NORDIC02", "TRICKY TROLL FJORD"},
+        {"VIKING01", "HORN HEAD FJORD"}, {"VIKING02", "BAY OF SWINE"},
+        {"VIKING03", "GIANTS OF THE DEEP"}, {"VIKING04", "THE SECRET OF LONGHORN"},
+        {"VIKING05", "THE FORGOTTEN SEA"}, {"BEAVER01", "POSEIDON'S TEMPLE"},
+        {"BEAVER02", "THE FORTRESS OF FURY"}, {"BEAVER03", "THE LAND OF SOGGY FOGGY"},
+        {"BEAVER04", "HARBOR HAVEN"}, {"BEAVER05", "ROCKY ROMAN MOUNTAIN"},
+        {"IDUNA01", "IDUNA'S ISLAND"}, {"IDUNA02", "SHOWDOWN WITH SCULLA"},
+        {"IDUNA03", "IDUNA'S TOMB"},
+    };
+    for (size_t i = 0; i < sizeof(kNames) / sizeof(kNames[0]); ++i)
+    {
+        if (std::strcmp(file, kNames[i].file) == 0)
+        {
+            std::snprintf(out, outSize, "%s", kNames[i].name);
+            return;
+        }
+    }
+    std::snprintf(out, outSize, "%s", file);
+}
+} // namespace
+
 void CAfterGameMenuBehavior::Render()
 {
     // screen pixel - RenderPlatform_Initialize(1280, 720)
@@ -232,53 +284,30 @@ void CAfterGameMenuBehavior::Render()
     }
     else
     {
-        // Title (video: TRICKY TROLL FJORD + rating line).
-        ShowText_DrawBitmapText("TRICKY TROLL FJORD", kScreenW * 0.3f,
-                                kScreenH * 0.05f, 3, 0x3A, 0x1E, 0x08, 255);
-        ShowText_DrawBitmapText("YOUR RATING - NOT COMPLETED",
-                                kScreenW * 0.3f, kScreenH * 0.11f, 2,
-                                0x4A, 0x28, 0x10, 255);
-        // Level list (functionally decodes scene node positions until end;
-        // video map cursor scene surplus).
-        const RwReal listX = kScreenW * 0.06f;
-        const RwReal listY = kScreenH * 0.24f;
-        const RwReal rowH = kScreenH * 0.052f;
-        const RwInt32 kVisible = 10;
-        RwInt32 first = 0;
-        if (m_levelCount > kVisible)
-        {
-            first = m_selection - kVisible / 2;
-            if (first < 0)
-            {
-                first = 0;
-            }
-            if (first > m_levelCount - kVisible)
-            {
-                first = m_levelCount - kVisible;
-            }
-        }
-        for (RwInt32 i = 0; i < kVisible && first + i < m_levelCount; ++i)
-        {
-            const RwInt32 li = first + i;
-            const RwReal y = listY + (RwReal)i * rowH;
-            if (li == m_selection)
-            {
-                RenderPlatform_DrawSprite("Menu_087", listX - 38.0f, y - 6.0f,
-                                          30.0f, 30.0f, kBall);
-            }
-            ShowText_DrawBitmapText(m_levels[li].display, listX, y, 2,
-                                    0x4A, 0x28, 0x10, 255);
-        }
+        // As in the original: the selected level's name and rating on the
+        // map, Left/Right (or Up/Down) browse; no list.
+        char title[96] = {0};
+        LevelTitle(m_selection >= 0 && m_selection < m_levelCount ? m_levels[m_selection].file : "",
+                   title, sizeof(title));
+        const RwInt32 titleScale = 4;
+        const RwReal titleW = (RwReal)std::strlen(title) * 6.0f * titleScale;
+        ShowText_DrawBitmapText(title, kScreenW * 0.62f - titleW * 0.5f, kScreenH * 0.07f,
+                                titleScale, 0x6A, 0x30, 0x10, 255);
+        const char *rating = "YOUR RATING - NOT COMPLETED";
+        const RwReal ratingW = (RwReal)std::strlen(rating) * 6.0f * 2;
+        ShowText_DrawBitmapText(rating, kScreenW * 0.62f - ratingW * 0.5f, kScreenH * 0.16f, 2,
+                                0x6A, 0x30, 0x10, 255);
+        (void)kBall;
     }
 
-    // keyboard hints
-    RenderPlatform_DrawOverlayQuad(150.0f, 636.0f, 86.0f, 30.0f, kKeyBox);
-    ShowText_DrawBitmapText("Enter", 158.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
-    ShowText_DrawBitmapText("SELECT", 244.0f, 640.0f, 2, 0x4A, 0x28, 0x10,
-                            255);
-    RenderPlatform_DrawOverlayQuad(580.0f, 636.0f, 58.0f, 30.0f, kKeyBox);
-    ShowText_DrawBitmapText("Esc", 588.0f, 640.0f, 2, 0x3A, 0x1E, 0x08, 255);
-    ShowText_DrawBitmapText("BACK", 646.0f, 640.0f, 2, 0x4A, 0x28, 0x10, 255);
+    // keyboard hints: Enter key cap + SELECT (the original shows only this)
+    RenderPlatform_DrawOverlayQuad(150.0f, 630.0f, 44.0f, 40.0f, 0xFF8A8478u);
+    RenderPlatform_DrawOverlayQuad(153.0f, 633.0f, 38.0f, 34.0f, 0xFFE8E4DCu);
+    RenderPlatform_DrawOverlayQuad(176.0f, 641.0f, 4.0f, 12.0f, 0xFF303030u);
+    RenderPlatform_DrawOverlayQuad(162.0f, 651.0f, 18.0f, 4.0f, 0xFF303030u);
+    RenderPlatform_DrawOverlayQuad(160.0f, 647.0f, 4.0f, 12.0f, 0xFF303030u);
+    ShowText_DrawBitmapText("SELECT", 210.0f, 638.0f, 3, 0x4A, 0x28, 0x10, 255);
+    (void)kKeyBox;
     (void)kInk;
     (void)kTitleInk;
 

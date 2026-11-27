@@ -109,9 +109,10 @@ int main(int argc, char **argv) {
         CAfterGameMenuBehavior map;
         map.AttachMaestro(m);
         CHECK(map.GetLevelCount() == 12);
-        CHECK(std::strcmp(map.GetLevelDisplay(0), "VIKING 1") == 0);
-        CHECK(std::strcmp(map.GetLevelFile(0), "VIKING01") == 0);
-        CHECK(std::strcmp(map.GetLevelFile(1), "NORDIC01") == 0);
+        // Campaign order: NORDIC first, then VIKING, BEAVER, IDUNA.
+        CHECK(std::strcmp(map.GetLevelDisplay(0), "NORDIC 1") == 0);
+        CHECK(std::strcmp(map.GetLevelFile(0), "NORDIC01") == 0);
+        CHECK(std::strcmp(map.GetLevelFile(1), "VIKING01") == 0);
         CHECK(std::strcmp(map.GetLevelFile(11), "IDUNA01") == 0);
         CHECK(map.GetLevelDisplay(-1) == 0);
         CHECK(map.GetLevelFile(12) == 0);

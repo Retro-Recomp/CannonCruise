@@ -523,24 +523,42 @@ void LevelScript_Render(void) {
     for (size_t i = 0; i < lines.size(); ++i) {
         if (lines[i].size() > maxLen) maxLen = lines[i].size();
     }
-    const RwReal pad = 14.0f;
-    const RwReal boxW = (RwReal)maxLen * glyph + pad * 2.0f;
-    const RwReal boxH = (RwReal)(lines.size() + (showNext ? 1 : 0)) * lineH + pad * 2.0f;
+    // As in the original: a torn parchment sheet (semi-transparent) across
+    // the upper half, dark brown ink, lines centred, the Enter key icon and
+    // "NEXT" under the text.
+    const RwReal padX = 60.0f, padY = 34.0f;
+    RwReal boxW = (RwReal)maxLen * glyph + padX * 2.0f;
+    if (boxW < (RwReal)W * 0.62f) boxW = (RwReal)W * 0.62f;
+    const RwReal boxH = (RwReal)(lines.size() + (showNext ? 1 : 0)) * lineH + padY * 2.0f + 8.0f;
     const RwReal boxX = ((RwReal)W - boxW) * 0.5f;
-    const RwReal boxY = (RwReal)H * 0.10f;
+    const RwReal boxY = (RwReal)H * 0.12f;
     RenderPlatform_BeginOverlay2D();
-    RenderPlatform_DrawOverlayQuad(boxX - 3.0f, boxY - 3.0f, boxW + 6.0f, boxH + 6.0f, 0xE0D8B060);
-    RenderPlatform_DrawOverlayQuad(boxX, boxY, boxW, boxH, 0xE0281A0C);
+    void *pParchment = RenderPlatform_GetTexture("Load_NT_001");
+    if (pParchment != nullptr) {
+        RenderPlatform_DrawTextureRegion(pParchment, boxX, boxY, boxW, boxH, 0.0f, 0.0f, 1.0f, 1.0f,
+                                         0xD8FFFFFFu);
+    } else {
+        RenderPlatform_DrawOverlayQuad(boxX, boxY, boxW, boxH, 0xC8B8A078u);
+    }
+    const RwReal textTop = boxY + padY;
     for (size_t i = 0; i < lines.size(); ++i) {
         const RwReal lx = boxX + (boxW - (RwReal)lines[i].size() * glyph) * 0.5f;
-        ShowText_DrawBitmapText(lines[i].c_str(), lx, boxY + pad + (RwReal)i * lineH, scale,
-                                255, 236, 180, 255);
+        ShowText_DrawBitmapText(lines[i].c_str(), lx, textTop + (RwReal)i * lineH, scale,
+                                0x30, 0x1C, 0x0C, 255);
     }
     if (showNext == TRUE) {
-        const char *prompt = "ENTER: NEXT";
-        const RwReal px = boxX + boxW - pad - (RwReal)std::strlen(prompt) * 6.0f * 2;
-        ShowText_DrawBitmapText(prompt, px, boxY + pad + (RwReal)lines.size() * lineH + 4.0f, 2,
-                                210, 190, 120, 255);
+        const char *prompt = "NEXT";
+        const RwReal keyW = 30.0f, keyH = 26.0f;
+        const RwReal promptW = (RwReal)std::strlen(prompt) * glyph;
+        const RwReal rowY = textTop + (RwReal)lines.size() * lineH + 6.0f;
+        const RwReal rowX = boxX + (boxW - (keyW + 10.0f + promptW)) * 0.5f;
+        // Enter key: light key cap with a dark return arrow.
+        RenderPlatform_DrawOverlayQuad(rowX, rowY - 2.0f, keyW, keyH, 0xFF8A8478u);
+        RenderPlatform_DrawOverlayQuad(rowX + 2.0f, rowY, keyW - 4.0f, keyH - 4.0f, 0xFFE8E4DCu);
+        RenderPlatform_DrawOverlayQuad(rowX + 18.0f, rowY + 6.0f, 3.0f, 9.0f, 0xFF303030u);
+        RenderPlatform_DrawOverlayQuad(rowX + 8.0f, rowY + 13.0f, 13.0f, 3.0f, 0xFF303030u);
+        RenderPlatform_DrawOverlayQuad(rowX + 7.0f, rowY + 11.0f, 3.0f, 7.0f, 0xFF303030u);
+        ShowText_DrawBitmapText(prompt, rowX + keyW + 10.0f, rowY, scale, 0x30, 0x1C, 0x0C, 255);
     }
     RenderPlatform_EndOverlay2D();
 }

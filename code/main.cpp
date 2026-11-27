@@ -1190,10 +1190,14 @@ int main(int argc, char **argv) {
                             }
                             const RwBool down =
                                 RwPlatformKeyDown('S') ||
-                                RwPlatformKeyDown(RW_KEY_DOWN);
+                                RwPlatformKeyDown(RW_KEY_DOWN) ||
+                                RwPlatformKeyDown('D') ||
+                                RwPlatformKeyDown(RW_KEY_RIGHT);
                             const RwBool up =
                                 RwPlatformKeyDown('W') ||
-                                RwPlatformKeyDown(RW_KEY_UP);
+                                RwPlatformKeyDown(RW_KEY_UP) ||
+                                RwPlatformKeyDown('A') ||
+                                RwPlatformKeyDown(RW_KEY_LEFT);
                             const RwBool enter =
                                 RwPlatformKeyDown(' ') ||
                                 RwPlatformKeyDown(RW_KEY_ENTER);
