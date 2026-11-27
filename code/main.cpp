@@ -2367,32 +2367,33 @@ if (bSimActive == TRUE) {
                 // Ship: W/S throttle, A/D rudder; mouse X camera orbit (clamped).
                 const RwReal kDt = 1.0f / 60.0f;
                 RwReal throttle = 0.0f;
-                if (RwPlatformKeyDown('W')) {
+                // As in the original: arrows (or WASD) sail the ship.
+                if (RwPlatformKeyDown('W') || RwPlatformKeyDown(RW_KEY_UP)) {
                     throttle += 1.0f;
                 }
-                if (RwPlatformKeyDown('S')) {
+                if (RwPlatformKeyDown('S') || RwPlatformKeyDown(RW_KEY_DOWN)) {
                     throttle -= 0.5f;
                 }
                 // rudder +1 turns the ship to starboard (screen right) in
                 // PlayerShip_Update, so A (port) is -1 and D (starboard) +1.
                 RwReal rudder = 0.0f;
-                if (RwPlatformKeyDown('A')) {
+                if (RwPlatformKeyDown('A') || RwPlatformKeyDown(RW_KEY_LEFT)) {
                     rudder -= 1.0f;
                 }
-                if (RwPlatformKeyDown('D')) {
+                if (RwPlatformKeyDown('D') || RwPlatformKeyDown(RW_KEY_RIGHT)) {
                     rudder += 1.0f;
                 }
-                // Camera = cannon direction: mouse or Left/Right turn it and it
-                // stays turned (the cannon follows); Up/Down tilt the barrel;
-                // C centres the camera behind the ship.
+                // Camera = cannon direction: mouse or Q/E turn it and it stays
+                // turned (the cannon follows); R/F tilt the barrel; C centres
+                // the camera behind the ship.
                 int mdx = 0, mdy = 0;
                 if (RwPlatformMouseDelta(&mdx, &mdy) == TRUE) {
                     followOrbit += (RwReal)mdx * 0.0035f;
                 }
-                if (RwPlatformKeyDown(RW_KEY_LEFT)) followOrbit -= 1.6f / 60.0f;
-                if (RwPlatformKeyDown(RW_KEY_RIGHT)) followOrbit += 1.6f / 60.0f;
-                if (RwPlatformKeyDown(RW_KEY_UP)) s_cannonPitch += 0.15f / 60.0f;
-                if (RwPlatformKeyDown(RW_KEY_DOWN)) s_cannonPitch -= 0.15f / 60.0f;
+                if (RwPlatformKeyDown('Q')) followOrbit -= 1.6f / 60.0f;
+                if (RwPlatformKeyDown('E')) followOrbit += 1.6f / 60.0f;
+                if (RwPlatformKeyDown('R')) s_cannonPitch += 0.15f / 60.0f;
+                if (RwPlatformKeyDown('F')) s_cannonPitch -= 0.15f / 60.0f;
                 if (s_cannonPitch < 0.0f) s_cannonPitch = 0.0f;
                 if (s_cannonPitch > 0.35f) s_cannonPitch = 0.35f;
                 if (RwPlatformKeyDown('C')) followOrbit = 0.0f;
@@ -2488,8 +2489,19 @@ if (bSimActive == TRUE) {
                 PlayerShip_Update(kDt, waveT, throttle, rudder);
                 PlayerShipState shipState;
                 if (PlayerShip_GetState(&shipState) == TRUE) {
-                    const RwReal ang =
-                        shipState.yaw + 3.14159265f + followOrbit;
+                    // The camera swings round after the ship's heading with a
+                    // lag (the original shows the ship turning before the view).
+                    static RwReal s_camYaw = 0.0f;
+                    static RwBool s_camYawInit = FALSE;
+                    if (s_camYawInit != TRUE) {
+                        s_camYaw = shipState.yaw;
+                        s_camYawInit = TRUE;
+                    }
+                    RwReal dYaw = shipState.yaw - s_camYaw;
+                    while (dYaw > 3.14159265f) dYaw -= 6.2831853f;
+                    while (dYaw < -3.14159265f) dYaw += 6.2831853f;
+                    s_camYaw += dYaw * 0.035f;
+                    const RwReal ang = s_camYaw + 3.14159265f + followOrbit;
                     // Camera above-behind, tied rigidly to the ship: looking
                     // down over the stern at the deck and bow (reference view).
                     // Pulls back and up as the ship speeds up (the original
@@ -2506,7 +2518,7 @@ if (bSimActive == TRUE) {
                     ClampCameraToMap(camPos);
                     // Look past the ship in the camera's direction (= the
                     // cannon's when the camera is turned).
-                    const RwReal lookYaw = shipState.yaw + followOrbit;
+                    const RwReal lookYaw = s_camYaw + followOrbit;
                     camLook[0] = shipState.pos.x + std::sin(lookYaw) * 6.0f;
                     camLook[1] = shipState.pos.y + 2.4f;
                     camLook[2] = shipState.pos.z + std::cos(lookYaw) * 6.0f;
@@ -2717,10 +2729,18 @@ if (bSimActive == TRUE) {
                         //  gun    0.2 = pointing forward
                         RwReal speedNorm = std::fabs(shipNow.speed) / 8.5f;
                         if (speedNorm > 1.0f) speedNorm = 1.0f;
-                        const RwReal wingT = 0.02f + speedNorm * 0.36f;
+                        // As in the original: wings spread; the wing on the
+                        // inside of a turn folds (turning right folds the
+                        // right wing).
+                        (void)speedNorm;
+                        static RwReal s_wingL = 0.02f, s_wingR = 0.02f;
+                        const RwReal tgtL = 0.02f + (shipNow.rudder < 0.0f ? -shipNow.rudder : 0.0f) * 0.36f;
+                        const RwReal tgtR = 0.02f + (shipNow.rudder > 0.0f ? shipNow.rudder : 0.0f) * 0.36f;
+                        s_wingL += (tgtL - s_wingL) * 0.08f;
+                        s_wingR += (tgtR - s_wingR) * 0.08f;
                         const RwReal rudderT = 0.2f + shipNow.rudder * 0.18f;
-                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingL, wingT);
-                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingR, wingT);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingL, s_wingL);
+                        RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWingR, s_wingR);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipRudder, rudderT);
                         RpClumpPortAnimatorSetPose(s_pShipAnimator, s_shipClipWheel, rudderT);
                         RwReal gunT = 0.2f + s_cannonOrbit / 6.2831853f * 0.4f;
